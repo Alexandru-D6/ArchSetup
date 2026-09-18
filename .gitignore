@@ -1,0 +1,6 @@
+vm/images/
+vm/disks/
+vm/keys/
+vm/run/
+vm/cloud-init/
+
