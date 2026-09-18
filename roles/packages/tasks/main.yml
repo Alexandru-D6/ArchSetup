@@ -1,0 +1,8 @@
+---
+- name: Install declared command-line packages from official repositories
+  community.general.pacman:
+    name: "{{ archsetup_cli_packages }}"
+    state: present
+    reason: explicit
+    reason_for: new
+

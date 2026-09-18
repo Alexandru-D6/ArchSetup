@@ -1,0 +1,11 @@
+---
+- name: Configure local Arch Linux command-line environment
+  hosts: localhost
+  gather_facts: true
+  become: true
+  roles:
+    - role: preflight
+      tags: [always, preflight]
+    - role: packages
+      tags: [packages, cli]
+

@@ -4,3 +4,6 @@ vm/keys/
 vm/run/
 vm/cloud-init/
 
+collections/
+*.retry
+

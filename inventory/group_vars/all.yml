@@ -1,0 +1,28 @@
+---
+# Official Arch packages installed by `./setup.sh apply`.
+# Add or remove package names here. Removing an entry does not uninstall it.
+archsetup_cli_packages:
+  - base-devel
+  - bash-completion
+  - bat
+  - btop
+  - curl
+  - fd
+  - fzf
+  - git
+  - jq
+  - less
+  - man-db
+  - man-pages
+  - nano
+  - openssh
+  - pacman-contrib
+  - ripgrep
+  - rsync
+  - tmux
+  - tree
+  - unzip
+  - wget
+  - which
+  - zip
+

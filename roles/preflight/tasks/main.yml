@@ -1,0 +1,31 @@
+---
+- name: Confirm the target is Arch Linux
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Archlinux'
+    fail_msg: >-
+      ArchSetup supports Arch Linux only. Detected
+      '{{ ansible_facts.distribution | default("unknown") }}'.
+
+- name: Confirm pacman is available
+  ansible.builtin.stat:
+    path: /usr/bin/pacman
+  register: archsetup_pacman_binary
+
+- name: Stop when pacman is unavailable
+  ansible.builtin.assert:
+    that: archsetup_pacman_binary.stat.exists
+    fail_msg: pacman is unavailable; this does not appear to be a usable Arch installation.
+
+- name: Check for an active pacman database lock
+  ansible.builtin.stat:
+    path: /var/lib/pacman/db.lck
+  register: archsetup_pacman_lock
+
+- name: Stop while another pacman transaction is active
+  ansible.builtin.assert:
+    that: not archsetup_pacman_lock.stat.exists
+    fail_msg: >-
+      pacman's database lock exists at /var/lib/pacman/db.lck. Wait for the active
+      package transaction to finish; do not remove the lock automatically.
+

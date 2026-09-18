@@ -1,6 +1,7 @@
 # ArchSetup development plan
 
-Status: proposed design; provisioning scripts and playbooks are not implemented.
+Status: initial command-line package provisioning is implemented. Dotfiles,
+user management, system settings, and VM integration tests remain planned.
 
 ## Objective and scope
 

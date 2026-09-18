@@ -1,0 +1,14 @@
+---
+- name: Upgrade local Arch Linux system
+  hosts: localhost
+  gather_facts: true
+  become: true
+  roles:
+    - role: preflight
+      tags: [always, preflight]
+  tasks:
+    - name: Perform a full system upgrade
+      community.general.pacman:
+        update_cache: true
+        upgrade: true
+

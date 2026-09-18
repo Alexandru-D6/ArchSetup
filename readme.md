@@ -30,10 +30,42 @@ Use `./scripts/vm.sh status`, `console`, and `stop` to manage it. Run
 `./scripts/vm.sh reset` to discard the writable VM disk and start again with a
 fresh machine. Generated images, disks, keys, and logs are ignored by Git.
 
-The project is currently in the planning stage. See the
-[development plan](docs/development-plan.md) for the proposed architecture,
-implementation milestones, and tests for safe repeated execution.
+The first implementation installs a configurable list of basic official-repository
+tools: build essentials, shell completion, Git, network tools, search tools, archive
+tools, terminal multiplexer, manuals, and package maintenance utilities. See
+[inventory/group_vars/all.yml](inventory/group_vars/all.yml) for the exact list.
 
 The central requirement is **idempotency**: applying the same configuration again
 should make no changes when the managed state already matches it. System upgrades
 will be an explicit maintenance operation.
+
+## Use
+
+On a fresh, installed Arch system, clone or copy this repository and run:
+
+```bash
+./setup.sh bootstrap
+./setup.sh check
+./setup.sh apply
+./setup.sh verify
+```
+
+`bootstrap` installs Git, Python, Ansible, and sudo if missing. Because Arch only
+supports full upgrades, that initial prerequisite installation uses `pacman -Syu`.
+`apply` does not refresh package databases or upgrade packages; it only ensures the
+declared tools are present. Use `./setup.sh upgrade` separately for a deliberate
+full system upgrade. Supply normal Ansible options after each command, such as
+`./setup.sh apply --ask-become-pass`.
+
+Run bootstrap as root when sudo is not yet installed. Later commands can run as a
+regular sudo-enabled user. The first `apply` needs current package metadata; if
+pacman cannot install a missing tool because the local metadata is stale, run the
+explicit upgrade command and retry.
+
+To change the tool set, edit
+[inventory/group_vars/all.yml](inventory/group_vars/all.yml). Removing a name from
+the list leaves an already installed package in place. Package removal is not
+automated yet.
+
+See the [development plan](docs/development-plan.md) for the next roles, dotfiles,
+and VM-based repeatability tests.

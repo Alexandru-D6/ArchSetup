@@ -1,0 +1,21 @@
+---
+- name: Verify local Arch Linux command-line environment
+  hosts: localhost
+  gather_facts: true
+  become: true
+  roles:
+    - role: preflight
+      tags: [always, preflight]
+  tasks:
+    - name: Collect installed package facts
+      ansible.builtin.package_facts:
+        manager: pacman
+
+    - name: Confirm declared command-line packages are installed
+      ansible.builtin.assert:
+        that: item in ansible_facts.packages
+        fail_msg: "Required package '{{ item }}' is not installed. Run ./setup.sh apply."
+        success_msg: "Required package '{{ item }}' is installed."
+      loop: "{{ archsetup_cli_packages }}"
+      loop_control:
+        label: "{{ item }}"
