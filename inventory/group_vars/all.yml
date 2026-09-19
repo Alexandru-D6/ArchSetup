@@ -24,6 +24,7 @@ archsetup_cli_packages:
   - unzip
   - wget
   - which
+  - vim
 
 # Packages that `./setup.sh apply` must remove. List a package here only after
 # reviewing pacman's transaction. This list takes precedence if a package is also
