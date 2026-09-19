@@ -1,6 +1,6 @@
 ---
 # Official Arch packages installed by `./setup.sh apply`.
-# Add or remove package names here. Removing an entry does not uninstall it.
+# Removing a name from this list does not uninstall it; use the removal list below.
 archsetup_cli_packages:
   - base-devel
   - bash-completion
@@ -24,5 +24,11 @@ archsetup_cli_packages:
   - unzip
   - wget
   - which
-  - zip
 
+# Packages that `./setup.sh apply` must remove. List a package here only after
+# reviewing pacman's transaction. This list takes precedence if a package is also
+# in archsetup_cli_packages. Pacman retains modified configuration as a .pacsave
+# file and refuses removals needed by another installed package.
+archsetup_cli_packages_absent: [
+  zip
+]

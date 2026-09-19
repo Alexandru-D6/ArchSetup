@@ -51,8 +51,31 @@ require_commands() {
   done
 }
 
+vm_pid() {
+  local candidate
+  if [[ -r "${pid_file}" ]]; then
+    candidate="$(<"${pid_file}")"
+    if [[ "${candidate}" =~ ^[0-9]+$ ]] && kill -0 "${candidate}" 2>/dev/null; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  fi
+
+  if command -v fuser >/dev/null 2>&1; then
+    for candidate in $(fuser "${overlay_image}" 2>/dev/null); do
+      if [[ -r "/proc/${candidate}/cmdline" ]] \
+        && tr '\0' ' ' <"/proc/${candidate}/cmdline" | grep -Fq -- 'qemu-system' \
+        && tr '\0' ' ' <"/proc/${candidate}/cmdline" | grep -Fq -- "${overlay_image}"; then
+        printf '%s\n' "${candidate}"
+        return 0
+      fi
+    done
+  fi
+  return 1
+}
+
 is_running() {
-  [[ -r "${pid_file}" ]] && kill -0 "$(<"${pid_file}")" 2>/dev/null
+  vm_pid >/dev/null
 }
 
 run_ssh() {
@@ -128,7 +151,7 @@ initialize() {
 
 start() {
   require_commands qemu-system-x86_64
-  if is_running; then printf 'VM is already running (PID %s).\n' "$(<"${pid_file}")"; exit 0; fi
+  if is_running; then printf 'VM is already running (PID %s).\n' "$(vm_pid)"; exit 0; fi
   [[ -f "${overlay_image}" && -f "${seed_image}" ]] || { printf '%s\n' 'VM is not initialized. Run ./scripts/vm.sh init first.' >&2; exit 1; }
   rm -f -- "${pid_file}"
   local -a acceleration=(-accel tcg)
@@ -213,7 +236,7 @@ case "${1:-}" in
   start) start ;;
   stop) stop ;;
   ssh) run_ssh ;;
-  status) is_running && printf 'VM is running (PID %s).\n' "$(<"${pid_file}")" || printf '%s\n' 'VM is stopped.' ;;
+  status) is_running && printf 'VM is running (PID %s).\n' "$(vm_pid)" || printf '%s\n' 'VM is stopped.' ;;
   console) mkdir -p "${vm_root}/run"; touch "${console_log}"; tail -f "${console_log}" ;;
   resize) shift; (($# == 1)) || { usage; exit 2; }; resize "$1" ;;
   -h|--help|help|'') usage ;;

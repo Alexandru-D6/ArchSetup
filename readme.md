@@ -69,8 +69,11 @@ explicit upgrade command and retry.
 
 To change the tool set, edit
 [inventory/group_vars/all.yml](inventory/group_vars/all.yml). Removing a name from
-the list leaves an already installed package in place. Package removal is not
-automated yet.
+the installation list leaves an already installed package in place. To uninstall a
+package, add it to `archsetup_cli_packages_absent` and run `./setup.sh apply`.
+The removal list takes precedence, so adding `zip` there removes it even if it is
+also included in the default installation list. Removal uses pacman's normal
+dependency checks and preserves modified package configuration as `.pacsave`.
 
 See the [development plan](docs/development-plan.md) for the next roles, dotfiles,
 and VM-based repeatability tests.

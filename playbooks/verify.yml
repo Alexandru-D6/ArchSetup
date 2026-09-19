@@ -16,6 +16,15 @@
         that: item in ansible_facts.packages
         fail_msg: "Required package '{{ item }}' is not installed. Run ./setup.sh apply."
         success_msg: "Required package '{{ item }}' is installed."
-      loop: "{{ archsetup_cli_packages }}"
+      loop: "{{ archsetup_cli_packages | difference(archsetup_cli_packages_absent) }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Confirm explicitly undesired packages are absent
+      ansible.builtin.assert:
+        that: item not in ansible_facts.packages
+        fail_msg: "Package '{{ item }}' is still installed. Run ./setup.sh apply."
+        success_msg: "Package '{{ item }}' is absent."
+      loop: "{{ archsetup_cli_packages_absent }}"
       loop_control:
         label: "{{ item }}"
