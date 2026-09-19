@@ -20,15 +20,20 @@ Then create an already-installed Arch VM and connect to it:
 ./scripts/vm.sh ssh
 ```
 
-`init` downloads the official image and its SHA-256 file, verifies the image,
-creates a local SSH key under `vm/keys/`, and builds a writable overlay. The VM is
-available only at `127.0.0.1:2222`; its console is recorded in
+`init` creates a 30 GB virtual disk by default. It downloads the official image and
+its SHA-256 file, verifies the image, creates a local SSH key under `vm/keys/`, and
+builds a writable overlay. The VM is available only at `127.0.0.1:2222`; its console is recorded in
 `vm/run/console.log`. The `archsetup` VM user has passwordless sudo solely to make
 this disposable test environment convenient.
 
 Use `./scripts/vm.sh status`, `console`, and `stop` to manage it. Run
 `./scripts/vm.sh reset` to discard the writable VM disk and start again with a
 fresh machine. Generated images, disks, keys, and logs are ignored by Git.
+
+Set a different initial size with `ARCHSETUP_VM_DISK_SIZE=40G ./scripts/vm.sh init`.
+To expand an existing stopped VM and its root filesystem, use, for example,
+`./scripts/vm.sh resize 30G`. QCOW2 is sparse, so the host file grows as the guest
+writes data rather than occupying its full virtual capacity immediately.
 
 The first implementation installs a configurable list of basic official-repository
 tools: build essentials, shell completion, Git, network tools, search tools, archive

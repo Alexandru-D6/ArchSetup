@@ -17,6 +17,7 @@ readonly pid_file="${vm_root}/run/qemu.pid"
 readonly console_log="${vm_root}/run/console.log"
 readonly ssh_port="${ARCHSETUP_VM_SSH_PORT:-2222}"
 readonly ssh_user="archsetup"
+readonly disk_size="${ARCHSETUP_VM_DISK_SIZE:-30G}"
 
 usage() {
   cat <<'EOF'
@@ -30,11 +31,13 @@ Commands:
   ssh                     Connect as the archsetup user.
   status                  Show whether the QEMU process is running.
   console                 Follow the serial console log.
+  resize <size>           Grow an existing VM disk and its root filesystem.
   reset                   Stop the VM and discard its writable disk and seed.
 
 Environment:
   ARCHSETUP_VM_IMAGE_URL  Override the official cloud image URL.
   ARCHSETUP_VM_SSH_PORT   Override the local SSH port (default: 2222).
+  ARCHSETUP_VM_DISK_SIZE  Set the disk created by init (default: 30G).
 EOF
 }
 
@@ -74,6 +77,10 @@ users:
       - ${key}
 ssh_pwauth: false
 package_update: false
+growpart:
+  mode: auto
+  devices: ["/"]
+resize_rootfs: true
 EOF
   cat >"${meta_data}" <<EOF
 instance-id: archsetup-local
@@ -112,8 +119,11 @@ initialize() {
   [[ -n "${key}" ]] || { printf '%s\n' 'The SSH public key is empty.' >&2; exit 1; }
   write_cloud_init "${key}"
   cloud-localds --network-config="${network_config}" "${seed_image}" "${user_data}" "${meta_data}"
-  [[ -f "${overlay_image}" ]] || qemu-img create -f qcow2 -F qcow2 -b "${base_image}" "${overlay_image}"
-  printf 'VM initialized. Start it with ./scripts/vm.sh start\n'
+  if [[ ! -f "${overlay_image}" ]]; then
+    qemu-img create -f qcow2 -F qcow2 -b "${base_image}" "${overlay_image}"
+    qemu-img resize "${overlay_image}" "${disk_size}"
+  fi
+  printf 'VM initialized with a %s virtual disk. Start it with ./scripts/vm.sh start\n' "${disk_size}"
 }
 
 start() {
@@ -142,6 +152,50 @@ stop() {
   fi
 }
 
+wait_for_ssh() {
+  local attempt
+  for attempt in {1..60}; do
+    if run_ssh true >/dev/null 2>&1; then return 0; fi
+    sleep 1
+  done
+  printf '%s\n' 'The VM did not become reachable by SSH within 60 seconds.' >&2
+  return 1
+}
+
+grow_guest_root() {
+  run_ssh bash -s <<'EOF'
+set -euo pipefail
+root_partition="$(findmnt -n -o SOURCE /)"
+root_disk="/dev/$(lsblk -n -o PKNAME "${root_partition}")"
+partition_number="$(lsblk -n -o PARTN "${root_partition}")"
+sudo growpart "${root_disk}" "${partition_number}"
+case "$(findmnt -n -o FSTYPE /)" in
+  ext4) sudo resize2fs "${root_partition}" ;;
+  btrfs) sudo btrfs filesystem resize max / ;;
+  xfs) sudo xfs_growfs / ;;
+  *)
+    printf 'Root filesystem was not resized automatically: %s\n' "$(findmnt -n -o FSTYPE /)" >&2
+    exit 1
+    ;;
+esac
+EOF
+}
+
+resize() {
+  local requested_size="$1"
+  require_commands qemu-img qemu-system-x86_64
+  [[ -f "${overlay_image}" ]] || { printf '%s\n' 'VM is not initialized. Run ./scripts/vm.sh init first.' >&2; exit 1; }
+  if is_running; then
+    printf '%s\n' 'Stop the VM before resizing it.' >&2
+    exit 1
+  fi
+  qemu-img resize "${overlay_image}" "${requested_size}"
+  start
+  wait_for_ssh
+  grow_guest_root
+  printf 'VM disk and root filesystem expanded to %s.\n' "${requested_size}"
+}
+
 reset() {
   if is_running; then
     stop
@@ -161,6 +215,7 @@ case "${1:-}" in
   ssh) run_ssh ;;
   status) is_running && printf 'VM is running (PID %s).\n' "$(<"${pid_file}")" || printf '%s\n' 'VM is stopped.' ;;
   console) mkdir -p "${vm_root}/run"; touch "${console_log}"; tail -f "${console_log}" ;;
+  resize) shift; (($# == 1)) || { usage; exit 2; }; resize "$1" ;;
   -h|--help|help|'') usage ;;
   *) printf 'Unknown command: %s\n\n' "$1" >&2; usage >&2; exit 2 ;;
 esac
