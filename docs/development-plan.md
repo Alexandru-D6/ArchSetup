@@ -3,6 +3,10 @@
 Status: initial command-line package provisioning is implemented. Dotfiles,
 user management, system settings, and VM integration tests remain planned.
 
+The personal-workstation milestone now has a dedicated
+[Hyprland desktop implementation plan](hyprland-project-plan.md), including
+Quickshell, AI removal, Lua configuration, personal preferences, and login/locking.
+
 ## Objective and scope
 
 Turn an installed Arch Linux system into a configured personal computer using a

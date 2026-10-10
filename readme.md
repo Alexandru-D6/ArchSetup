@@ -77,3 +77,8 @@ dependency checks and preserves modified package configuration as `.pacsave`.
 
 See the [development plan](docs/development-plan.md) for the next roles, dotfiles,
 and VM-based repeatability tests.
+
+The [Hyprland desktop project plan](docs/hyprland-project-plan.md) defines the
+end-4-inspired taskbar, shortcuts, design, personal input/browser settings,
+AI removal, and Greetd/Hyprlock integration. Lua is allowed. This desktop profile
+is planned and is not yet installed by `apply`.
