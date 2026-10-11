@@ -5,6 +5,8 @@ profile="${XDG_CONFIG_HOME:-$HOME/.config}/archsetup"
 export XDG_CURRENT_DESKTOP=Hyprland
 export XDG_SESSION_DESKTOP=Hyprland
 export XDG_SESSION_TYPE=wayland
+# Generate colors before Hyprland reads its Lua, including the first boot.
+"$profile/bin/desktop-action" refresh-theme
 args=(--config "$profile/hyprland.lua")
 case "${1:-}" in
   --locked)

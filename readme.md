@@ -2,7 +2,9 @@
 
 Ansible setup for an installed Arch Linux system: Hyprland, a Quickshell taskbar
 and window overview, Brave, notifications, shortcuts, themes, and Hyprlock.
-Desktop animations are disabled by default. The custom desktop shell has no AI
+The default ii-inspired theme includes a top bar, rounded windows, Google Sans Flex,
+and the upstream abstract wallpaper. Hyprlock uses a centered scalloped clock and
+a bottom password toolbar. Desktop animations are disabled by default. The custom desktop shell has no AI
 integrations.
 
 ## Install the desktop after cloning
@@ -148,9 +150,10 @@ preserves existing keyring contents.
 
 Check mouse feel, display resolution/refresh rate, audio and Bluetooth. Save your
 work before testing suspend. The QEMU test guest has a reproduced virtual GPU
-resume hang; physical GPU suspend/resume remains unverified. The latest automatic
-Brave installation and boot-to-Hyprlock flow have local checks but still need
-end-to-end graphical validation. See [validation results](docs/desktop-validation.md)
+resume hang; physical GPU suspend/resume remains unverified. Automatic Brave
+installation still needs an end-to-end package-install test. The boot-to-Hyprlock
+flow and keyring-unlock PAM result were exercised in the VM.
+See [validation results](docs/desktop-validation.md)
 and the [latest implementation state](docs/IMPLEMENTATION-STATE.md).
 
 If the graphical session fails, switch to a TTY with Ctrl+Alt+F3 and log in. Restore

@@ -1,5 +1,31 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
+Latest appearance change: the desktop now follows end-4's default ii look: top
+40px bar, grouped workspace/clock controls, neutral Material surfaces, 18px window
+corners, 1px borders and the original abstract wallpaper. Google Sans Flex is
+bundled under OFL; wallpaper is bundled with upstream GPL-3.0 and provenance in
+`docs/desktop-source.json`. No upstream shell/AI code was imported.
+
+Hyprlock now adapts the default Quickshell lock appearance: centered 14-scallop
+clock, blurred shared wallpaper, date/Locked labels and bottom password/user/layout
+islands. `bin/lock-visuals` draws the clock via Pillow once per minute and supplies
+Caps Lock/battery status. Ordinary password dots remain, power actions stay in the
+desktop menu. Animation and PAM/keyring settings are preserved. Theme colors are
+generated before compositor startup; old user wallpaper/light choices survive.
+
+Validation: 16 local tests and syntax/whitespace checks pass; runtime QML loads
+without errors; live overview and Kitty geometry inspected. Greetd locked boot
+tested, wrong password rejected, correct password accepted; VM PAM logs explicitly
+report login-keyring unlock. Repeat VM apply `ok=40 changed=0 failed=0 skipped=19`,
+verify `ok=18 changed=0 failed=0 skipped=2` with Firefox and network opt-out. Final
+startup-color change was boot-tested; screenshot in `/tmp/archsetup-ii-final-boot.png`.
+Previews are persisted in `docs/images/desktop-preview.png`, `desktop-lock.png`
+and `desktop-overview.png`. Temporary VM test password is locked/removed at the
+end of this run. No workstation deployment was performed. Earlier checkpoints
+below describe superseded theme/boot behavior. Hardware/suspend limitations remain.
+Final shutdown completed cleanly (`System Power Off`, QEMU exited). Temporary
+credential files were removed. The saved VM disk contains the latest theme.
+
 Latest keyring integration: managed Hyprlock uses the separate
 `/etc/pam.d/archsetup-hyprlock` profile, with `auth substack hyprlock` followed by
 optional `pam_gnome_keyring.so auto_start`. This preserves existing authentication

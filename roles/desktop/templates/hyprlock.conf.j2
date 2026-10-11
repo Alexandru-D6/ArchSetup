@@ -10,30 +10,118 @@ animations {
 }
 background {
     monitor =
+    path = {{ desktop_root }}/theme/wallpaper.png
     color = rgba(191620ff)
+    blur_passes = 3
+    blur_size = 10
+    brightness = 0.65
 }
-label {
+image {
     monitor =
-    text = $TIME
-    color = rgba(eae0f5ff)
-    font_size = 64
-    font_family = DejaVu Sans
-    position = 0, 130
+    path = {{ desktop_root }}/theme/clock.png
+    size = 230
+    rounding = 0
+    border_size = 0
+    reload_time = 60
+    reload_cmd = {{ desktop_root }}/bin/lock-visuals clock
+    position = 0, 0
     halign = center
     valign = center
 }
+label {
+    monitor =
+    text = Locked
+    color = rgba(e6e1e1ff)
+    font_size = 13
+    font_family = {{ archsetup_desktop_font }}
+    position = 0, -145
+    halign = center
+    valign = center
+}
+label {
+    monitor =
+    text = cmd[update:60000] date +"%A, %B %-d"
+    color = rgba(e6e1e1ff)
+    font_size = 14
+    font_family = {{ archsetup_desktop_font }}
+    position = 0, -175
+    halign = center
+    valign = center
+}
+# Bottom islands mirror the default ii lock toolbar.
+shape {
+    monitor =
+    size = 180, 54
+    color = rgba(292332ff)
+    rounding = 27
+    position = -270, 20
+    halign = center
+    valign = bottom
+}
+label {
+    monitor =
+    text = $USER
+    color = rgba(eae0f5ff)
+    font_size = 13
+    font_family = {{ archsetup_desktop_font }}
+    position = -270, 38
+    halign = center
+    valign = bottom
+}
 input-field {
     monitor =
-    size = 320, 60
+    size = 340, 54
     fade_on_empty = false
-    outline_thickness = 2
+    outline_thickness = 0
+    dots_size = 0.18
+    dots_spacing = 0.25
     outer_color = rgba(c4a7e7ff)
     inner_color = rgba(292332ff)
     font_color = rgba(eae0f5ff)
     placeholder_text = Enter password
     fail_text = Authentication failed
-    rounding = 16
-    position = 0, -40
+    font_family = {{ archsetup_desktop_font }}
+    rounding = 27
+    position = 0, 20
     halign = center
-    valign = center
+    valign = bottom
+}
+shape {
+    monitor =
+    size = 180, 54
+    color = rgba(292332ff)
+    rounding = 27
+    position = 270, 20
+    halign = center
+    valign = bottom
+}
+label {
+    monitor =
+    text = $LAYOUT
+    color = rgba(eae0f5ff)
+    font_size = 12
+    font_family = {{ archsetup_desktop_font }}
+    position = 270, 38
+    halign = center
+    valign = bottom
+}
+label {
+    monitor =
+    text = cmd[update:1000] {{ desktop_root }}/bin/lock-visuals capslock
+    color = rgba(e6e1e1ff)
+    font_size = 12
+    font_family = {{ archsetup_desktop_font }}
+    position = 0, 88
+    halign = center
+    valign = bottom
+}
+label {
+    monitor =
+    text = cmd[update:5000] {{ desktop_root }}/bin/lock-visuals status
+    color = rgba(e6e1e1ff)
+    font_size = 13
+    font_family = {{ archsetup_desktop_font }}
+    position = 30, -30
+    halign = left
+    valign = top
 }

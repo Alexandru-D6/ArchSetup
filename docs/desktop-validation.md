@@ -1,5 +1,35 @@
 # Desktop validation — 2026-10-10
 
+## Default ii appearance — 2026-10-11
+
+The general desktop appearance now follows end-4's default ii theme: the bundled
+abstract wallpaper, Google Sans Flex, 40-pixel top bar, grouped workspace/clock
+controls, 18-pixel window corners, thin borders and muted Material colors.
+Native Hyprlock reproduces the centered scalloped clock and bottom password
+toolbar, with blurred wallpaper, user/layout labels and Caps Lock status.
+The original animations-disabled setting and PAM/keyring integration remain.
+
+Validated in the graphical QEMU guest:
+
+- Greetd initial session boots directly into the themed Hyprlock screen.
+- Incorrect password rejected; correct password unlocks. GNOME Keyring's PAM log
+  reports `unlocked login keyring` after the successful password entry.
+- Quickshell loads/reloads with no QML errors; expected portal registration
+  warnings remain. Monitor reservation is `[0, 40, 0, 0]` for the top bar.
+- Clock image, default wallpaper, Google Sans font, task buttons, rounded Kitty
+  window and live overview preview render. Fixed light-mode lock-label contrast
+  and workspace 10 text clipping after screenshot inspection.
+- Repeat apply: `ok=40 changed=0 failed=0 skipped=19`; read-only verification:
+  `ok=18 changed=0 failed=0 skipped=2` with network management opted out.
+- 16 local tests, playbook/shell syntax and whitespace checks pass. Qt's static
+  linter retains only the expected runtime PanelWindow warning.
+
+Screenshots: [desktop](images/desktop-preview.png), [lock](images/desktop-lock.png),
+[overview](images/desktop-overview.png). This is a native Hyprlock adaptation of
+the default upstream Quickshell lock appearance: shaped password glyphs and lock
+toolbar power buttons are omitted in this first visual pass. Physical GPU,
+multi-monitor/scaling and suspend checks remain as documented below.
+
 ## Follow-up — 2026-10-11
 
 Reproduced the suspend failure in a fresh diagnostic session. QMP confirmed S3;

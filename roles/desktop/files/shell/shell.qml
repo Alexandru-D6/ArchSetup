@@ -27,10 +27,15 @@ ShellRoot {
     property var preferences: ({})
     property var userState: ({})
     property bool light: userState.light === true
-    property color surface: light ? "#f4eef9" : "#191620"
-    property color raised: light ? "#e6dced" : "#292332"
-    property color ink: light ? "#251e2d" : "#eae0f5"
-    property color accent: userState.accent || (light ? "#69488b" : "#c4a7e7")
+    property var palette: ({})
+    property string uiFont: preferences.font || "DejaVu Sans"
+    property color surface: palette.surface || (light ? "#fff8fc" : "#141313")
+    property color raised: palette.raised || (light ? "#ece6eb" : "#1c1b1c")
+    property color ink: palette.ink || (light ? "#1d1b20" : "#e6e1e1")
+    property color accent: palette.accent || (light ? "#615d63" : "#cbc4cb")
+    property string wallpaper: profile + "/theme/wallpaper.png"
+    property int wallpaperRevision: 0
+    property int clockRevision: 0
     property string profile: Quickshell.shellDir + "/.."
     property var status: ({volume: "—", network: "—", brightness: false})
     function action(name) { Quickshell.execDetached([profile + "/bin/desktop-action", name]); }
@@ -46,8 +51,23 @@ ShellRoot {
         path: root.profile + "/state.json"
         watchChanges: true
         onFileChanged: reload()
-        onLoaded: { try { root.userState = JSON.parse(text()); } catch (e) { console.warn(e); } }
+        onLoaded: { try { root.userState = JSON.parse(text()); root.wallpaperRevision++; } catch (e) { console.warn(e); } }
     }
+    FileView {
+        path: root.profile + "/theme/palette.json"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            try { root.palette = JSON.parse(text()); if (!clockProcess.running) clockProcess.running = true; }
+            catch (e) { console.warn(e); }
+        }
+    }
+    Process {
+        id: clockProcess
+        command: [root.profile + "/bin/lock-visuals", "clock"]
+        stdout: StdioCollector { onStreamFinished: root.clockRevision++ }
+    }
+    Timer { interval: 60000; running: true; repeat: true; onTriggered: if (!clockProcess.running) clockProcess.running = true }
     Process {
         id: statusProcess
         command: [root.profile + "/bin/desktop-action", "status"]
@@ -71,18 +91,19 @@ ShellRoot {
         id: chip
         property bool selected: false
         property bool urgent: false
-        implicitHeight: 34
+        padding: 0
+        implicitHeight: 30
         implicitWidth: Math.max(34, contentItem.implicitWidth + 22)
         hoverEnabled: true
         background: Rectangle {
-            radius: 12
+            radius: height / 2
             color: chip.selected ? root.accent : (chip.hovered || chip.activeFocus ? root.raised : "transparent")
             border.width: chip.activeFocus || chip.urgent ? 2 : 0
             border.color: root.accent
         }
         contentItem: Text {
             text: chip.text; color: chip.selected ? root.surface : root.ink
-            font.family: "DejaVu Sans"; font.pixelSize: 13
+            font.family: root.uiFont; font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
         }
@@ -97,11 +118,13 @@ ShellRoot {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Background
             color: root.surface
-            Rectangle {
-                anchors.fill: parent
-                gradient: Gradient { GradientStop { position: 0; color: root.raised } GradientStop { position: 1; color: root.surface } }
+            Image { anchors.fill: parent; fillMode: Image.PreserveAspectCrop; source: "file://" + root.wallpaper + "?v=" + root.wallpaperRevision; cache: false }
+            Image {
+                width: 230; height: 230
+                anchors { left: parent.left; bottom: parent.bottom; leftMargin: 70; bottomMargin: 70 }
+                source: root.clockRevision > 0 ? "file://" + root.profile + "/theme/clock.png?v=" + root.clockRevision : ""
+                cache: false
             }
-            Image { anchors.fill: parent; fillMode: Image.PreserveAspectCrop; source: root.userState.wallpaper ? "file://" + root.userState.wallpaper : "" }
         }
     }
     Variants {
@@ -110,69 +133,94 @@ ShellRoot {
             id: panel
             required property var modelData
             screen: modelData
-            anchors { bottom: true; left: true; right: true }
-            implicitHeight: 52
-            color: "transparent"
+            anchors { top: true; left: true; right: true }
+            implicitHeight: 40
+            color: root.surface
             WlrLayershell.namespace: "archsetup-panel"
             IdleInhibitor { window: panel; enabled: root.inhibitIdle }
-            Rectangle {
-                anchors.fill: parent; anchors.margins: 4
-                radius: 16; color: root.surface
-                RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8; spacing: 4
-                    Chip { text: "Apps"; onClicked: root.action("launcher") }
-                    Chip { text: "View"; Accessible.name: "Overview"; onClicked: root.toggle("overview") }
-                    Repeater {
-                        model: 10
-                        Chip {
-                            required property int index
-                            text: String(index + 1)
-                            selected: Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id === index + 1
-                            onClicked: root.workspace(index + 1)
-                            visible: panel.width > 1100 || index < 5
-                        }
+            RowLayout {
+                id: barLeft
+                anchors { left: parent.left; top: parent.top; bottom: parent.bottom; leftMargin: 12 }
+                width: Math.max(130, (parent.width - barCenter.width) / 2 - 30)
+                spacing: 4
+                Chip { text: "Apps"; onClicked: root.action("launcher") }
+                Chip { text: "View"; Accessible.name: "Overview"; onClicked: root.toggle("overview") }
+                Chip { text: "Web"; visible: panel.width > 1600; onClicked: root.action("browser") }
+                Chip { text: "Files"; visible: panel.width > 1600; onClicked: root.action("files") }
+                ListView {
+                    Layout.fillWidth: true; Layout.preferredHeight: 30
+                    orientation: ListView.Horizontal; spacing: 4; clip: true
+                    model: ToplevelManager.toplevels
+                    delegate: Chip {
+                        id: taskButton
+                        required property var modelData
+                        width: 140; text: modelData.title || modelData.appId
+                        selected: modelData.activated
+                        urgent: Hyprland.toplevels.values.some(t => t.wayland === taskButton.modelData && t.urgent)
+                        onClicked: modelData.activate()
+                        ToolTip.visible: hovered
+                        ToolTip.text: modelData.title
+                        TapHandler { acceptedButtons: Qt.RightButton; onTapped: windowMenu.popup() }
+                        Menu { id: windowMenu; MenuItem { text: "Close window"; onTriggered: taskButton.modelData.close() } }
                     }
-                    Chip { text: "Web"; onClicked: root.action("browser") }
-                    Chip { text: "Files"; visible: panel.width > 900; onClicked: root.action("files") }
-                    ListView {
-                        Layout.fillWidth: true; Layout.preferredHeight: 34
-                        orientation: ListView.Horizontal; spacing: 4; clip: true
-                        model: ToplevelManager.toplevels
-                        delegate: Chip {
-                            id: taskButton
-                            required property var modelData
-                            width: 140; text: modelData.title || modelData.appId
-                            selected: modelData.activated
-                            urgent: Hyprland.toplevels.values.some(t => t.wayland === taskButton.modelData && t.urgent)
-                            onClicked: modelData.activate()
-                            ToolTip.visible: hovered
-                            ToolTip.text: modelData.title
-                            TapHandler { acceptedButtons: Qt.RightButton; onTapped: windowMenu.popup() }
-                            Menu { id: windowMenu; MenuItem { text: "Close window"; onTriggered: taskButton.modelData.close() } }
-                        }
-                    }
-                    Repeater {
-                        model: panel.screen === Quickshell.screens[0] ? SystemTray.items : null
-                        delegate: Chip {
-                            id: trayButton
-                            required property var modelData
-                            implicitWidth: 32
-                            Image { anchors.centerIn: parent; width: 20; height: 20; source: trayButton.modelData.icon }
-                            Accessible.name: modelData.title
-                            onClicked: modelData.onlyMenu ? modelData.display(panel, x, y) : modelData.activate()
-                            TapHandler { acceptedButtons: Qt.RightButton; onTapped: trayButton.modelData.display(panel, trayButton.x, trayButton.y) }
-                        }
-                    }
-                    Chip {
-                        visible: UPower.displayDevice.isLaptopBattery
-                        text: Math.round(UPower.displayDevice.percentage * 100) + "%"
-                        onClicked: root.toggle("settings")
-                    }
-                    Chip { text: root.status.volume; visible: panel.width > 900; onClicked: root.toggle("settings") }
-                    Chip { text: "●"; Accessible.name: "Notifications"; onClicked: root.action("notifications") }
-                    Chip { text: Qt.formatDateTime(clock.date, "ddd HH:mm"); onClicked: root.toggle("settings") }
-                    Chip { text: "Power"; Accessible.name: "Session"; onClicked: root.toggle("session") }
                 }
+            }
+            Row {
+                id: barCenter
+                anchors.centerIn: parent
+                spacing: 6
+                Rectangle {
+                    width: workspaceRow.implicitWidth + 12; height: 32; radius: 16; color: root.raised
+                    Row {
+                        id: workspaceRow
+                        anchors.centerIn: parent
+                        spacing: 2
+                        Repeater {
+                            model: panel.width > 1100 ? 10 : 5
+                            Chip {
+                                required property int index
+                                implicitWidth: 26; implicitHeight: 26
+                                text: String(index + 1)
+                                selected: Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id === index + 1
+                                onClicked: root.workspace(index + 1)
+                            }
+                        }
+                    }
+                    TapHandler { acceptedButtons: Qt.RightButton; onTapped: root.toggle("overview") }
+                }
+                Rectangle {
+                    width: timeRow.implicitWidth + 12; height: 32; radius: 16; color: root.raised
+                    RowLayout {
+                        id: timeRow
+                        anchors.centerIn: parent
+                        spacing: 4
+                        Chip { text: Qt.formatDateTime(clock.date, panel.width > 1100 ? "HH:mm · d MMM" : "HH:mm"); onClicked: root.toggle("settings") }
+                        Chip {
+                            visible: UPower.displayDevice.isLaptopBattery
+                            text: Math.round(UPower.displayDevice.percentage * 100) + "%"
+                            onClicked: root.toggle("settings")
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: 12 }
+                spacing: 4
+                Repeater {
+                    model: panel.screen === Quickshell.screens[0] ? SystemTray.items : null
+                    delegate: Chip {
+                        id: trayButton
+                        required property var modelData
+                        implicitWidth: 30
+                        Image { anchors.centerIn: parent; width: 18; height: 18; source: trayButton.modelData.icon }
+                        Accessible.name: modelData.title
+                        onClicked: modelData.onlyMenu ? modelData.display(panel, x, y) : modelData.activate()
+                        TapHandler { acceptedButtons: Qt.RightButton; onTapped: trayButton.modelData.display(panel, trayButton.x, trayButton.y) }
+                    }
+                }
+                Chip { text: root.status.volume; visible: panel.width > 1000; onClicked: root.toggle("settings") }
+                Chip { text: "●"; Accessible.name: "Notifications"; onClicked: root.action("notifications") }
+                Chip { text: "Power"; Accessible.name: "Session"; onClicked: root.toggle("session") }
             }
         }
     }
@@ -197,7 +245,7 @@ ShellRoot {
                 anchors.fill: parent; anchors.margins: 24; spacing: 14
                 RowLayout {
                     Layout.fillWidth: true
-                    Text { text: root.page === "overview" ? "Your windows" : root.page === "settings" ? "Quick settings" : "Session"; color: root.ink; font.pixelSize: 24; Layout.fillWidth: true }
+                    Text { text: root.page === "overview" ? "Your windows" : root.page === "settings" ? "Quick settings" : "Session"; color: root.ink; font.family: root.uiFont; font.pixelSize: 24; Layout.fillWidth: true }
                     Chip { text: "Close"; onClicked: root.page = "" }
                 }
                 Item {
@@ -236,7 +284,7 @@ ShellRoot {
                                     width: windows.cellWidth - 10; height: 190; radius: 16; color: root.raised
                                     border.width: windows.currentIndex === index ? 2 : 0; border.color: root.accent
                                     ScreencopyView { anchors { top: parent.top; left: parent.left; right: parent.right; bottom: title.top; margins: 8 } captureSource: windowCard.modelData; live: overlay.visible }
-                                    Text { id: title; anchors { bottom: parent.bottom; left: parent.left; right: parent.right; margins: 10 } text: windowCard.modelData.title; color: root.ink; elide: Text.ElideRight }
+                                    Text { id: title; anchors { bottom: parent.bottom; left: parent.left; right: parent.right; margins: 10 } text: windowCard.modelData.title; font.family: root.uiFont; color: root.ink; elide: Text.ElideRight }
                                     MouseArea { anchors.fill: parent; onClicked: { windowCard.modelData.activate(); root.page = ""; } }
                                 }
                             }

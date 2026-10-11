@@ -50,13 +50,36 @@ def atomic_write(path, text):
         temporary.write(text)
     os.replace(temporary.name, path)
 
+def write_wallpaper(folder, state, palette, light):
+    """Use a personal image, or draw an original gradient without bundled artwork."""
+    from PIL import Image, ImageDraw
+    wallpaper = Path(state['wallpaper']) if state.get('wallpaper') else None
+    with tempfile.NamedTemporaryFile(dir=folder, suffix='.png', delete=False) as temporary:
+        path = Path(temporary.name)
+    try:
+        if wallpaper is not None and wallpaper.is_file():
+            path.write_bytes(wallpaper.read_bytes())
+        else:
+            background = Image.new('RGB', (1280, 720))
+            draw = ImageDraw.Draw(background)
+            top = (235, 232, 242) if light else (33, 35, 45)
+            bottom = (252, 250, 255) if light else (17, 18, 24)
+            for row in range(background.height):
+                fraction = row / (background.height - 1)
+                color = tuple(round(a + (b - a) * fraction) for a, b in zip(top, bottom))
+                draw.line((0, row, background.width, row), fill=color)
+            background.save(path, format='PNG')
+        os.replace(path, folder / 'wallpaper.png')
+    finally:
+        path.unlink(missing_ok=True)
+
 def refresh_theme(state):
     light = state.get('light', False)
-    colors = {'191620': 'f4eef9' if light else '191620',
-              '292332': 'e6dced' if light else '292332',
-              'eae0f5': '251e2d' if light else 'eae0f5',
-              '45404f': 'c8bbd2' if light else '45404f',
-              'c4a7e7': '69488b' if light else 'c4a7e7'}
+    colors = {'191620': 'fff8fc' if light else '141313',
+              '292332': 'ece6eb' if light else '1c1b1c',
+              'eae0f5': '1d1b20' if light else 'e6e1e1',
+              '45404f': 'cac4cf' if light else '49464a',
+              'c4a7e7': '615d63' if light else 'cbc4cb'}
     if state.get('wallpaper'):
         try:
             from PIL import Image
@@ -71,11 +94,20 @@ def refresh_theme(state):
     state['accent'] = '#' + colors['c4a7e7']
     folder = ROOT / 'theme'
     folder.mkdir(exist_ok=True)
+    palette = {'surface': '#' + colors['191620'], 'raised': '#' + colors['292332'],
+               'ink': '#' + colors['eae0f5'], 'outline': '#' + colors['45404f'],
+               'accent': state['accent'], 'muted': '#cbc5ca' if not light else '#49454f',
+               'primaryContainer': '#2d2a2f' if not light else '#e7e0e7',
+               'clockText': '#8f8992' if not light else '#9b939f',
+               'tertiary': '#d1c3c6' if not light else '#6c565e'}
+    atomic_write(folder / 'palette.json', json.dumps(palette) + '\n')
+    # Fixed local paths keep personal filenames out of config and shell commands.
+    write_wallpaper(folder, state, palette, light)
     for name in ['fuzzel.ini', 'swaync.css', 'hyprlock.conf', 'kitty.conf']:
         content = (ROOT / name).read_text()
         for original, replacement in colors.items(): content = content.replace(original, replacement)
         atomic_write(folder / name, content)
-    atomic_write(folder / 'colors.lua', 'hl.config({general={col={active_border="rgba(' + colors['c4a7e7'] + 'ff)"}}})\n')
+    atomic_write(folder / 'colors.lua', 'hl.config({general={col={active_border="rgba(' + colors['45404f'] + '77)",inactive_border="rgba(' + colors['292332'] + '33)"}}})\n')
     atomic_write(ROOT / 'state.json', json.dumps(state) + '\n')
 
 def menu(lines, prompt):
@@ -101,6 +133,9 @@ def main(action):
         with lockfile.open('w') as descriptor:
             try: fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError: return
+            path = ROOT / 'state.json'
+            refresh_theme(json.loads(path.read_text()) if path.exists() else {})
+            run(str(ROOT / 'bin/lock-visuals'), 'clock')
             run('hyprlock', '--no-fade-in', '-c', str(themed('hyprlock.conf')))
     elif action in ('overview', 'settings', 'session'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)

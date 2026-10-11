@@ -35,9 +35,30 @@
   loop:
     - {src: 'shell/', dest: 'shell/', mode: '0644'}
     - {src: desktop-action, dest: bin/desktop-action, mode: '0755'}
+    - {src: lock-visuals, dest: bin/lock-visuals, mode: '0755'}
     - {src: session-services, dest: bin/session-services, mode: '0755'}
     - {src: validate-config, dest: bin/validate-config, mode: '0755'}
     - {src: shortcuts.json, dest: shortcuts.json, mode: '0644'}
+
+- name: Remove previously bundled wallpaper and font files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ desktop_root }}/assets/default-wallpaper.png"
+    - "{{ desktop_root }}/assets/README.md"
+    - "{{ desktop_root }}/assets/licenses/dots-hyprland-GPL-3.0.txt"
+    - "{{ desktop_home }}/.local/share/fonts/archsetup/GoogleSansFlex.ttf"
+    - "{{ desktop_home }}/.local/share/fonts/archsetup/OFL.txt"
+    - "{{ desktop_home }}/.local/share/fonts/archsetup/README.md"
+  register: desktop_removed_assets
+
+- name: Refresh the user font cache after removing bundled fonts
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.command:
+    argv: [fc-cache]
+  when: desktop_removed_assets.changed and not ansible_check_mode
+  changed_when: true
 
 - name: Install Hyprlock authentication and keyring integration
   ansible.builtin.copy:

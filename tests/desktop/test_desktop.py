@@ -87,6 +87,10 @@ class DesktopTests(unittest.TestCase):
         config = Path(self.directory.name) / 'config'
         (config / 'archsetup').mkdir(parents=True)
         (config / 'archsetup/hyprland.lua').write_text('-- test\n')
+        (config / 'archsetup/bin').mkdir()
+        action = config / 'archsetup/bin/desktop-action'
+        action.write_text('#!/bin/sh\ntest "$1" = refresh-theme\n')
+        action.chmod(0o755)
         environment = dict(os.environ, XDG_CONFIG_HOME=str(config),
                            PATH=str(fake_bin) + os.pathsep + os.environ['PATH'])
         for locked in [False, True]:
@@ -243,7 +247,8 @@ class DesktopTests(unittest.TestCase):
         import re
         banned = re.compile(r'\b(ollama|gemini|openai|mistral|anthropic)\b|api[_-]?key|services/ai/', re.I)
         for path in self.profile.rglob('*'):
-            if path.is_file(): self.assertIsNone(banned.search(path.read_text()), str(path))
+            if path.is_file() and path.suffix.lower() not in ('.png', '.ttf'):
+                self.assertIsNone(banned.search(path.read_text()), str(path))
 
 if __name__ == '__main__':
     unittest.main()

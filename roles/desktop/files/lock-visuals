@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Original static Material clock artwork and lock status; never handles passwords."""
+from datetime import datetime
+import json
+import math
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def clock_image():
+    from PIL import Image, ImageDraw, ImageFont
+    now = datetime.now()
+    palette = json.loads((ROOT / 'theme/palette.json').read_text())
+    scale, size = 3, 230
+    image = Image.new('RGBA', (size * scale, size * scale))
+    draw = ImageDraw.Draw(image)
+    def point(x, y):
+        return round(x * scale), round(y * scale)
+    def font(size):
+        preferences = json.loads((ROOT / 'preferences.json').read_text())
+        path = subprocess.check_output(['fc-match', '-f', '%{file}',
+                                        preferences.get('font', 'DejaVu Sans')], text=True).strip()
+        return ImageFont.truetype(str(path), round(size * scale))
+    # Fourteen soft scallops, as in the reference cookie-clock silhouette.
+    outline = []
+    for step in range(720):
+        angle = step * math.tau / 720
+        radius = 107 + 5 * math.cos(14 * angle)
+        outline.append(point(115 + radius * math.sin(angle), 115 - radius * math.cos(angle)))
+    draw.polygon(outline, fill=palette['primaryContainer'])
+    for number in range(1, 13):
+        angle = number * math.tau / 12
+        draw.text(point(115 + 89 * math.sin(angle), 115 - 89 * math.cos(angle)),
+                  str(number), font=font(13), fill=palette['muted'], anchor='mm')
+    draw.text(point(115, 94), now.strftime('%H'), font=font(43), fill=palette['clockText'], anchor='mm')
+    draw.text(point(115, 132), now.strftime('%M'), font=font(43), fill=palette['clockText'], anchor='mm')
+    # Clock updates are discrete; there are no interpolated hand movements.
+    for angle, length, width, color in [
+        ((now.hour % 12 + now.minute / 60) * math.tau / 12, 62, 15, palette['accent']),
+        (now.minute * math.tau / 60, 87, 9, palette['tertiary'])]:
+        end = (115 + length * math.sin(angle), 115 - length * math.cos(angle))
+        draw.line([point(115, 115), point(*end)], fill=color, width=width * scale)
+        for x, y in [(115, 115), end]:
+            radius = width / 2
+            draw.ellipse([point(x - radius, y - radius), point(x + radius, y + radius)], fill=color)
+    draw.ellipse([point(112, 112), point(118, 118)], fill=palette['primaryContainer'])
+    # Day badge is off-center so neither the hands nor digits obscure it.
+    draw.rounded_rectangle([point(137, 144), point(180, 175)], radius=12 * scale, fill=palette['raised'])
+    draw.text(point(158, 160), str(now.day), font=font(18), fill=palette['ink'], anchor='mm')
+    output = ROOT / 'theme/clock.png'
+    with tempfile.NamedTemporaryFile(dir=output.parent, suffix='.png', delete=False) as temporary:
+        path = Path(temporary.name)
+    try:
+        image.save(path, format='PNG')
+        os.replace(path, output)
+    finally:
+        path.unlink(missing_ok=True)
+    print(output)
+
+
+def status():
+    batteries = [p for p in Path('/sys/class/power_supply').glob('*')
+                 if (p / 'type').exists() and (p / 'type').read_text().strip() == 'Battery']
+    for battery in batteries:
+        if (battery / 'capacity').exists():
+            charging = (battery / 'status').exists() and (battery / 'status').read_text().strip() == 'Charging'
+            print(('Charging · ' if charging else '') + (battery / 'capacity').read_text().strip() + '%')
+            return
+    print('')
+
+
+def capslock():
+    result = subprocess.run(['hyprctl', '-j', 'devices'], capture_output=True, text=True, timeout=2)
+    if result.returncode == 0:
+        devices = json.loads(result.stdout)
+        if any(keyboard.get('capsLock') for keyboard in devices.get('keyboards', []) if keyboard.get('main')):
+            print('Caps Lock active')
+            return
+    print('')
+
+
+if __name__ == '__main__':
+    try:
+        {'clock': clock_image, 'status': status, 'capslock': capslock}[sys.argv[1]]()
+    except (IndexError, KeyError, OSError, ValueError, subprocess.SubprocessError) as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)
