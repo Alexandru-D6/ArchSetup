@@ -1,0 +1,8 @@
+archsetup_desktop_enabled: true
+archsetup_desktop_user: "alex"
+archsetup_desktop_browser: firefox.desktop
+archsetup_desktop_quickshell_package: quickshell
+archsetup_desktop_manage_login: true
+archsetup_desktop_manage_network: false
+archsetup_desktop_monitors:
+  - {output: "", mode: preferred, position: auto, scale: auto}
