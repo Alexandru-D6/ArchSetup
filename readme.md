@@ -80,5 +80,6 @@ and VM-based repeatability tests.
 
 The [Hyprland desktop project plan](docs/hyprland-project-plan.md) defines the
 end-4-inspired taskbar, shortcuts, design, personal input/browser settings,
-AI removal, and Greetd/Hyprlock integration. Lua is allowed. This desktop profile
-is planned and is not yet installed by `apply`.
+AI removal, and Greetd/Hyprlock integration. Lua is allowed. The opt-in implementation and deployment commands are documented in
+[Hyprland desktop](docs/hyprland-desktop.md). Desktop tasks are skipped unless
+`archsetup_desktop_enabled=true`.

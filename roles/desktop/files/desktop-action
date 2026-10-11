@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Desktop actions use argument arrays; clipboard/window data is never shell code."""
+import ast
+import colorsys
+import fcntl
+import hashlib
+import operator
+import json
+import os
+import tempfile
+from pathlib import Path
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parent.parent
+
+def run(*args, **kwargs):
+    return subprocess.run(args, check=True, **kwargs)
+
+def capture(*args):
+    return run(*args, stdout=subprocess.PIPE, text=True).stdout
+
+def themed(name):
+    generated = ROOT / 'theme' / name
+    return generated if generated.exists() else ROOT / name
+
+def calculate(expression):
+    if len(expression) > 200: raise ValueError('Expression is too long')
+    operations = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
+                  ast.Div: operator.truediv, ast.Mod: operator.mod, ast.Pow: operator.pow}
+    def visit(node, depth=0):
+        if depth > 20: raise ValueError('Expression is too deeply nested')
+        if isinstance(node, ast.Constant) and type(node.value) in (int, float): result = node.value
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            result = visit(node.operand, depth + 1) * (-1 if isinstance(node.op, ast.USub) else 1)
+        elif isinstance(node, ast.BinOp) and type(node.op) in operations:
+            left, right = visit(node.left, depth + 1), visit(node.right, depth + 1)
+            if isinstance(node.op, ast.Pow) and abs(right) > 100: raise ValueError('Exponent too large')
+            result = operations[type(node.op)](left, right)
+        else: raise ValueError('Use numbers and arithmetic operators only')
+        if type(result) not in (int, float) or abs(result) > 1e100: raise ValueError('Result out of range')
+        return result
+    return visit(ast.parse(expression, mode='eval').body)
+
+def atomic_write(path, text):
+    with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, delete=False) as temporary:
+        temporary.write(text)
+    os.replace(temporary.name, path)
+
+def refresh_theme(state):
+    light = state.get('light', False)
+    colors = {'191620': 'f4eef9' if light else '191620',
+              '292332': 'e6dced' if light else '292332',
+              'eae0f5': '251e2d' if light else 'eae0f5',
+              '45404f': 'c8bbd2' if light else '45404f',
+              'c4a7e7': '69488b' if light else 'c4a7e7'}
+    if state.get('wallpaper'):
+        try:
+            from PIL import Image
+            with Image.open(state['wallpaper']) as image:
+                image.thumbnail((64, 64))
+                r, g, b = image.convert('RGB').resize((1, 1)).getpixel((0, 0))
+            hue, _, saturation = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+            rgb = colorsys.hls_to_rgb(hue, 0.40 if light else 0.77, min(0.65, max(0.3, saturation)))
+            colors['c4a7e7'] = ''.join(f'{round(channel * 255):02x}' for channel in rgb)
+        except (ImportError, OSError, ValueError):
+            pass  # A missing wallpaper uses the fixed, readable fallback palette.
+    state['accent'] = '#' + colors['c4a7e7']
+    folder = ROOT / 'theme'
+    folder.mkdir(exist_ok=True)
+    for name in ['fuzzel.ini', 'swaync.css', 'hyprlock.conf', 'kitty.conf']:
+        content = (ROOT / name).read_text()
+        for original, replacement in colors.items(): content = content.replace(original, replacement)
+        atomic_write(folder / name, content)
+    atomic_write(folder / 'colors.lua', 'hl.config({general={col={active_border="rgba(' + colors['c4a7e7'] + 'ff)"}}})\n')
+    atomic_write(ROOT / 'state.json', json.dumps(state) + '\n')
+
+def menu(lines, prompt):
+    result = subprocess.run(['fuzzel', '--config', str(themed('fuzzel.ini')),
+                             '--dmenu', '--prompt', prompt + ': '],
+                            input='\n'.join(lines), text=True, stdout=subprocess.PIPE)
+    if result.returncode != 0:
+        return None
+    return result.stdout.rstrip('\n')
+
+def main(action):
+    if action == 'terminal': run('kitty', '--config', str(themed('kitty.conf')))
+    elif action == 'files': run('thunar')
+    elif action == 'browser':
+        preferences = json.loads((ROOT / 'preferences.json').read_text())
+        run('gtk-launch', preferences['browser'])
+    elif action == 'launcher': run('fuzzel', '--config', str(themed('fuzzel.ini')))
+    elif action == 'lock':
+        signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE', '')
+        if not signature: raise ValueError('Lock must run inside a Hyprland session')
+        suffix = hashlib.sha256(signature.encode()).hexdigest()[:16]
+        lockfile = Path(os.environ['XDG_RUNTIME_DIR']) / ('archsetup-lock-' + suffix)
+        with lockfile.open('w') as descriptor:
+            try: fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError: return
+            run('hyprlock', '--no-fade-in', '-c', str(themed('hyprlock.conf')))
+    elif action in ('overview', 'settings', 'session'):
+        run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
+    elif action == 'notifications': run('swaync-client', '-t')
+    elif action == 'dnd': run('swaync-client', '-d')
+    elif action == 'audio': run('pavucontrol')
+    elif action == 'network': run('nm-connection-editor')
+    elif action == 'bluetooth': run('blueman-manager')
+    elif action == 'color': run('hyprpicker', '-a')
+    elif action == 'clipboard':
+        selection = menu(['[Clear history]'] + capture('cliphist', 'list').splitlines(), 'Clipboard')
+        if selection == '[Clear history]':
+            run('cliphist', 'wipe')
+        elif selection:
+            data = run('cliphist', 'decode', input=selection.encode(), stdout=subprocess.PIPE).stdout
+            run('wl-copy', input=data)
+    elif action == 'emoji':
+        selection = menu(['😀 Smile', '❤️ Heart', '👍 Yes', '🎉 Celebrate', '✅ Done', '🔥 Fire', '🤔 Thinking', '🚀 Rocket'], 'Emoji')
+        if selection: run('wl-copy', selection.split(' ')[0])
+    elif action in ('screenshot', 'screenshot-full'):
+        args = ['grim']
+        if action == 'screenshot':
+            region = subprocess.run(['slurp'], text=True, stdout=subprocess.PIPE)
+            if region.returncode: return
+            args += ['-g', region.stdout.strip()]
+        image = run(*args, '-', stdout=subprocess.PIPE).stdout
+        run('wl-copy', '--type', 'image/png', input=image)
+        run('notify-send', 'Screenshot copied', 'Paste it into an application to save or share.')
+    elif action == 'calculator':
+        expression = menu([], 'Calculate')
+        if expression:
+            try:
+                value = str(calculate(expression))
+                run('wl-copy', value)
+                run('notify-send', 'Result copied', value)
+            except (ValueError, SyntaxError, ZeroDivisionError, OverflowError) as error:
+                run('notify-send', 'Calculation failed', str(error))
+    elif action == 'refresh-theme':
+        path = ROOT / 'state.json'
+        refresh_theme(json.loads(path.read_text()) if path.exists() else {})
+    elif action == 'status':
+        def probe(*args):
+            try:
+                return subprocess.run(args, capture_output=True, text=True, timeout=2).stdout.strip()
+            except (OSError, subprocess.TimeoutExpired):
+                return ''
+        volume = probe('wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@')
+        network = probe('nmcli', '-t', '-f', 'STATE', 'general')
+        print(json.dumps(dict(volume=volume.removeprefix('Volume: ') or 'No audio', network=network or 'Disconnected',
+                              brightness=any(Path('/sys/class/backlight').glob('*')))))
+    elif action in ('theme', 'wallpaper'):
+        path = ROOT / 'state.json'
+        state = json.loads(path.read_text()) if path.exists() else {}
+        if action == 'theme':
+            state['light'] = not state.get('light', False)
+        else:
+            folder = Path.home() / 'Pictures' / 'Wallpapers'
+            files = sorted(str(p) for p in folder.glob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp'))
+            selected = menu(['[Default background]'] + files, 'Wallpaper')
+            if selected is None: return
+            state['wallpaper'] = '' if selected == '[Default background]' else selected
+        refresh_theme(state)
+        subprocess.run(['swaync-client', '-rs'], check=False)
+        subprocess.run(['hyprctl', 'reload'], check=False)
+    elif action == 'help':
+        bindings = json.loads((ROOT / 'shortcuts.json').read_text())
+        menu([f"{item['key']}  —  {item['description']}" for item in bindings], 'Shortcuts')
+    elif action in ('logout', 'reboot', 'poweroff', 'suspend'):
+        if menu(['Cancel', 'Confirm'], action.capitalize()) != 'Confirm': return
+        if action == 'logout': run('hyprctl', 'dispatch', 'hl.dsp.exit()')
+        else:
+            # Hypridle's sleep inhibitor locks before the system sleeps.
+            run('systemctl', action)
+    else:
+        raise ValueError(f'Unknown action: {action}')
+
+if __name__ == '__main__':
+    try:
+        if len(sys.argv) != 2: raise ValueError('Usage: desktop-action ACTION')
+        main(sys.argv[1])
+    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)

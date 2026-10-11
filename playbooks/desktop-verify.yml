@@ -1,0 +1,10 @@
+---
+- name: Verify the optional Hyprland desktop
+  hosts: localhost
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Check desktop installation
+      ansible.builtin.include_role:
+        name: desktop
+        tasks_from: verify

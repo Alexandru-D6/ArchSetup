@@ -1,0 +1,15 @@
+general {
+    lock_cmd = {{ desktop_root }}/bin/desktop-action lock
+    before_sleep_cmd = loginctl lock-session
+    after_sleep_cmd = hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'
+    inhibit_sleep = 3
+}
+listener {
+    timeout = {{ archsetup_desktop_lock_seconds }}
+    on-timeout = loginctl lock-session
+}
+listener {
+    timeout = {{ archsetup_desktop_dpms_seconds }}
+    on-timeout = hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })'
+    on-resume = hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'
+}

@@ -1,0 +1,9 @@
+---
+- name: Prove disabled desktop has no tasks or side effects
+  hosts: localhost
+  gather_facts: false
+  become: false
+  vars:
+    archsetup_desktop_enabled: false
+  roles:
+    - desktop

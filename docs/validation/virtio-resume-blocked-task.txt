@@ -1,0 +1,25 @@
+VM kernel 7.2.9-arch1-1; 2026-10-11; after S3 resume and DPMS reset probe.
+Excerpt from journalctl -b -k (SysRq w):
+
+sysrq: Show Blocked State
+task:kworker/u16:3   state:D stack:0     pid:135   tgid:135   ppid:2      task_flags:0x4208060 flags:0x00080000
+Workqueue: events_unbound commit_work
+Call Trace:
+ <TASK>
+ __schedule+0x420/0x1770
+ schedule+0x27/0xa0
+ virtio_gpu_queue_fenced_ctrl_buffer+0x20f/0x5a0 [virtio_gpu bcf171c759f932f8279813a3b7b58831a4f85cc6]
+ ? __pfx_autoremove_wake_function+0x10/0x10
+ virtio_gpu_primary_plane_update+0x1eb/0x4b0 [virtio_gpu bcf171c759f932f8279813a3b7b58831a4f85cc6]
+ drm_atomic_helper_commit_planes+0x114/0x330
+ drm_atomic_helper_commit_tail+0x5e/0xc0
+ commit_tail+0xfb/0x160
+ process_one_work+0x19f/0x370
+ worker_thread+0x1b1/0x310
+ ? __pfx_worker_thread+0x10/0x10
+ kthread+0xe4/0x120
+ ? __pfx_kthread+0x10/0x10
+ ret_from_fork+0x2a7/0x330
+ ? __pfx_kthread+0x10/0x10
+ ret_from_fork_asm+0x1a/0x30
+ </TASK>

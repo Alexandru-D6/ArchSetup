@@ -1,7 +1,14 @@
 # Hyprland desktop implementation project
 
-Status: planned, with local discovery completed on 2026-10-10. This document is
-the implementation backlog; it does not install packages or change the live desktop.
+Status: initial implementation and VM validation recorded on 2026-10-10.
+See [validation results](desktop-validation.md); suspend/resume remains unresolved. See [desktop usage and current
+limitations](hyprland-desktop.md). The optional Ansible role and original Quickshell
+shell now exist; the full acceptance backlog below remains the target.
+
+Implementation decision: the upstream audit found AI dependencies distributed
+across shared UI/services. The deployed shell is an independent implementation
+using upstream as a visual reference, not a patched upstream copy. This replaces
+the curated-fork approach below and avoids bringing AI code into the profile.
 
 ## Decisions and scope
 

@@ -12,7 +12,10 @@ Usage: ./setup.sh <command> [Ansible options]
 Commands:
   bootstrap  Install Ansible prerequisites and the declared collections.
   check      Preview changes without modifying the system.
-  apply      Install the declared command-line tools.
+  apply      Apply packages and any enabled desktop profile.
+  desktop-check   Preview the optional Hyprland profile.
+  desktop-apply   Provision the optional Hyprland profile.
+  desktop-verify  Check desktop packages and configuration.
   upgrade    Perform an explicit full Arch system upgrade.
   verify     Confirm that the declared command-line tools are installed.
 EOF
@@ -80,6 +83,18 @@ case "${setup_command}" in
   apply)
     shift
     run_playbook playbooks/site.yml "$@"
+    ;;
+  desktop-check)
+    shift
+    run_playbook playbooks/desktop.yml --check --diff "$@"
+    ;;
+  desktop-apply)
+    shift
+    run_playbook playbooks/desktop.yml "$@"
+    ;;
+  desktop-verify)
+    shift
+    run_playbook playbooks/desktop-verify.yml "$@"
     ;;
   upgrade)
     shift

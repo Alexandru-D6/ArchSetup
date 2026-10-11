@@ -1,0 +1,56 @@
+---
+- name: Verify enabled desktop
+  when: archsetup_desktop_enabled | bool
+  block:
+    - name: Resolve configuration paths and verify adoption state
+      ansible.builtin.import_tasks: preflight.yml
+
+    - name: Gather installed package records
+      ansible.builtin.package_facts:
+        manager: pacman
+
+    - name: Verify desktop dependencies
+      ansible.builtin.assert:
+        that: item in ansible_facts.packages
+      loop: "{{ archsetup_desktop_packages + (archsetup_desktop_login_packages if (archsetup_desktop_manage_login | bool) else []) }}"
+
+    - name: Check managed desktop files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ desktop_root }}/.managed"
+        - "{{ desktop_root }}/hyprland.lua"
+        - "{{ desktop_root }}/hyprlock.conf"
+        - "{{ desktop_root }}/hypridle.conf"
+        - "{{ desktop_root }}/shell/shell.qml"
+        - /usr/share/wayland-sessions/archsetup.desktop
+        - /usr/local/bin/archsetup-session
+      register: desktop_verified_files
+
+    - name: Require all managed desktop files
+      ansible.builtin.assert:
+        that: item.stat.exists
+      loop: "{{ desktop_verified_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Validate the installed Lua configuration
+      ansible.builtin.command:
+        argv: [Hyprland, --verify-config, --config, "{{ desktop_root }}/hyprland.lua"]
+      environment:
+        XDG_RUNTIME_DIR: "{{ desktop_root }}/.runtime-validation"
+      become_user: "{{ archsetup_desktop_user }}"
+      changed_when: false
+      check_mode: false
+      register: desktop_config_validation
+      failed_when: desktop_config_validation.rc != 0 or 'config ok' not in desktop_config_validation.stdout
+
+    - name: Check login manager boot enablement
+      ansible.builtin.command: systemctl is-enabled greetd.service
+      changed_when: false
+      check_mode: false
+      when: archsetup_desktop_manage_login | bool
+
+    - name: Explain remaining interactive checks
+      ansible.builtin.debug:
+        msg: Static installation checks passed. Login, PAM authentication, suspend/resume and GPU behavior require the graphical acceptance procedure in docs/hyprland-desktop.md.

@@ -1,0 +1,10 @@
+---
+# Explicit profile: ./setup.sh desktop-check -e @inventory/profiles/alex-desktop.yml
+archsetup_desktop_enabled: true
+archsetup_desktop_user: alex
+# Preserve the currently installed provider instead of replacing it implicitly.
+archsetup_desktop_quickshell_package: illogical-impulse-quickshell-git
+archsetup_desktop_monitors:
+  - {output: "", mode: preferred, position: auto, scale: auto}
+  - {output: HDMI-A-1, disabled: true}
+  - {output: DP-2, mode: '2560x1440@144.0', position: '0x0', scale: 1.0}

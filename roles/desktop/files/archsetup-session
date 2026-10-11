@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+profile="${XDG_CONFIG_HOME:-$HOME/.config}/archsetup"
+[[ -r "$profile/hyprland.lua" ]] || { echo 'Provision the ArchSetup desktop for this account first.' >&2; exit 1; }
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_DESKTOP=Hyprland
+export XDG_SESSION_TYPE=wayland
+exec start-hyprland -- --config "$profile/hyprland.lua"

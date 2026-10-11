@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+"""Ansible template validator: keep the .lua suffix and check parser output."""
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+
+root = Path(__file__).resolve().parent.parent
+with tempfile.TemporaryDirectory(prefix='archsetup-config-') as staging:
+    candidate = Path(staging) / 'hyprland.lua'
+    shutil.copyfile(sys.argv[1], candidate)
+    environment = dict(os.environ, XDG_RUNTIME_DIR=str(root / '.runtime-validation'))
+    result = subprocess.run(['Hyprland', '--verify-config', '--config', str(candidate)],
+                            env=environment, text=True, capture_output=True)
+    sys.stdout.write(result.stdout)
+    sys.stderr.write(result.stderr)
+    sys.exit(0 if result.returncode == 0 and 'config ok' in result.stdout else 1)

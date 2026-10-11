@@ -1,0 +1,313 @@
+[
+  {
+    "key": "SUPER + Return",
+    "action": "terminal",
+    "description": "Terminal"
+  },
+  {
+    "key": "SUPER + W",
+    "action": "browser",
+    "description": "Browser"
+  },
+  {
+    "key": "SUPER + E",
+    "action": "files",
+    "description": "Files"
+  },
+  {
+    "key": "SUPER + D",
+    "action": "launcher",
+    "description": "Launcher"
+  },
+  {
+    "key": "SUPER + Tab",
+    "action": "overview",
+    "description": "Window overview"
+  },
+  {
+    "key": "SUPER + Slash",
+    "action": "help",
+    "description": "Shortcut help"
+  },
+  {
+    "key": "SUPER + V",
+    "action": "clipboard",
+    "description": "Clipboard"
+  },
+  {
+    "key": "SUPER + Period",
+    "action": "emoji",
+    "description": "Emoji"
+  },
+  {
+    "key": "SUPER + N",
+    "action": "notifications",
+    "description": "Notifications"
+  },
+  {
+    "key": "SUPER + Comma",
+    "action": "settings",
+    "description": "Quick settings"
+  },
+  {
+    "key": "SUPER + L",
+    "action": "lock",
+    "description": "Lock"
+  },
+  {
+    "key": "SUPER + SHIFT + Escape",
+    "action": "session",
+    "description": "Session menu"
+  },
+  {
+    "key": "Print",
+    "action": "screenshot",
+    "description": "Region screenshot"
+  },
+  {
+    "key": "SHIFT + Print",
+    "action": "screenshot-full",
+    "description": "Full screenshot"
+  },
+  {
+    "key": "SUPER + SHIFT + C",
+    "action": "color",
+    "description": "Color picker"
+  },
+  {
+    "key": "SUPER + Q",
+    "dispatcher": "hl.dsp.window.close()",
+    "description": "Close window"
+  },
+  {
+    "key": "SUPER + F",
+    "dispatcher": "hl.dsp.window.fullscreen({mode=\"fullscreen\", action=\"toggle\"})",
+    "description": "Fullscreen"
+  },
+  {
+    "key": "SUPER + SHIFT + F",
+    "dispatcher": "hl.dsp.window.float({action=\"toggle\"})",
+    "description": "Floating"
+  },
+  {
+    "key": "SUPER + S",
+    "dispatcher": "hl.dsp.workspace.toggle_special(\"scratch\")",
+    "description": "Scratch workspace"
+  },
+  {
+    "key": "SUPER + SHIFT + S",
+    "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\"})",
+    "description": "Move to scratch"
+  },
+  {
+    "key": "SUPER + left",
+    "dispatcher": "hl.dsp.focus({direction=\"left\"})",
+    "description": "Focus left"
+  },
+  {
+    "key": "SUPER + SHIFT + left",
+    "dispatcher": "hl.dsp.window.move({direction=\"left\"})",
+    "description": "Move left"
+  },
+  {
+    "key": "SUPER + right",
+    "dispatcher": "hl.dsp.focus({direction=\"right\"})",
+    "description": "Focus right"
+  },
+  {
+    "key": "SUPER + SHIFT + right",
+    "dispatcher": "hl.dsp.window.move({direction=\"right\"})",
+    "description": "Move right"
+  },
+  {
+    "key": "SUPER + up",
+    "dispatcher": "hl.dsp.focus({direction=\"up\"})",
+    "description": "Focus up"
+  },
+  {
+    "key": "SUPER + SHIFT + up",
+    "dispatcher": "hl.dsp.window.move({direction=\"up\"})",
+    "description": "Move up"
+  },
+  {
+    "key": "SUPER + down",
+    "dispatcher": "hl.dsp.focus({direction=\"down\"})",
+    "description": "Focus down"
+  },
+  {
+    "key": "SUPER + SHIFT + down",
+    "dispatcher": "hl.dsp.window.move({direction=\"down\"})",
+    "description": "Move down"
+  },
+  {
+    "key": "SUPER + 1",
+    "dispatcher": "hl.dsp.focus({workspace=1})",
+    "description": "Workspace 1"
+  },
+  {
+    "key": "SUPER + SHIFT + 1",
+    "dispatcher": "hl.dsp.window.move({workspace=1})",
+    "description": "Move to workspace 1"
+  },
+  {
+    "key": "SUPER + 2",
+    "dispatcher": "hl.dsp.focus({workspace=2})",
+    "description": "Workspace 2"
+  },
+  {
+    "key": "SUPER + SHIFT + 2",
+    "dispatcher": "hl.dsp.window.move({workspace=2})",
+    "description": "Move to workspace 2"
+  },
+  {
+    "key": "SUPER + 3",
+    "dispatcher": "hl.dsp.focus({workspace=3})",
+    "description": "Workspace 3"
+  },
+  {
+    "key": "SUPER + SHIFT + 3",
+    "dispatcher": "hl.dsp.window.move({workspace=3})",
+    "description": "Move to workspace 3"
+  },
+  {
+    "key": "SUPER + 4",
+    "dispatcher": "hl.dsp.focus({workspace=4})",
+    "description": "Workspace 4"
+  },
+  {
+    "key": "SUPER + SHIFT + 4",
+    "dispatcher": "hl.dsp.window.move({workspace=4})",
+    "description": "Move to workspace 4"
+  },
+  {
+    "key": "SUPER + 5",
+    "dispatcher": "hl.dsp.focus({workspace=5})",
+    "description": "Workspace 5"
+  },
+  {
+    "key": "SUPER + SHIFT + 5",
+    "dispatcher": "hl.dsp.window.move({workspace=5})",
+    "description": "Move to workspace 5"
+  },
+  {
+    "key": "SUPER + 6",
+    "dispatcher": "hl.dsp.focus({workspace=6})",
+    "description": "Workspace 6"
+  },
+  {
+    "key": "SUPER + SHIFT + 6",
+    "dispatcher": "hl.dsp.window.move({workspace=6})",
+    "description": "Move to workspace 6"
+  },
+  {
+    "key": "SUPER + 7",
+    "dispatcher": "hl.dsp.focus({workspace=7})",
+    "description": "Workspace 7"
+  },
+  {
+    "key": "SUPER + SHIFT + 7",
+    "dispatcher": "hl.dsp.window.move({workspace=7})",
+    "description": "Move to workspace 7"
+  },
+  {
+    "key": "SUPER + 8",
+    "dispatcher": "hl.dsp.focus({workspace=8})",
+    "description": "Workspace 8"
+  },
+  {
+    "key": "SUPER + SHIFT + 8",
+    "dispatcher": "hl.dsp.window.move({workspace=8})",
+    "description": "Move to workspace 8"
+  },
+  {
+    "key": "SUPER + 9",
+    "dispatcher": "hl.dsp.focus({workspace=9})",
+    "description": "Workspace 9"
+  },
+  {
+    "key": "SUPER + SHIFT + 9",
+    "dispatcher": "hl.dsp.window.move({workspace=9})",
+    "description": "Move to workspace 9"
+  },
+  {
+    "key": "SUPER + 0",
+    "dispatcher": "hl.dsp.focus({workspace=10})",
+    "description": "Workspace 10"
+  },
+  {
+    "key": "SUPER + SHIFT + 0",
+    "dispatcher": "hl.dsp.window.move({workspace=10})",
+    "description": "Move to workspace 10"
+  },
+  {
+    "key": "SUPER + mouse:272",
+    "dispatcher": "hl.dsp.window.drag()",
+    "description": "Drag window",
+    "mouse": true
+  },
+  {
+    "key": "SUPER + mouse:273",
+    "dispatcher": "hl.dsp.window.resize()",
+    "description": "Resize window",
+    "mouse": true
+  },
+  {
+    "key": "XF86AudioRaiseVolume",
+    "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+\")",
+    "description": "AudioRaiseVolume",
+    "locked": true
+  },
+  {
+    "key": "XF86AudioLowerVolume",
+    "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-\")",
+    "description": "AudioLowerVolume",
+    "locked": true
+  },
+  {
+    "key": "XF86AudioMute",
+    "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle\")",
+    "description": "AudioMute",
+    "locked": true
+  },
+  {
+    "key": "XF86AudioMicMute",
+    "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle\")",
+    "description": "AudioMicMute",
+    "locked": true
+  },
+  {
+    "key": "XF86MonBrightnessUp",
+    "dispatcher": "hl.dsp.exec_cmd(\"brightnessctl -n2 set 5%+\")",
+    "description": "MonBrightnessUp",
+    "locked": true
+  },
+  {
+    "key": "XF86MonBrightnessDown",
+    "dispatcher": "hl.dsp.exec_cmd(\"brightnessctl -n2 set 5%-\")",
+    "description": "MonBrightnessDown",
+    "locked": true
+  },
+  {
+    "key": "XF86AudioPlay",
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl play-pause\")",
+    "description": "AudioPlay",
+    "locked": true
+  },
+  {
+    "key": "XF86AudioNext",
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl next\")",
+    "description": "AudioNext",
+    "locked": true
+  },
+  {
+    "key": "XF86AudioPrev",
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl previous\")",
+    "description": "AudioPrev",
+    "locked": true
+  },
+  {
+    "key": "SUPER + equal",
+    "action": "calculator",
+    "description": "Calculator"
+  }
+]

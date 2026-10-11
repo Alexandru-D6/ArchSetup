@@ -1,0 +1,85 @@
+---
+- name: Validate desktop inputs
+  ansible.builtin.assert:
+    that:
+      - archsetup_desktop_user is match('^[a-z_][a-z0-9_-]*$')
+      - archsetup_desktop_user != 'root'
+      - archsetup_desktop_browser is match('^[A-Za-z0-9_.-]+\.desktop$')
+      - archsetup_desktop_lock_seconds | int > 0
+      - archsetup_desktop_dpms_seconds | int > archsetup_desktop_lock_seconds | int
+    fail_msg: Set a regular desktop user, a desktop-entry browser ID and valid idle timeouts.
+
+- name: Resolve the desktop account
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ archsetup_desktop_user }}"
+
+- name: Inspect network service ownership
+  ansible.builtin.service_facts:
+  when: archsetup_desktop_manage_network | bool
+
+- name: Require a separate migration from competing network managers
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services.get(item, {}).get('state', 'stopped') != 'running'
+      - ansible_facts.services.get(item, {}).get('status', 'disabled') != 'enabled'
+    fail_msg: >-
+      {{ item }} already manages networking. Set archsetup_desktop_manage_network=false
+      to preserve it, or migrate networking separately before enabling NetworkManager.
+      This role will not interrupt the current network connection.
+  loop: [systemd-networkd.service, dhcpcd.service, connman.service]
+  when: archsetup_desktop_manage_network | bool
+
+- name: Resolve account paths
+  ansible.builtin.set_fact:
+    desktop_home: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][4] }}"
+    desktop_group: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][2] }}"
+
+- name: Require a shell-safe absolute account home
+  ansible.builtin.assert:
+    that: desktop_home is match('^/[A-Za-z0-9_./-]+$')
+    fail_msg: This profile requires an absolute home path without whitespace or shell metacharacters.
+
+- name: Set isolated configuration path
+  ansible.builtin.set_fact:
+    desktop_root: "{{ desktop_home }}/.config/archsetup"
+
+- name: Check existing profile ownership
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ desktop_root }}"
+    - "{{ desktop_root }}/.managed"
+    - /etc/greetd/config.toml
+    - /etc/greetd/archsetup-managed
+    - /etc/systemd/system/display-manager.service
+  register: desktop_existing
+
+- name: Require explicit adoption of existing unmanaged configuration
+  ansible.builtin.assert:
+    that:
+      - not desktop_existing.results[0].stat.exists or desktop_existing.results[1].stat.exists or archsetup_desktop_adopt | bool
+      - not (archsetup_desktop_manage_login | bool) or not desktop_existing.results[2].stat.exists or desktop_existing.results[3].stat.exists or archsetup_desktop_adopt | bool
+      - not (archsetup_desktop_manage_login | bool) or not desktop_existing.results[4].stat.exists or desktop_existing.results[4].stat.lnk_source | default('') == '/usr/lib/systemd/system/greetd.service'
+    fail_msg: >-
+      Existing unmanaged configuration requires archsetup_desktop_adopt=true to
+      back it up. A competing display manager must be migrated separately before
+      enabling Greetd; this role never stops an active login session.
+
+- name: Locate preferred browser desktop entry
+  ansible.builtin.stat:
+    path: "{{ item }}/{{ archsetup_desktop_browser }}"
+  loop:
+    - /usr/share/applications
+    - /usr/local/share/applications
+    - "{{ desktop_home }}/.local/share/applications"
+  register: desktop_browser_entries
+
+- name: Require the requested browser on fresh installs
+  ansible.builtin.assert:
+    that: desktop_browser_entries.results | selectattr('stat.exists') | list | length > 0
+    fail_msg: >-
+      Install the selected browser from a reviewed package source first, or set
+      archsetup_desktop_browser to an installed desktop entry. Brave is preserved
+      but its third-party package installation is not automated.
+  when: archsetup_desktop_require_browser | bool

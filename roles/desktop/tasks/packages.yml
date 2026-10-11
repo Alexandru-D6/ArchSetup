@@ -1,0 +1,29 @@
+---
+- name: Check pending full system upgrades
+  ansible.builtin.command: pacman -Qu
+  register: desktop_upgrades
+  changed_when: false
+  failed_when: desktop_upgrades.rc not in [0, 1]
+  check_mode: false
+
+- name: Require explicit maintenance before desktop provisioning
+  ansible.builtin.assert:
+    that: desktop_upgrades.stdout | trim | length == 0
+    fail_msg: Pending upgrades exist in the local package metadata. Run the full upgrade workflow before desktop provisioning.
+
+- name: Ensure desktop dependencies are present
+  community.general.pacman:
+    name: "{{ archsetup_desktop_packages + (archsetup_desktop_login_packages if (archsetup_desktop_manage_login | bool) else []) }}"
+    state: present
+
+- name: Inspect the installed compositor version
+  ansible.builtin.command: pacman -Q hyprland
+  changed_when: false
+  register: desktop_hyprland_version
+  when: not ansible_check_mode
+
+- name: Require the validated Lua API series
+  ansible.builtin.assert:
+    that: desktop_hyprland_version.stdout is search('0\.56\.')
+    fail_msg: This profile targets Hyprland 0.56.x. Validate a newer API before updating the supported version gate.
+  when: not ansible_check_mode

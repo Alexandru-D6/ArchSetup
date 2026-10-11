@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Child processes belong to this compositor session, including logout cleanup.
+set -euo pipefail
+profile="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+: "${HYPRLAND_INSTANCE_SIGNATURE:?Run inside Hyprland}"
+: "${XDG_RUNTIME_DIR:?Missing runtime directory}"
+exec 9>"$XDG_RUNTIME_DIR/archsetup-${HYPRLAND_INSTANCE_SIGNATURE}.lock"
+flock -n 9 || exit 0
+children=()
+cleanup() {
+  trap - EXIT INT TERM
+  for child in "${children[@]}"; do kill "$child" 2>/dev/null || true; done
+  wait || true
+}
+trap cleanup EXIT INT TERM
+supervise() (
+  trap - EXIT
+  child=''
+  trap '[[ -z "$child" ]] || kill "$child" 2>/dev/null; exit 0' INT TERM
+  while true; do
+    "$@" & child=$!
+    wait "$child" || true
+    child=''
+    sleep 2
+  done
+)
+start() { supervise "$@" & children+=("$!"); }
+dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE
+"$profile/bin/desktop-action" refresh-theme
+start qs -p "$profile/shell" --no-duplicate
+start hypridle -c "$profile/hypridle.conf"
+start swaync -c "$profile/swaync.json" -s "$profile/theme/swaync.css"
+start wl-paste --type text --watch cliphist store
+start wl-paste --type image --watch cliphist store
+start /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+# Uses distribution PAM/keyring integration; never handles passwords here.
+gnome-keyring-daemon --start --components=secrets
+while hyprctl -j monitors >/dev/null 2>&1; do sleep 2; done

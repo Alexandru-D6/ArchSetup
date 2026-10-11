@@ -1,0 +1,40 @@
+-- Managed by ArchSetup. Personal overrides live in overrides.lua beside this file.
+local root = {{ desktop_root | to_json }}
+local action = root .. "/bin/desktop-action"
+{% for monitor in archsetup_desktop_monitors %}
+hl.monitor({
+{% for key, value in monitor.items() %}
+    {{ key }} = {{ value | to_json }},
+{% endfor %}
+})
+{% endfor %}
+hl.config({
+    input = {
+{% for key, value in archsetup_desktop_input.items() if key != 'touchpad' %}
+        {{ key }} = {{ value | to_json }},
+{% endfor %}
+        touchpad = {
+{% for key, value in archsetup_desktop_input.touchpad.items() %}
+            {{ key }} = {{ value | to_json }},
+{% endfor %}
+        },
+    },
+    general = { gaps_in = 4, gaps_out = 8, border_size = 2, layout = "dwindle",
+        col = { active_border = "rgba(c4a7e7ff)", inactive_border = "rgba(45404fff)" } },
+    decoration = { rounding = 12, blur = { enabled = true, size = 3, passes = 2 } },
+    animations = { enabled = {{ (not (archsetup_desktop_reduced_motion | bool)) | to_json }} },
+    dwindle = { preserve_split = true },
+    misc = { disable_hyprland_logo = true, disable_splash_rendering = true },
+})
+hl.env("XCURSOR_SIZE", "24")
+hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
+hl.on("hyprland.start", function() hl.exec_cmd(root .. "/bin/session-services") end)
+{% for binding in lookup('file', role_path + '/files/shortcuts.json') | from_json %}
+hl.bind({{ binding.key | to_json }}, {% if binding.action is defined %}hl.dsp.exec_cmd(action .. " {{ binding.action }}"){% else %}{{ binding.dispatcher }}{% endif %}, {
+    description = {{ binding.description | to_json }}{% if binding.mouse | default(false) %}, mouse = true{% endif %}{% if binding.locked | default(false) %}, locked = true{% endif %}
+})
+{% endfor %}
+local colors = io.open(root .. "/theme/colors.lua", "r")
+if colors then colors:close(); dofile(root .. "/theme/colors.lua") end
+local override = io.open(root .. "/overrides.lua", "r")
+if override then override:close(); dofile(root .. "/overrides.lua") end

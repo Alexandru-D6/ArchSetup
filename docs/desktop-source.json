@@ -1,0 +1,25 @@
+{
+  "reference": {
+    "url": "https://github.com/end-4/dots-hyprland",
+    "commit": "c4f0582cbf4ad29607dbf3c20337815de8690b34",
+    "reviewed_on": "2026-10-10",
+    "purpose": "Visual and interaction reference only; upstream shell code is not deployed"
+  },
+  "implementation": "Original repository-owned Quickshell shell and Lua configuration",
+  "upstream_installer_executed": false,
+  "ai_source_included": false,
+  "hyprland_api_series": "0.56.x",
+  "observed_local_versions": {
+    "hyprland": "0.56.2-1",
+    "hyprlock": "0.9.6-2",
+    "hypridle": "0.1.8-1",
+    "quickshell_provider": "illogical-impulse-quickshell-git 0.1.0.r1-8"
+  },
+  "package_policy": "Official Arch packages by default; full-system upgrades; no partial package holds",
+  "validated_vm_versions": {
+    "hyprland": "0.56.2-4",
+    "quickshell": "0.3.2-1",
+    "hyprlock": "0.9.6-3",
+    "hypridle": "0.1.8-2"
+  }
+}

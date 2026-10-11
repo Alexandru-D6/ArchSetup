@@ -1,0 +1,29 @@
+---
+- name: Create Greetd configuration directory
+  ansible.builtin.file:
+    path: /etc/greetd
+    state: directory
+    mode: '0755'
+
+- name: Configure password-authenticated login
+  ansible.builtin.copy:
+    content: |
+      [terminal]
+      vt = 1
+      [default_session]
+      command = "tuigreet --time --remember --cmd /usr/local/bin/archsetup-session"
+      user = "greeter"
+    dest: /etc/greetd/config.toml
+    mode: '0644'
+    backup: true
+
+- name: Mark managed login configuration
+  ansible.builtin.copy:
+    content: "ArchSetup owns config.toml; prior versions are retained as backups.\n"
+    dest: /etc/greetd/archsetup-managed
+    mode: '0644'
+
+- name: Enable Greetd for next boot without interrupting the active session
+  ansible.builtin.systemd_service:
+    name: greetd.service
+    enabled: true

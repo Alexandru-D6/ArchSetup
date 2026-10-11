@@ -9,3 +9,5 @@
     - role: packages
       tags: [packages, cli]
 
+    - role: desktop
+      tags: [desktop]

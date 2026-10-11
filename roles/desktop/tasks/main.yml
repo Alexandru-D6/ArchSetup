@@ -1,0 +1,13 @@
+---
+- name: Provision the selected desktop
+  when: archsetup_desktop_enabled | bool
+  block:
+    - name: Inspect desktop prerequisites
+      ansible.builtin.import_tasks: preflight.yml
+    - name: Install desktop packages
+      ansible.builtin.import_tasks: packages.yml
+    - name: Deploy desktop configuration
+      ansible.builtin.import_tasks: configure.yml
+    - name: Configure authenticated login
+      ansible.builtin.import_tasks: login.yml
+      when: archsetup_desktop_manage_login | bool
