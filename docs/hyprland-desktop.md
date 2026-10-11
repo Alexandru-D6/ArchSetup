@@ -42,7 +42,15 @@ at boot using Hyprland's `--locked-cmd` startup lock. Hyprlock is the first pass
 screen; the user must have a working account password. Greetd's login screen is
 the fallback after logout or session failure. Set
 `archsetup_desktop_autologin_locked=false` to require Greetd authentication at boot.
-Automatic session creation does not supply a password to unlock the login keyring.
+Hyprlock uses `/etc/pam.d/archsetup-hyprlock`, which retains the existing Hyprlock
+authentication policy and unlocks GNOME Keyring during password authentication.
+The optional keyring hook starts its daemon if necessary; no password is saved
+by ArchSetup. This follows [GNOME's PAM implementation](https://github.com/GNOME/gnome-keyring/blob/main/pam/gkr-pam-module.c).
+Your **Login** keyring must have the same password as your account. If it differs,
+change its password using Passwords and Keys (Seahorse); existing secrets are not
+reset or deleted by provisioning. Fingerprint-only unlock cannot supply the
+password needed to decrypt that keyring. Keyring failure does not prevent screen
+unlock. Automatic login itself leaves the keyring locked until password unlock.
 A competing display manager causes a preflight failure; stop it only during a
 planned session transition, then disable its boot enablement before proceeding.
 The role never restarts Greetd during an apply. Reboot deliberately after review,
@@ -122,6 +130,8 @@ Managed paths:
 - HTTP, HTTPS and HTML keys in `~/.config/mimeapps.list`; other entries are kept.
 - `/usr/local/bin/archsetup-session` and
   `/usr/share/wayland-sessions/archsetup.desktop`.
+- `/etc/pam.d/archsetup-hyprlock`, a separate PAM service; the existing `hyprlock`
+  and `login` PAM files are retained.
 - `/etc/greetd/config.toml` and ownership marker when login management is enabled.
 
 Explicit adoption backs up an existing profile to `archsetup.pre-archsetup` once.

@@ -22,7 +22,10 @@ def capture(*args):
 
 def themed(name):
     generated = ROOT / 'theme' / name
-    return generated if generated.exists() else ROOT / name
+    base = ROOT / name
+    # A newly deployed template may contain authentication changes. Do not use
+    # an older generated copy while session startup is still rebuilding themes.
+    return generated if generated.exists() and generated.stat().st_mtime_ns >= base.stat().st_mtime_ns else base
 
 def calculate(expression):
     if len(expression) > 200: raise ValueError('Expression is too long')

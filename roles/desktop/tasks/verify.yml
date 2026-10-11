@@ -25,6 +25,7 @@
         - "{{ desktop_root }}/shell/shell.qml"
         - /usr/share/wayland-sessions/archsetup.desktop
         - /usr/local/bin/archsetup-session
+        - /etc/pam.d/archsetup-hyprlock
       register: desktop_verified_files
 
     - name: Require all managed desktop files

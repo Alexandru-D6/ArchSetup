@@ -39,6 +39,15 @@
     - {src: validate-config, dest: bin/validate-config, mode: '0755'}
     - {src: shortcuts.json, dest: shortcuts.json, mode: '0644'}
 
+- name: Install Hyprlock authentication and keyring integration
+  ansible.builtin.copy:
+    src: archsetup-hyprlock.pam
+    dest: /etc/pam.d/archsetup-hyprlock
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
 - name: Render desktop configuration
   become: true
   become_user: "{{ archsetup_desktop_user }}"

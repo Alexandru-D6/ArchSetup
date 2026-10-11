@@ -1,6 +1,10 @@
 general {
     hide_cursor = true
 }
+auth {
+    pam:enabled = true
+    pam:module = archsetup-hyprlock
+}
 animations {
     enabled = {{ (not (archsetup_desktop_reduced_motion | bool)) | to_json }}
 }

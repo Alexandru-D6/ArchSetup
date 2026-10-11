@@ -26,6 +26,58 @@ class DesktopTests(unittest.TestCase):
         loader.exec_module(self.actions)
         self.actions.ROOT = self.profile
 
+    def test_updated_lock_template_takes_precedence_over_stale_theme(self):
+        base = self.profile / 'hyprlock.conf'
+        generated = self.profile / 'theme/hyprlock.conf'
+        generated.parent.mkdir()
+        generated.write_text('old lock configuration\n')
+        os.utime(generated, ns=(1, 1))
+        self.assertEqual(self.actions.themed('hyprlock.conf'), base)
+        generated.write_text(base.read_text())
+        os.utime(generated, ns=(base.stat().st_mtime_ns + 1, base.stat().st_mtime_ns + 1))
+        self.assertEqual(self.actions.themed('hyprlock.conf'), generated)
+
+    def test_keyring_hook_preserves_pam_authentication_result(self):
+        import ctypes
+        import ctypes.util
+        import getpass
+        source = (ROLE / 'files/archsetup-hyprlock.pam').read_text()
+        self.assertIn('auth substack hyprlock', source)
+        self.assertIn('auth optional pam_gnome_keyring.so auto_start', source)
+        self.assertIn('pam:module = archsetup-hyprlock', (self.profile / 'hyprlock.conf').read_text())
+        # Exercise real PAM control flow in a temporary confdir. Simulate a failed
+        # keyring module with pam_deny; never authenticate a real user or open a keyring.
+        directory = Path(self.directory.name) / 'pam'
+        directory.mkdir()
+        (directory / 'archsetup-hyprlock').write_text(source.replace(
+            'pam_gnome_keyring.so auto_start', 'pam_deny.so'))
+        pam = ctypes.CDLL(ctypes.util.find_library('pam'))
+        if not hasattr(pam, 'pam_start_confdir'):
+            self.skipTest('Linux PAM with pam_start_confdir is required')
+        conversation_fn = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_int, ctypes.c_void_p,
+                                          ctypes.c_void_p, ctypes.c_void_p)
+        class Conversation(ctypes.Structure):
+            _fields_ = [('conv', conversation_fn), ('appdata_ptr', ctypes.c_void_p)]
+        callback = conversation_fn(lambda *args: 19)  # No interactive prompts.
+        conversation = Conversation(callback, None)
+        pam.pam_start_confdir.argtypes = [ctypes.c_char_p, ctypes.c_char_p,
+            ctypes.POINTER(Conversation), ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
+        pam.pam_authenticate.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        pam.pam_end.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        for policy, accepted in [('auth sufficient pam_permit.so\n', True),
+                                 ('auth requisite pam_deny.so\n', False),
+                                 ('auth required pam_deny.so\nauth sufficient pam_permit.so\n', False)]:
+            (directory / 'hyprlock').write_text(policy)
+            handle = ctypes.c_void_p()
+            result = pam.pam_start_confdir(b'archsetup-hyprlock', getpass.getuser().encode(),
+                ctypes.byref(conversation), str(directory).encode(), ctypes.byref(handle))
+            self.assertEqual(result, 0)
+            try:
+                result = pam.pam_authenticate(handle, 0)
+                self.assertEqual(result == 0, accepted, f'PAM result={result}, policy={policy}')
+            finally:
+                pam.pam_end(handle, result)
+
     def test_locked_session_uses_compositor_startup_lock(self):
         fake_bin = Path(self.directory.name) / 'fake-bin'
         fake_bin.mkdir()

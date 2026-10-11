@@ -1,5 +1,17 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
+Latest keyring integration: managed Hyprlock uses the separate
+`/etc/pam.d/archsetup-hyprlock` profile, with `auth substack hyprlock` followed by
+optional `pam_gnome_keyring.so auto_start`. This preserves existing authentication
+policy and unlocks/starts the keyring during PAM authentication (Hyprlock does not
+open a PAM session). The Login keyring password must match the account password.
+Existing PAM files/keyring contents are not replaced. Theme selection now rejects
+stale generated configurations so newly deployed authentication settings take
+effect on the next lock. Real PAM control-flow tests use temporary policies and
+require execution outside the sandbox because PAM audit returns a system error
+inside it. Actual graphical authentication plus keyring decryption is still to
+be validated on the target; no workstation PAM configuration was modified.
+
 Latest browser change: selecting Brave now automatically installs it when missing.
 `tasks/brave.yml` builds reviewed AUR revision
 `21e2273a1bc003bf35d00aebb40ef8c22b1a53fa` (1.97.56) as the regular user in a

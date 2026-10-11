@@ -1,0 +1,7 @@
+#%PAM-1.0
+# Keep the distribution/local Hyprlock authentication policy. A substack keeps
+# successful short-circuits inside that policy from skipping keyring unlock.
+auth substack hyprlock
+# Hyprlock calls pam_authenticate, not pam_open_session. Start/unlock here.
+# Keyring failure must not change whether the account password is accepted.
+auth optional pam_gnome_keyring.so auto_start

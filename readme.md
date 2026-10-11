@@ -7,6 +7,13 @@ integrations.
 
 ## Install the desktop after cloning
 
+For the full environment, use `check` and `apply` with your desktop profile:
+they cover both the base command-line tools and the desktop. `desktop-check`
+and `desktop-apply` are shortcuts for updating only the desktop and include its
+dependencies. Verification is separate: `verify` checks the base tools and
+`desktop-verify` checks the desktop. Only bootstrap/apply/upgrade install packages;
+check previews changes and verify inspects the installed state.
+
 ### 1. Prepare the computer
 
 Start from a bootable Arch Linux installation with internet access, graphics
@@ -69,7 +76,7 @@ user `alex` and already selects Brave, automatic monitors, and disabled animatio
 ### 3. Preview changes
 
 ```bash
-./setup.sh desktop-check \
+./setup.sh check \
   -e @inventory/profiles/my-desktop.yml --ask-become-pass
 ```
 
@@ -85,7 +92,7 @@ will not stop your current graphical session.
 ### 4. Install
 
 ```bash
-./setup.sh desktop-apply \
+./setup.sh apply \
   -e @inventory/profiles/my-desktop.yml --ask-become-pass
 ```
 
@@ -105,6 +112,7 @@ If package installation reports stale metadata or pending updates, run
 ### 5. Verify and reboot
 
 ```bash
+./setup.sh verify --ask-become-pass
 ./setup.sh desktop-verify \
   -e @inventory/profiles/my-desktop.yml --ask-become-pass
 ```
@@ -120,6 +128,11 @@ Greetd starts your Hyprland session in locked mode. **Unlock Hyprlock with your
 regular user's password.** Greetd's login prompt is the fallback after logout or
 session failure. To require Greetd authentication at boot instead, set
 `archsetup_desktop_autologin_locked: false` and reapply.
+
+Password unlock also unlocks your GNOME **Login** keyring when its password
+matches your account password. If you have an older keyring with a different
+password, change it to match using Passwords and Keys (Seahorse). Installation
+preserves existing keyring contents.
 
 ### 6. Try the desktop
 
@@ -147,7 +160,9 @@ the recorded Greetd configuration backup if needed. See
 ## Apply later changes
 
 Update this repository on the target computer, retain your machine profile, then
-repeat **desktop-check → desktop-apply → desktop-verify** with the same profile.
+repeat **check → apply → verify → desktop-verify** with the same profile on check,
+apply and desktop-verify. For desktop-only changes, use **desktop-check →
+desktop-apply → desktop-verify** instead; these still install desktop dependencies.
 Log out and back in to refresh all desktop components; reboot for changes to the
 boot login flow. Reapplying an unchanged installation should report `changed=0`.
 
