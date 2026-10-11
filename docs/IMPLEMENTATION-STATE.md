@@ -1,5 +1,16 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
+Latest browser change: selecting Brave now automatically installs it when missing.
+`tasks/brave.yml` builds reviewed AUR revision
+`21e2273a1bc003bf35d00aebb40ef8c22b1a53fa` (1.97.56) as the regular user in a
+temporary directory, checks source checksums via makepkg, and installs via pacman.
+Existing browser entries skip installation. Check mode only previews the build;
+read-only verification still rejects a missing browser. All 14 local tests and
+desktop syntax validation pass. The actual package download/build/install has
+NOT been exercised in the VM yet. Browser upgrades remain separate maintenance.
+LittleArchy selects Brave and reduced-motion defaults now disable compositor,
+Hyprlock and notification animations.
+
 Latest user change: skip Greetd's boot prompt and show Hyprlock. Implemented
 `archsetup_desktop_autologin_locked: true` by default, a Greetd initial_session
 for the selected user, and `archsetup-session --locked` passing Hyprland's native

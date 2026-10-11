@@ -1,0 +1,84 @@
+---
+- name: Validate the reviewed Brave build target
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.architecture in ['x86_64', 'aarch64']
+      - archsetup_desktop_brave_revision is match('^[0-9a-f]{40}$')
+
+- name: Ensure Brave build and runtime dependencies are installed
+  community.general.pacman:
+    name: [base-devel, git, alsa-lib, gtk3, libxss, nss, ttf-dejavu]
+    state: present
+
+- name: Preview the missing Brave installation
+  ansible.builtin.debug:
+    msg: Will build and install brave-bin from AUR revision {{ archsetup_desktop_brave_revision }}.
+  changed_when: true
+  when: ansible_check_mode
+
+- name: Build and install the reviewed Brave package
+  when: not ansible_check_mode
+  block:
+    - name: Allocate an isolated build directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: archsetup-brave-
+      register: desktop_brave_build
+
+    - name: Assign the build directory to the regular desktop user
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ archsetup_desktop_user }}"
+        group: "{{ desktop_group }}"
+        mode: '0700'
+      loop:
+        - "{{ desktop_brave_build.path }}"
+        - "{{ desktop_brave_build.path }}/packages"
+
+    - name: Fetch pinned Brave packaging as the regular user
+      become_user: "{{ archsetup_desktop_user }}"
+      ansible.builtin.git:
+        repo: https://aur.archlinux.org/brave-bin.git
+        dest: "{{ desktop_brave_build.path }}/source"
+        version: "{{ archsetup_desktop_brave_revision }}"
+
+    - name: Build Brave and verify upstream source checksums without root
+      become_user: "{{ archsetup_desktop_user }}"
+      ansible.builtin.command:
+        argv: [makepkg, --noconfirm, --cleanbuild]
+        chdir: "{{ desktop_brave_build.path }}/source"
+      environment:
+        PKGDEST: "{{ desktop_brave_build.path }}/packages"
+      changed_when: true
+
+    - name: Locate the completed Brave package
+      ansible.builtin.find:
+        paths: "{{ desktop_brave_build.path }}/packages"
+        patterns: 'brave-bin-*.pkg.tar.*'
+        excludes: '*.sig'
+      register: desktop_brave_packages
+
+    - name: Require exactly one completed browser package
+      ansible.builtin.assert:
+        that: desktop_brave_packages.matched == 1
+
+    - name: Install Brave through pacman
+      community.general.pacman:
+        name: "{{ desktop_brave_packages.files[0].path }}"
+        state: present
+
+    - name: Confirm the installed browser entry
+      ansible.builtin.stat:
+        path: /usr/share/applications/brave-browser.desktop
+      register: desktop_brave_entry
+
+    - name: Require successful browser registration
+      ansible.builtin.assert:
+        that: desktop_brave_entry.stat.exists
+  always:
+    - name: Remove temporary Brave build files
+      ansible.builtin.file:
+        path: "{{ desktop_brave_build.path }}"
+        state: absent
+      when: desktop_brave_build.path is defined

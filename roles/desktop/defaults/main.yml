@@ -6,8 +6,9 @@ archsetup_desktop_manage_login: true
 archsetup_desktop_autologin_locked: true
 archsetup_desktop_manage_network: true
 archsetup_desktop_browser: brave-browser.desktop
-# Existing Brave is retained. On fresh machines supply a reviewed package source
-# and install it before applying this profile (Brave is not in official repos).
+# Existing Brave is retained; missing Brave uses reviewed AUR packaging.
+archsetup_desktop_install_brave: true
+archsetup_desktop_brave_revision: 21e2273a1bc003bf35d00aebb40ef8c22b1a53fa
 archsetup_desktop_require_browser: true
 archsetup_desktop_quickshell_package: quickshell
 archsetup_desktop_monitors:

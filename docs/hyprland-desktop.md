@@ -12,8 +12,18 @@ Validate that path on the target machine before relying on this as its daily ses
 
 ## Install and preview
 
-Run bootstrap first. Install your preferred browser from a reviewed source;
-Brave is retained when present and is not downloaded from an arbitrary script.
+Run bootstrap first. Selecting `brave-browser.desktop` automatically installs
+missing Brave using the reviewed AUR `brave-bin` revision pinned in role defaults.
+Packaging runs as the regular desktop user with makepkg source checksum checks;
+pacman installs the resulting package. No AUR helper or passwordless sudo is needed.
+Check mode previews the build. Existing Brave installations are retained.
+Other selected browsers must already be installed. Set
+`archsetup_desktop_install_brave=false` to require manual Brave installation.
+The pinned package is Brave 1.97.56 (AUR revision
+`21e2273a1bc003bf35d00aebb40ef8c22b1a53fa`). Browser updates remain a separate
+maintenance task: use your AUR update workflow; reapplying the desktop does not
+upgrade an existing browser. Arch packaging is linked from
+[Brave's Linux installation guide](https://brave.com/linux/#arch).
 The supplied personal profile uses `brave-browser.desktop`, the existing
 Quickshell provider, your input settings and DP-2/HDMI-A-1 configuration.
 For a fresh machine, use the official `quickshell` package default instead of

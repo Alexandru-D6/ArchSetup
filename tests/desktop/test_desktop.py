@@ -65,6 +65,34 @@ class DesktopTests(unittest.TestCase):
             else:
                 self.assertNotIn('initial_session', config)
 
+    def test_missing_brave_is_allowed_only_for_automatic_provisioning(self):
+        executable = shutil.which('ansible-playbook') or str(Path(sys.executable).parent / 'ansible-playbook')
+        if not Path(executable).exists():
+            self.skipTest('ansible-playbook is required for browser preflight regression')
+        tasks = yaml.safe_load((ROLE / 'tasks/preflight.yml').read_text())
+        browser_check = next(task for task in tasks if task['name'] == 'Require the requested browser on fresh installs')
+        environment = dict(os.environ, ANSIBLE_HOME=self.directory.name,
+                           ANSIBLE_LOCAL_TEMP=str(Path(self.directory.name) / 'ansible-tmp'))
+        cases = [(True, True, 'brave-browser.desktop', True),
+                 (False, True, 'brave-browser.desktop', False),
+                 (True, False, 'brave-browser.desktop', False),
+                 (True, True, 'firefox.desktop', False)]
+        for provisioning, automatic, browser, allowed in cases:
+            with self.subTest(provisioning=provisioning, automatic=automatic, browser=browser):
+                playbook = Path(self.directory.name) / 'browser-preflight.yml'
+                playbook.write_text(yaml.safe_dump([{
+                    'hosts': 'localhost', 'gather_facts': False, 'become': False,
+                    'vars': {'desktop_browser_entries': {'results': [{'stat': {'exists': False}}]},
+                             'desktop_browser_install_allowed': provisioning,
+                             'archsetup_desktop_install_brave': automatic,
+                             'archsetup_desktop_browser': browser,
+                             'archsetup_desktop_require_browser': True},
+                    'tasks': [browser_check]}]))
+                result = subprocess.run([executable, '-i', 'localhost,', '-c', 'local',
+                                         '--check', str(playbook)], env=environment,
+                                        capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0 if allowed else 2, result.stdout + result.stderr)
+
     def test_fresh_check_skips_services_not_created_by_package_preview(self):
         executable = shutil.which('ansible-playbook')
         if executable is None:
