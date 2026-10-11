@@ -1,5 +1,9 @@
 {
   "browser": {{ archsetup_desktop_browser | to_json }},
   "reducedMotion": {{ archsetup_desktop_reduced_motion | bool | to_json }},
-  "font": {{ archsetup_desktop_font | to_json }}
+  "font": {{ archsetup_desktop_font | to_json }},
+  "codeEditor": {{ archsetup_desktop_code_editor | to_json }},
+  "textEditor": {{ archsetup_desktop_text_editor | to_json }},
+  "office": {{ archsetup_desktop_office | to_json }},
+  "ocrLanguage": {{ archsetup_desktop_ocr_language | to_json }}
 }

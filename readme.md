@@ -148,6 +148,11 @@ preserves existing keyring contents.
 | Super+L | Lock the screen |
 | Super+/ | All shortcuts |
 
+See the [complete shortcut reference](docs/desktop-shortcuts.md) for all 224 bindings,
+including app launchers, local OCR/recording, window/workspace controls, shell
+toggles, zoom and VM shortcut passthrough. Super+Alt+F1 restores desktop shortcuts
+when passthrough is enabled.
+
 The Power menu's Shutdown, Reboot, Suspend and Logout actions run immediately
 when selected, without a second confirmation prompt.
 

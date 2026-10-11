@@ -1,5 +1,33 @@
 # Desktop validation — 2026-10-10
 
+## Expanded shortcuts — 2026-10-11
+
+The shortcut map now contains 224 entries including physical-key/keypad aliases.
+All entries are registered in the VM. Existing launcher/calculator/scratch keys
+are retained, with documented alternatives for upstream conflicts. See the
+[complete key reference](desktop-shortcuts.md) for coverage and exclusions.
+
+20 local tests pass, covering native compositor parsing, canonical key uniqueness,
+reserved layout switching, capture cancellation, local OCR stdin/clipboard data
+flow, recording PID ownership/start-time checks, direct power commands and prior
+desktop regressions. Playbook syntax and whitespace checks pass.
+
+VM acceptance exercised modifier-only search without opening it after chords,
+utilities/detachment, on-screen keyboard key delivery, editor/office/task-manager
+launchers, relative workspace focus, silent workspace movement, floating/exact
+640×480 sizing/pinning, zoom/reset, shell restart, bar/widget/placement toggles and
+VM-submap entry/escape. Screenshot-save created a PNG; local OCR copied the terminal
+fixture to the clipboard using a deterministic region selector (headless VM mouse
+selection was unreliable). Video recording start/stop produced a playable H.264
+file; an original tone on a VM null sink produced H.264 + AAC for the audio variant.
+Physical audio/input and multi-monitor keys remain subject to hardware acceptance.
+
+Runtime testing caught and fixed QML component import, empty VM-submap registration,
+recorder backend naming, media-directory fallback and clipboard daemon stream
+ownership. Keep-awake is attached to the persistent background surface so taskbar
+hiding does not remove it. Final repeated apply: `ok=39 changed=0 failed=0 skipped=19`;
+read-only verification: `ok=18 changed=0 failed=0 skipped=2`.
+
 ## Asset removal and direct power actions — 2026-10-11
 
 Removed bundled third-party wallpaper/font files and their accompanying texts.

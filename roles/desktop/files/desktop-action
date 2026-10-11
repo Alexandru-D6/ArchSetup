@@ -7,14 +7,21 @@ import hashlib
 import operator
 import json
 import os
+import random
 import tempfile
 from pathlib import Path
 import subprocess
 import sys
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parent.parent
 
 def run(*args, **kwargs):
+    if args and args[0] == 'wl-copy':
+        # The clipboard owner remains alive after copying. Do not retain the
+        # invoking helper's output streams (including remote validation pipes).
+        kwargs.setdefault('stdout', subprocess.DEVNULL)
+        kwargs.setdefault('stderr', subprocess.DEVNULL)
     return subprocess.run(args, check=True, **kwargs)
 
 def capture(*args):
@@ -118,12 +125,60 @@ def menu(lines, prompt):
         return None
     return result.stdout.rstrip('\n')
 
+def media_directory(kind):
+    try:
+        folder = Path(capture('xdg-user-dir', kind).strip())
+        if not folder.is_absolute(): raise ValueError('Invalid media path')
+        configuration = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'user-dirs.dirs'
+        if folder == Path.home() and not configuration.exists(): raise ValueError('Unconfigured media path')
+    except (ValueError, OSError, subprocess.CalledProcessError):
+        folder = Path.home() / ('Videos' if kind == 'VIDEOS' else 'Pictures')
+    return folder
+
+def screenshot(action):
+    args = ['grim']
+    if action in ('screenshot', 'screenshot-region-save', 'ocr'):
+        region = subprocess.run(['slurp'], text=True, stdout=subprocess.PIPE)
+        if region.returncode: return
+        args += ['-g', region.stdout.strip()]
+    elif action in ('screenshot-monitor', 'screenshot-save'):
+        monitor = next((m['name'] for m in json.loads(capture('hyprctl', '-j', 'monitors')) if m.get('focused')), None)
+        if not monitor: raise ValueError('No focused monitor')
+        args += ['-o', monitor]
+    data = run(*args, '-', stdout=subprocess.PIPE, timeout=10).stdout
+    if action == 'ocr':
+        language = json.loads((ROOT / 'preferences.json').read_text()).get('ocrLanguage', 'eng')
+        result = run('tesseract', 'stdin', 'stdout', '-l', language, input=data, stdout=subprocess.PIPE, timeout=30).stdout
+        run('wl-copy', input=result)
+        run('notify-send', 'Text copied', 'Recognized text is on the clipboard.')
+        return
+    run('wl-copy', '--type', 'image/png', input=data)
+    if action in ('screenshot-save', 'screenshot-region-save'):
+        folder = media_directory('PICTURES') / 'Screenshots'
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / ('Screenshot_' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f') + '.png')
+        path.write_bytes(data)
+        run('notify-send', 'Screenshot saved and copied', str(path))
+    else:
+        run('notify-send', 'Screenshot copied', 'Paste it into an application to save or share.')
+
+def shell_toggle(name):
+    run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'control', name)
+
 def main(action):
     if action == 'terminal': run('kitty', '--config', str(themed('kitty.conf')))
     elif action == 'files': run('thunar')
     elif action == 'browser':
         preferences = json.loads((ROOT / 'preferences.json').read_text())
         run('gtk-launch', preferences['browser'])
+    elif action in ('code-editor', 'text-editor', 'office'):
+        field = {'code-editor': 'codeEditor', 'text-editor': 'textEditor', 'office': 'office'}[action]
+        run('gtk-launch', json.loads((ROOT / 'preferences.json').read_text())[field])
+    elif action == 'task-manager': run('kitty', '--config', str(themed('kitty.conf')), '-e', 'btop')
+    elif action == 'edit-shortcuts':
+        path = ROOT / 'overrides.lua'
+        if not path.exists(): path.write_text('-- Personal Hyprland overrides and additional bindings.\n')
+        run('gtk-launch', json.loads((ROOT / 'preferences.json').read_text())['codeEditor'], str(path))
     elif action == 'launcher': run('fuzzel', '--config', str(themed('fuzzel.ini')))
     elif action == 'lock':
         signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE', '')
@@ -133,12 +188,22 @@ def main(action):
         with lockfile.open('w') as descriptor:
             try: fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError: return
+            recorder = ROOT / 'bin/desktop-record'
+            if recorder.exists(): run(str(recorder), 'record-stop')
             path = ROOT / 'state.json'
             refresh_theme(json.loads(path.read_text()) if path.exists() else {})
             run(str(ROOT / 'bin/lock-visuals'), 'clock')
             run('hyprlock', '--no-fade-in', '-c', str(themed('hyprlock.conf')))
-    elif action in ('overview', 'settings', 'session'):
+    elif action in ('overview', 'settings', 'session', 'tools', 'media'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
+    elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):
+        shell_toggle(action)
+    elif action == 'restart-shell':
+        run('qs', '-p', str(ROOT / 'shell'), 'kill')
+        # session-services supervises only this profile's qs instance and restarts it.
+    elif action == 'kill-window': run('hyprctl', 'kill')
+    elif action.startswith('record-'):
+        run(str(ROOT / 'bin/desktop-record'), action)
     elif action == 'notifications': run('swaync-client', '-t')
     elif action == 'dnd': run('swaync-client', '-d')
     elif action == 'audio': run('pavucontrol')
@@ -155,15 +220,8 @@ def main(action):
     elif action == 'emoji':
         selection = menu(['😀 Smile', '❤️ Heart', '👍 Yes', '🎉 Celebrate', '✅ Done', '🔥 Fire', '🤔 Thinking', '🚀 Rocket'], 'Emoji')
         if selection: run('wl-copy', selection.split(' ')[0])
-    elif action in ('screenshot', 'screenshot-full'):
-        args = ['grim']
-        if action == 'screenshot':
-            region = subprocess.run(['slurp'], text=True, stdout=subprocess.PIPE)
-            if region.returncode: return
-            args += ['-g', region.stdout.strip()]
-        image = run(*args, '-', stdout=subprocess.PIPE).stdout
-        run('wl-copy', '--type', 'image/png', input=image)
-        run('notify-send', 'Screenshot copied', 'Paste it into an application to save or share.')
+    elif action in ('screenshot', 'screenshot-full', 'screenshot-monitor', 'screenshot-save', 'screenshot-region-save', 'ocr'):
+        screenshot(action)
     elif action == 'calculator':
         expression = menu([], 'Calculate')
         if expression:
@@ -184,9 +242,10 @@ def main(action):
                 return ''
         volume = probe('wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@')
         network = probe('nmcli', '-t', '-f', 'STATE', 'general')
-        print(json.dumps(dict(volume=volume.removeprefix('Volume: ') or 'No audio', network=network or 'Disconnected',
+        media = probe('playerctl', 'metadata', '--format', '{{artist}} — {{title}}')
+        print(json.dumps(dict(volume=volume.removeprefix('Volume: ') or 'No audio', network=network or 'Disconnected', media=media,
                               brightness=any(Path('/sys/class/backlight').glob('*')))))
-    elif action in ('theme', 'wallpaper'):
+    elif action in ('theme', 'wallpaper', 'wallpaper-random'):
         path = ROOT / 'state.json'
         state = json.loads(path.read_text()) if path.exists() else {}
         if action == 'theme':
@@ -194,7 +253,10 @@ def main(action):
         else:
             folder = Path.home() / 'Pictures' / 'Wallpapers'
             files = sorted(str(p) for p in folder.glob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp'))
-            selected = menu(['[Default background]'] + files, 'Wallpaper')
+            if action == 'wallpaper-random' and not files:
+                run('notify-send', 'No wallpapers found', str(folder))
+                return
+            selected = random.choice(files) if action == 'wallpaper-random' else menu(['[Default background]'] + files, 'Wallpaper')
             if selected is None: return
             state['wallpaper'] = '' if selected == '[Default background]' else selected
         refresh_theme(state)
@@ -215,6 +277,6 @@ if __name__ == '__main__':
     try:
         if len(sys.argv) != 2: raise ValueError('Usage: desktop-action ACTION')
         main(sys.argv[1])
-    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+    except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(error, file=sys.stderr)
         sys.exit(1)

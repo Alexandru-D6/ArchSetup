@@ -1,5 +1,40 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
+Latest task: expanded the single-source shortcut map to **224 bindings**, including
+physical number-row/keypad aliases and relative workspace controls. Existing
+launcher/calculator/scratch keys are preserved; maximize, zoom-in and snip have
+nonconflicting alternatives. Implemented local OCR/screenshot saving, session-owned
+recording start/stop (including output-monitor audio), native on-screen keyboard,
+utilities/detached tools, media controls, shell/clock toggles, editor/office/task
+launchers, zoom and universal VM passthrough escape. Added official app/capture
+packages and configurable desktop-entry preferences. No upstream code/assets or
+AI/cloud shortcuts were imported. Full key reference: docs/desktop-shortcuts.md.
+
+Validation: **20 local tests pass**, native Lua parsing and playbook syntax pass.
+The VM registered all 224 entries. Tested modifier-only launcher without chord
+interference, utilities/detachment, keyboard key delivery, app aliases (Geany,
+Mousepad, LibreOffice, btop), relative and silent workspace movement, floating /
+640x480 sizing / pinning, zoom and reset, bar/clock/placement toggles, shell restart,
+VM-mode entry/escape, saved screenshot, local OCR fixture copied to clipboard,
+video record/stop and audio capture with a generated tone on a VM null sink.
+ffprobe confirmed H.264 + AAC in the final audio recording. Physical audio and
+hardware-specific keys remain subject to the older hardware acceptance limits.
+
+Runtime fixes: moved utilities into a separately imported QML component; created
+VM submap through its universal escape bind (empty submaps were ineffective);
+corrected wf-recorder backend to pulse; bounded capture/OCR waits; isolated
+clipboard daemon output streams; retained default media folders when XDG folders
+are unconfigured. Keep-awake now belongs to the always-mapped background surface,
+so taskbar hiding does not remove the inhibitor. Added IPC awake/status hooks for
+acceptance checks. Temporary validation helpers are /tmp/desktop-shortcut-session.py
+in the VM and corresponding /tmp/archsetup-* files on the host. Latest guest logs:
+/tmp/desktop-shortcuts-final.log, /tmp/desktop-shortcuts-repeat.log and
+/tmp/desktop-shortcuts-verify.log. Final repeated apply: ok=39 changed=0 failed=0 skipped=19. Verify: ok=18
+changed=0 failed=0 skipped=2. Test clipboard cleared and VM account password
+locked again; temporary host credential files removed. VM disk flushed and
+poweroff completed cleanly using the direct helper. No workstation deployment
+was made.
+
 Latest user requests: remove bundled third-party assets and remove power-action
 confirmation. The copied wallpaper/font and accompanying files are removed from
 the working tree and Git index. Default backgrounds are generated gradients;

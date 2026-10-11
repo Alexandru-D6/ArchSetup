@@ -5,6 +5,10 @@
       - archsetup_desktop_user is match('^[a-z_][a-z0-9_-]*$')
       - archsetup_desktop_user != 'root'
       - archsetup_desktop_browser is match('^[A-Za-z0-9_.-]+\.desktop$')
+      - archsetup_desktop_code_editor is match('^[A-Za-z0-9_.-]+\.desktop$')
+      - archsetup_desktop_text_editor is match('^[A-Za-z0-9_.-]+\.desktop$')
+      - archsetup_desktop_office is match('^[A-Za-z0-9_.-]+\.desktop$')
+      - archsetup_desktop_ocr_language is match('^[a-z_+]+$')
       - archsetup_desktop_lock_seconds | int > 0
       - archsetup_desktop_dpms_seconds | int > archsetup_desktop_lock_seconds | int
     fail_msg: Set a regular desktop user, a desktop-entry browser ID and valid idle timeouts.

@@ -25,7 +25,7 @@ def render(destination, overrides=None):
         (destination / template.stem).write_text(env.get_template(template.name).render(defaults))
     shutil.copytree(ROLE / 'files/shell', destination / 'shell', dirs_exist_ok=True)
     (destination / 'bin').mkdir(exist_ok=True)
-    for filename in ['desktop-action', 'session-services', 'validate-config', 'lock-visuals']:
+    for filename in ['desktop-action', 'desktop-record', 'session-services', 'validate-config', 'lock-visuals']:
         shutil.copy2(ROLE / 'files' / filename, destination / 'bin' / filename)
         (destination / 'bin' / filename).chmod(0o755)
     shutil.copy2(ROLE / 'files/shortcuts.json', destination / 'shortcuts.json')

@@ -2,312 +2,1401 @@
   {
     "key": "SUPER + Return",
     "action": "terminal",
-    "description": "Terminal"
+    "description": "Terminal",
+    "category": "Applications"
   },
   {
     "key": "SUPER + W",
     "action": "browser",
-    "description": "Browser"
+    "description": "Browser",
+    "category": "Applications"
   },
   {
     "key": "SUPER + E",
     "action": "files",
-    "description": "Files"
+    "description": "Files",
+    "category": "Applications"
   },
   {
     "key": "SUPER + D",
     "action": "launcher",
-    "description": "Launcher"
+    "description": "Launcher",
+    "category": "Applications"
   },
   {
     "key": "SUPER + Tab",
     "action": "overview",
-    "description": "Window overview"
+    "description": "Window overview",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + Slash",
     "action": "help",
-    "description": "Shortcut help"
+    "description": "Shortcut help",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + V",
     "action": "clipboard",
-    "description": "Clipboard"
+    "description": "Clipboard",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + Period",
     "action": "emoji",
-    "description": "Emoji"
+    "description": "Emoji",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + N",
     "action": "notifications",
-    "description": "Notifications"
+    "description": "Notifications",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + Comma",
     "action": "settings",
-    "description": "Quick settings"
+    "description": "Quick settings",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + L",
     "action": "lock",
-    "description": "Lock"
+    "description": "Lock",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + SHIFT + Escape",
     "action": "session",
-    "description": "Session menu"
+    "description": "Session menu",
+    "category": "Utilities"
   },
   {
     "key": "Print",
     "action": "screenshot",
-    "description": "Region screenshot"
+    "description": "Region screenshot",
+    "category": "Utilities"
   },
   {
     "key": "SHIFT + Print",
     "action": "screenshot-full",
-    "description": "Full screenshot"
+    "description": "Full screenshot",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + SHIFT + C",
     "action": "color",
-    "description": "Color picker"
+    "description": "Color picker",
+    "category": "Utilities"
   },
   {
     "key": "SUPER + Q",
     "dispatcher": "hl.dsp.window.close()",
-    "description": "Close window"
+    "description": "Close window",
+    "category": "Windows"
   },
   {
     "key": "SUPER + F",
     "dispatcher": "hl.dsp.window.fullscreen({mode=\"fullscreen\", action=\"toggle\"})",
-    "description": "Fullscreen"
+    "description": "Fullscreen",
+    "category": "Windows"
   },
   {
     "key": "SUPER + SHIFT + F",
     "dispatcher": "hl.dsp.window.float({action=\"toggle\"})",
-    "description": "Floating"
+    "description": "Floating",
+    "category": "Windows"
   },
   {
     "key": "SUPER + S",
     "dispatcher": "hl.dsp.workspace.toggle_special(\"scratch\")",
-    "description": "Scratch workspace"
+    "description": "Scratch workspace",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + S",
     "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\"})",
-    "description": "Move to scratch"
+    "description": "Move to scratch",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + left",
     "dispatcher": "hl.dsp.focus({direction=\"left\"})",
-    "description": "Focus left"
+    "description": "Focus left",
+    "category": "Windows"
   },
   {
     "key": "SUPER + SHIFT + left",
     "dispatcher": "hl.dsp.window.move({direction=\"left\"})",
-    "description": "Move left"
+    "description": "Move left",
+    "category": "Windows"
   },
   {
     "key": "SUPER + right",
     "dispatcher": "hl.dsp.focus({direction=\"right\"})",
-    "description": "Focus right"
+    "description": "Focus right",
+    "category": "Windows"
   },
   {
     "key": "SUPER + SHIFT + right",
     "dispatcher": "hl.dsp.window.move({direction=\"right\"})",
-    "description": "Move right"
+    "description": "Move right",
+    "category": "Windows"
   },
   {
     "key": "SUPER + up",
     "dispatcher": "hl.dsp.focus({direction=\"up\"})",
-    "description": "Focus up"
+    "description": "Focus up",
+    "category": "Windows"
   },
   {
     "key": "SUPER + SHIFT + up",
     "dispatcher": "hl.dsp.window.move({direction=\"up\"})",
-    "description": "Move up"
+    "description": "Move up",
+    "category": "Windows"
   },
   {
     "key": "SUPER + down",
     "dispatcher": "hl.dsp.focus({direction=\"down\"})",
-    "description": "Focus down"
+    "description": "Focus down",
+    "category": "Windows"
   },
   {
     "key": "SUPER + SHIFT + down",
     "dispatcher": "hl.dsp.window.move({direction=\"down\"})",
-    "description": "Move down"
+    "description": "Move down",
+    "category": "Windows"
   },
   {
     "key": "SUPER + 1",
     "dispatcher": "hl.dsp.focus({workspace=1})",
-    "description": "Workspace 1"
+    "description": "Workspace 1",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 1",
     "dispatcher": "hl.dsp.window.move({workspace=1})",
-    "description": "Move to workspace 1"
+    "description": "Move to workspace 1",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 2",
     "dispatcher": "hl.dsp.focus({workspace=2})",
-    "description": "Workspace 2"
+    "description": "Workspace 2",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 2",
     "dispatcher": "hl.dsp.window.move({workspace=2})",
-    "description": "Move to workspace 2"
+    "description": "Move to workspace 2",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 3",
     "dispatcher": "hl.dsp.focus({workspace=3})",
-    "description": "Workspace 3"
+    "description": "Workspace 3",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 3",
     "dispatcher": "hl.dsp.window.move({workspace=3})",
-    "description": "Move to workspace 3"
+    "description": "Move to workspace 3",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 4",
     "dispatcher": "hl.dsp.focus({workspace=4})",
-    "description": "Workspace 4"
+    "description": "Workspace 4",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 4",
     "dispatcher": "hl.dsp.window.move({workspace=4})",
-    "description": "Move to workspace 4"
+    "description": "Move to workspace 4",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 5",
     "dispatcher": "hl.dsp.focus({workspace=5})",
-    "description": "Workspace 5"
+    "description": "Workspace 5",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 5",
     "dispatcher": "hl.dsp.window.move({workspace=5})",
-    "description": "Move to workspace 5"
+    "description": "Move to workspace 5",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 6",
     "dispatcher": "hl.dsp.focus({workspace=6})",
-    "description": "Workspace 6"
+    "description": "Workspace 6",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 6",
     "dispatcher": "hl.dsp.window.move({workspace=6})",
-    "description": "Move to workspace 6"
+    "description": "Move to workspace 6",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 7",
     "dispatcher": "hl.dsp.focus({workspace=7})",
-    "description": "Workspace 7"
+    "description": "Workspace 7",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 7",
     "dispatcher": "hl.dsp.window.move({workspace=7})",
-    "description": "Move to workspace 7"
+    "description": "Move to workspace 7",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 8",
     "dispatcher": "hl.dsp.focus({workspace=8})",
-    "description": "Workspace 8"
+    "description": "Workspace 8",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 8",
     "dispatcher": "hl.dsp.window.move({workspace=8})",
-    "description": "Move to workspace 8"
+    "description": "Move to workspace 8",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 9",
     "dispatcher": "hl.dsp.focus({workspace=9})",
-    "description": "Workspace 9"
+    "description": "Workspace 9",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 9",
     "dispatcher": "hl.dsp.window.move({workspace=9})",
-    "description": "Move to workspace 9"
+    "description": "Move to workspace 9",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + 0",
     "dispatcher": "hl.dsp.focus({workspace=10})",
-    "description": "Workspace 10"
+    "description": "Workspace 10",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + SHIFT + 0",
     "dispatcher": "hl.dsp.window.move({workspace=10})",
-    "description": "Move to workspace 10"
+    "description": "Move to workspace 10",
+    "category": "Workspaces"
   },
   {
     "key": "SUPER + mouse:272",
     "dispatcher": "hl.dsp.window.drag()",
     "description": "Drag window",
-    "mouse": true
+    "mouse": true,
+    "category": "Windows"
   },
   {
     "key": "SUPER + mouse:273",
     "dispatcher": "hl.dsp.window.resize()",
     "description": "Resize window",
-    "mouse": true
+    "mouse": true,
+    "category": "Windows"
   },
   {
     "key": "XF86AudioRaiseVolume",
     "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+\")",
     "description": "AudioRaiseVolume",
-    "locked": true
+    "locked": true,
+    "category": "Media",
+    "repeating": true
   },
   {
     "key": "XF86AudioLowerVolume",
     "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-\")",
     "description": "AudioLowerVolume",
-    "locked": true
+    "locked": true,
+    "category": "Media",
+    "repeating": true
   },
   {
     "key": "XF86AudioMute",
     "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle\")",
     "description": "AudioMute",
-    "locked": true
+    "locked": true,
+    "category": "Media"
   },
   {
     "key": "XF86AudioMicMute",
     "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle\")",
     "description": "AudioMicMute",
-    "locked": true
+    "locked": true,
+    "category": "Media"
   },
   {
     "key": "XF86MonBrightnessUp",
     "dispatcher": "hl.dsp.exec_cmd(\"brightnessctl -n2 set 5%+\")",
     "description": "MonBrightnessUp",
-    "locked": true
+    "locked": true,
+    "category": "Media",
+    "repeating": true
   },
   {
     "key": "XF86MonBrightnessDown",
     "dispatcher": "hl.dsp.exec_cmd(\"brightnessctl -n2 set 5%-\")",
     "description": "MonBrightnessDown",
-    "locked": true
+    "locked": true,
+    "category": "Media",
+    "repeating": true
   },
   {
     "key": "XF86AudioPlay",
     "dispatcher": "hl.dsp.exec_cmd(\"playerctl play-pause\")",
     "description": "AudioPlay",
-    "locked": true
+    "locked": true,
+    "category": "Media"
   },
   {
     "key": "XF86AudioNext",
     "dispatcher": "hl.dsp.exec_cmd(\"playerctl next\")",
     "description": "AudioNext",
-    "locked": true
+    "locked": true,
+    "category": "Media"
   },
   {
     "key": "XF86AudioPrev",
     "dispatcher": "hl.dsp.exec_cmd(\"playerctl previous\")",
     "description": "AudioPrev",
-    "locked": true
+    "locked": true,
+    "category": "Media"
   },
   {
     "key": "SUPER + equal",
     "action": "calculator",
-    "description": "Calculator"
+    "description": "Calculator",
+    "category": "Applications"
+  },
+  {
+    "key": "SUPER + T",
+    "description": "Terminal",
+    "category": "Applications",
+    "action": "terminal"
+  },
+  {
+    "key": "CTRL + ALT + T",
+    "description": "Terminal",
+    "category": "Applications",
+    "action": "terminal"
+  },
+  {
+    "key": "SUPER + C",
+    "description": "Code editor",
+    "category": "Applications",
+    "action": "code-editor"
+  },
+  {
+    "key": "SUPER + X",
+    "description": "Text editor",
+    "category": "Applications",
+    "action": "text-editor"
+  },
+  {
+    "key": "CTRL + SUPER + SHIFT + ALT + W",
+    "description": "Office",
+    "category": "Applications",
+    "action": "office"
+  },
+  {
+    "key": "CTRL + SUPER + V",
+    "description": "Volume mixer",
+    "category": "Applications",
+    "action": "audio"
+  },
+  {
+    "key": "SUPER + I",
+    "description": "Quick settings",
+    "category": "Applications",
+    "action": "settings"
+  },
+  {
+    "key": "CTRL + SHIFT + Escape",
+    "description": "Task manager",
+    "category": "Applications",
+    "action": "task-manager"
+  },
+  {
+    "key": "SUPER + SUPER_L",
+    "description": "Launcher on left Super release",
+    "category": "Applications",
+    "release": true,
+    "action": "launcher"
+  },
+  {
+    "key": "SUPER + SUPER_R",
+    "description": "Launcher on right Super release",
+    "category": "Applications",
+    "release": true,
+    "action": "launcher"
+  },
+  {
+    "key": "SUPER + A",
+    "description": "Utilities",
+    "category": "Shell",
+    "action": "tools"
+  },
+  {
+    "key": "SUPER + B",
+    "description": "Utilities",
+    "category": "Shell",
+    "action": "tools"
+  },
+  {
+    "key": "SUPER + O",
+    "description": "Utilities",
+    "category": "Shell",
+    "action": "tools"
+  },
+  {
+    "key": "SUPER + ALT + A",
+    "description": "Detach utilities",
+    "category": "Shell",
+    "action": "detach-tools"
+  },
+  {
+    "key": "SUPER + K",
+    "description": "On-screen keyboard",
+    "category": "Shell",
+    "action": "keyboard"
+  },
+  {
+    "key": "SUPER + M",
+    "description": "Media controls",
+    "category": "Shell",
+    "action": "media"
+  },
+  {
+    "key": "SUPER + G",
+    "description": "Show / hide desktop clock",
+    "category": "Shell",
+    "action": "widgets"
+  },
+  {
+    "key": "SUPER + J",
+    "description": "Show / hide taskbar",
+    "category": "Shell",
+    "action": "bar"
+  },
+  {
+    "key": "CTRL + SUPER + P",
+    "description": "Top / bottom taskbar",
+    "category": "Shell",
+    "action": "bar-position"
+  },
+  {
+    "key": "CTRL + SUPER + R",
+    "description": "Restart this desktop shell",
+    "category": "Shell",
+    "action": "restart-shell"
+  },
+  {
+    "key": "CTRL + SUPER + T",
+    "description": "Choose wallpaper",
+    "category": "Shell",
+    "action": "wallpaper"
+  },
+  {
+    "key": "CTRL + SUPER + ALT + T",
+    "description": "Random personal wallpaper",
+    "category": "Shell",
+    "action": "wallpaper-random"
+  },
+  {
+    "key": "CTRL + SUPER + SHIFT + D",
+    "description": "Light / dark theme",
+    "category": "Shell",
+    "action": "theme"
+  },
+  {
+    "key": "SUPER + SHIFT + ALT + Slash",
+    "description": "Shortcut help",
+    "category": "Shell",
+    "action": "help"
+  },
+  {
+    "key": "CTRL + SUPER + ALT + Slash",
+    "description": "Edit personal bindings",
+    "category": "Shell",
+    "action": "edit-shortcuts"
+  },
+  {
+    "key": "SUPER + Print",
+    "description": "Focused-monitor screenshot",
+    "category": "Utilities",
+    "action": "screenshot-monitor"
+  },
+  {
+    "key": "CTRL + Print",
+    "description": "Save and copy focused-monitor screenshot",
+    "category": "Utilities",
+    "action": "screenshot-save"
+  },
+  {
+    "key": "CTRL + SHIFT + Print",
+    "description": "Save and copy screen snip",
+    "category": "Utilities",
+    "action": "screenshot-region-save"
+  },
+  {
+    "key": "CTRL + SUPER + SHIFT + S",
+    "description": "Screen snip",
+    "category": "Utilities",
+    "action": "screenshot"
+  },
+  {
+    "key": "SUPER + SHIFT + X",
+    "description": "Read screen text into clipboard",
+    "category": "Utilities",
+    "action": "ocr"
+  },
+  {
+    "key": "SUPER + SHIFT + R",
+    "description": "Start / stop region recording",
+    "category": "Utilities",
+    "action": "record-region"
+  },
+  {
+    "key": "SUPER + ALT + R",
+    "description": "Start / stop region recording",
+    "category": "Utilities",
+    "action": "record-region"
+  },
+  {
+    "key": "CTRL + ALT + R",
+    "description": "Start / stop monitor recording",
+    "category": "Utilities",
+    "action": "record-full"
+  },
+  {
+    "key": "SUPER + SHIFT + ALT + R",
+    "description": "Start / stop monitor recording with output audio",
+    "category": "Utilities",
+    "action": "record-full-audio"
+  },
+  {
+    "key": "CTRL + SUPER + SHIFT + R",
+    "description": "Stop recording",
+    "category": "Utilities",
+    "action": "record-stop"
+  },
+  {
+    "key": "SUPER + Minus",
+    "description": "Zoom out",
+    "category": "Screen",
+    "repeating": true,
+    "callback": "zoom-out"
+  },
+  {
+    "key": "CTRL + SUPER + Equal",
+    "description": "Zoom in",
+    "category": "Screen",
+    "repeating": true,
+    "callback": "zoom-in"
+  },
+  {
+    "key": "SUPER + code:82",
+    "description": "Zoom out (keypad)",
+    "category": "Screen",
+    "repeating": true,
+    "callback": "zoom-out"
+  },
+  {
+    "key": "SUPER + code:86",
+    "description": "Zoom in (keypad)",
+    "category": "Screen",
+    "repeating": true,
+    "callback": "zoom-in"
+  },
+  {
+    "key": "CTRL + SUPER + 0",
+    "description": "Reset zoom",
+    "category": "Screen",
+    "repeating": false,
+    "callback": "zoom-reset"
+  },
+  {
+    "key": "SUPER + SHIFT + N",
+    "description": "Next track",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl next\")"
+  },
+  {
+    "key": "SUPER + SHIFT + B",
+    "description": "Previous track",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl previous\")"
+  },
+  {
+    "key": "SUPER + SHIFT + P",
+    "description": "Play / pause",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl play-pause\")"
+  },
+  {
+    "key": "SUPER + SHIFT + M",
+    "description": "Speaker mute",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle\")"
+  },
+  {
+    "key": "SUPER + ALT + M",
+    "description": "Microphone mute",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle\")"
+  },
+  {
+    "key": "XF86AudioPause",
+    "description": "Play / pause",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl play-pause\")"
+  },
+  {
+    "key": "ALT + XF86AudioMute",
+    "description": "Microphone mute",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle\")"
+  },
+  {
+    "key": "SUPER + SHIFT + ALT + mouse:275",
+    "description": "Previous track (mouse)",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl previous\")"
+  },
+  {
+    "key": "SUPER + SHIFT + ALT + mouse:276",
+    "description": "Next track (mouse)",
+    "category": "Media",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"playerctl next\")"
+  },
+  {
+    "key": "ALT + F4",
+    "description": "Close window",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.window.close()"
+  },
+  {
+    "key": "SUPER + ALT + D",
+    "description": "Maximize window",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.window.fullscreen({mode=\"maximized\",action=\"toggle\"})"
+  },
+  {
+    "key": "SUPER + ALT + Space",
+    "description": "Float / tile window",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.window.float({action=\"toggle\"})"
+  },
+  {
+    "key": "SUPER + ALT + F",
+    "description": "Client-only fullscreen",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.window.fullscreen_state({internal=0,client=3,action=\"toggle\"})"
+  },
+  {
+    "key": "SUPER + P",
+    "description": "Pin floating window",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.window.pin({action=\"toggle\"})"
+  },
+  {
+    "key": "CTRL + SUPER + Backslash",
+    "description": "Resize window to 640 × 480",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.window.resize({x=640,y=480,relative=false})"
+  },
+  {
+    "key": "SUPER + Semicolon",
+    "description": "Decrease split ratio",
+    "category": "Windows",
+    "repeating": true,
+    "mouse": false,
+    "dispatcher": "hl.dsp.layout(\"splitratio -0.1\")"
+  },
+  {
+    "key": "SUPER + Apostrophe",
+    "description": "Increase split ratio",
+    "category": "Windows",
+    "repeating": true,
+    "mouse": false,
+    "dispatcher": "hl.dsp.layout(\"splitratio +0.1\")"
+  },
+  {
+    "key": "SUPER + BracketLeft",
+    "description": "Focus left",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.focus({direction=\"left\"})"
+  },
+  {
+    "key": "SUPER + BracketRight",
+    "description": "Focus right",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": false,
+    "dispatcher": "hl.dsp.focus({direction=\"right\"})"
+  },
+  {
+    "key": "SUPER + mouse:274",
+    "description": "Drag window (middle button)",
+    "category": "Windows",
+    "repeating": false,
+    "mouse": true,
+    "dispatcher": "hl.dsp.window.drag()"
+  },
+  {
+    "key": "SUPER + SHIFT + ALT + Q",
+    "description": "Select window to force-close",
+    "category": "Windows",
+    "action": "kill-window"
+  },
+  {
+    "key": "SUPER + ALT + 1",
+    "description": "Send to workspace 1 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=false})"
+  },
+  {
+    "key": "SUPER + code:10",
+    "description": "Workspace 1 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=1})"
+  },
+  {
+    "key": "SUPER + ALT + code:10",
+    "description": "Send to workspace 1 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:10",
+    "description": "Move to workspace 1 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=1})"
+  },
+  {
+    "key": "SUPER + code:87",
+    "description": "Workspace 1 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=1})"
+  },
+  {
+    "key": "SUPER + ALT + code:87",
+    "description": "Send to workspace 1 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:87",
+    "description": "Move to workspace 1 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=1})"
+  },
+  {
+    "key": "SUPER + ALT + 2",
+    "description": "Send to workspace 2 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=false})"
+  },
+  {
+    "key": "SUPER + code:11",
+    "description": "Workspace 2 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=2})"
+  },
+  {
+    "key": "SUPER + ALT + code:11",
+    "description": "Send to workspace 2 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:11",
+    "description": "Move to workspace 2 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=2})"
+  },
+  {
+    "key": "SUPER + code:88",
+    "description": "Workspace 2 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=2})"
+  },
+  {
+    "key": "SUPER + ALT + code:88",
+    "description": "Send to workspace 2 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:88",
+    "description": "Move to workspace 2 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=2})"
+  },
+  {
+    "key": "SUPER + ALT + 3",
+    "description": "Send to workspace 3 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=false})"
+  },
+  {
+    "key": "SUPER + code:12",
+    "description": "Workspace 3 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=3})"
+  },
+  {
+    "key": "SUPER + ALT + code:12",
+    "description": "Send to workspace 3 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:12",
+    "description": "Move to workspace 3 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=3})"
+  },
+  {
+    "key": "SUPER + code:89",
+    "description": "Workspace 3 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=3})"
+  },
+  {
+    "key": "SUPER + ALT + code:89",
+    "description": "Send to workspace 3 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:89",
+    "description": "Move to workspace 3 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=3})"
+  },
+  {
+    "key": "SUPER + ALT + 4",
+    "description": "Send to workspace 4 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=false})"
+  },
+  {
+    "key": "SUPER + code:13",
+    "description": "Workspace 4 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=4})"
+  },
+  {
+    "key": "SUPER + ALT + code:13",
+    "description": "Send to workspace 4 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:13",
+    "description": "Move to workspace 4 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=4})"
+  },
+  {
+    "key": "SUPER + code:83",
+    "description": "Workspace 4 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=4})"
+  },
+  {
+    "key": "SUPER + ALT + code:83",
+    "description": "Send to workspace 4 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:83",
+    "description": "Move to workspace 4 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=4})"
+  },
+  {
+    "key": "SUPER + ALT + 5",
+    "description": "Send to workspace 5 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=false})"
+  },
+  {
+    "key": "SUPER + code:14",
+    "description": "Workspace 5 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=5})"
+  },
+  {
+    "key": "SUPER + ALT + code:14",
+    "description": "Send to workspace 5 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:14",
+    "description": "Move to workspace 5 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=5})"
+  },
+  {
+    "key": "SUPER + code:84",
+    "description": "Workspace 5 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=5})"
+  },
+  {
+    "key": "SUPER + ALT + code:84",
+    "description": "Send to workspace 5 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:84",
+    "description": "Move to workspace 5 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=5})"
+  },
+  {
+    "key": "SUPER + ALT + 6",
+    "description": "Send to workspace 6 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=false})"
+  },
+  {
+    "key": "SUPER + code:15",
+    "description": "Workspace 6 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=6})"
+  },
+  {
+    "key": "SUPER + ALT + code:15",
+    "description": "Send to workspace 6 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:15",
+    "description": "Move to workspace 6 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=6})"
+  },
+  {
+    "key": "SUPER + code:85",
+    "description": "Workspace 6 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=6})"
+  },
+  {
+    "key": "SUPER + ALT + code:85",
+    "description": "Send to workspace 6 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:85",
+    "description": "Move to workspace 6 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=6})"
+  },
+  {
+    "key": "SUPER + ALT + 7",
+    "description": "Send to workspace 7 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=false})"
+  },
+  {
+    "key": "SUPER + code:16",
+    "description": "Workspace 7 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=7})"
+  },
+  {
+    "key": "SUPER + ALT + code:16",
+    "description": "Send to workspace 7 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:16",
+    "description": "Move to workspace 7 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=7})"
+  },
+  {
+    "key": "SUPER + code:79",
+    "description": "Workspace 7 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=7})"
+  },
+  {
+    "key": "SUPER + ALT + code:79",
+    "description": "Send to workspace 7 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:79",
+    "description": "Move to workspace 7 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=7})"
+  },
+  {
+    "key": "SUPER + ALT + 8",
+    "description": "Send to workspace 8 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=false})"
+  },
+  {
+    "key": "SUPER + code:17",
+    "description": "Workspace 8 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=8})"
+  },
+  {
+    "key": "SUPER + ALT + code:17",
+    "description": "Send to workspace 8 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:17",
+    "description": "Move to workspace 8 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=8})"
+  },
+  {
+    "key": "SUPER + code:80",
+    "description": "Workspace 8 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=8})"
+  },
+  {
+    "key": "SUPER + ALT + code:80",
+    "description": "Send to workspace 8 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:80",
+    "description": "Move to workspace 8 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=8})"
+  },
+  {
+    "key": "SUPER + ALT + 9",
+    "description": "Send to workspace 9 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=false})"
+  },
+  {
+    "key": "SUPER + code:18",
+    "description": "Workspace 9 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=9})"
+  },
+  {
+    "key": "SUPER + ALT + code:18",
+    "description": "Send to workspace 9 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:18",
+    "description": "Move to workspace 9 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=9})"
+  },
+  {
+    "key": "SUPER + code:81",
+    "description": "Workspace 9 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=9})"
+  },
+  {
+    "key": "SUPER + ALT + code:81",
+    "description": "Send to workspace 9 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:81",
+    "description": "Move to workspace 9 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=9})"
+  },
+  {
+    "key": "SUPER + ALT + 0",
+    "description": "Send to workspace 10 without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=false})"
+  },
+  {
+    "key": "SUPER + code:19",
+    "description": "Workspace 10 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=10})"
+  },
+  {
+    "key": "SUPER + ALT + code:19",
+    "description": "Send to workspace 10 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:19",
+    "description": "Move to workspace 10 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=10})"
+  },
+  {
+    "key": "SUPER + code:90",
+    "description": "Workspace 10 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=10})"
+  },
+  {
+    "key": "SUPER + ALT + code:90",
+    "description": "Send to workspace 10 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + code:90",
+    "description": "Move to workspace 10 (physical key)",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=10})"
+  },
+  {
+    "key": "CTRL + SUPER + Left",
+    "description": "Focus relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r-1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + Right",
+    "description": "Focus relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r+1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + ALT + Left",
+    "description": "Focus relative workspace m-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"m-1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + ALT + Right",
+    "description": "Focus relative workspace m+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"m+1\"})"
+  },
+  {
+    "key": "SUPER + Page_Up",
+    "description": "Focus relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r-1\"})"
+  },
+  {
+    "key": "SUPER + Page_Down",
+    "description": "Focus relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r+1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + Page_Up",
+    "description": "Focus relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r-1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + Page_Down",
+    "description": "Focus relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r+1\"})"
+  },
+  {
+    "key": "SUPER + mouse_up",
+    "description": "Focus relative workspace -1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"-1\"})"
+  },
+  {
+    "key": "SUPER + mouse_down",
+    "description": "Focus relative workspace +1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"+1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + mouse_up",
+    "description": "Focus relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r-1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + mouse_down",
+    "description": "Focus relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r+1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + BracketLeft",
+    "description": "Focus relative workspace -1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"-1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + BracketRight",
+    "description": "Focus relative workspace +1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"+1\"})"
+  },
+  {
+    "key": "CTRL + SUPER + Up",
+    "description": "Focus relative workspace r-5",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r-5\"})"
+  },
+  {
+    "key": "CTRL + SUPER + Down",
+    "description": "Focus relative workspace r+5",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.focus({workspace=\"r+5\"})"
+  },
+  {
+    "key": "SUPER + SHIFT + mouse_up",
+    "description": "Send window to relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + mouse_down",
+    "description": "Send window to relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+  },
+  {
+    "key": "SUPER + ALT + mouse_up",
+    "description": "Send window to relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+  },
+  {
+    "key": "SUPER + ALT + mouse_down",
+    "description": "Send window to relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + Page_Up",
+    "description": "Send window to relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+  },
+  {
+    "key": "SUPER + SHIFT + Page_Down",
+    "description": "Send window to relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+  },
+  {
+    "key": "SUPER + ALT + Page_Up",
+    "description": "Send window to relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+  },
+  {
+    "key": "SUPER + ALT + Page_Down",
+    "description": "Send window to relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+  },
+  {
+    "key": "CTRL + SUPER + SHIFT + Left",
+    "description": "Send window to relative workspace r-1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+  },
+  {
+    "key": "CTRL + SUPER + SHIFT + Right",
+    "description": "Send window to relative workspace r+1",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+  },
+  {
+    "key": "CTRL + SUPER + S",
+    "description": "Toggle scratch workspace",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.workspace.toggle_special(\"scratch\")"
+  },
+  {
+    "key": "SUPER + mouse:275",
+    "description": "Toggle scratch workspace",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.workspace.toggle_special(\"scratch\")"
+  },
+  {
+    "key": "SUPER + ALT + S",
+    "description": "Send to scratch without following",
+    "category": "Workspaces",
+    "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\",follow=false})"
+  },
+  {
+    "key": "SUPER + ALT + F1",
+    "description": "Toggle VM shortcut passthrough",
+    "category": "Virtual machines",
+    "submap_universal": true,
+    "callback": "vm-toggle",
+    "submap": "archsetup-vm"
+  },
+  {
+    "key": "CTRL + ALT + Delete",
+    "description": "Session menu",
+    "category": "Session",
+    "action": "session"
+  },
+  {
+    "key": "SUPER + SHIFT + L",
+    "description": "Suspend",
+    "category": "Session",
+    "locked": true,
+    "dispatcher": "hl.dsp.exec_cmd(\"systemctl suspend\")"
+  },
+  {
+    "key": "CTRL + SHIFT + ALT + SUPER + Delete",
+    "description": "Shutdown",
+    "category": "Session",
+    "action": "poweroff"
   }
 ]

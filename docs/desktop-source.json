@@ -25,5 +25,11 @@
   "bundled_assets": [],
   "theme": "Original gradient background and system typography; ii-inspired top bar, grouped surfaces, clock and 18px corners; native Hyprlock lock layout",
   "third_party_assets_included": false,
-  "font_policy": "Uses installed system fonts; no font files are distributed by this repository"
+  "font_policy": "Uses installed system fonts; no font files are distributed by this repository",
+  "shortcuts": {
+    "count": 224,
+    "source": "roles/desktop/files/shortcuts.json",
+    "scope": "Supported non-AI reference shortcuts and aliases, preserving existing ArchSetup bindings",
+    "cloud_image_search_or_translation": false
+  }
 }

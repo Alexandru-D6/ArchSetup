@@ -32,10 +32,28 @@ hl.config({
 hl.env("XCURSOR_SIZE", "24")
 hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
 hl.on("hyprland.start", function() hl.exec_cmd(root .. "/bin/session-services") end)
+-- Native callbacks only: never run blocking external work on the compositor loop.
+local callbacks = {}
+local function zoom(delta)
+    local value = tonumber(hl.get_config("cursor:zoom_factor")) or 1
+    hl.config({cursor={zoom_factor=math.max(1, math.min(3, value + delta))}})
+end
+callbacks["zoom-in"] = function() zoom(0.3) end
+callbacks["zoom-out"] = function() zoom(-0.3) end
+callbacks["zoom-reset"] = function() hl.config({cursor={zoom_factor=1}}) end
+callbacks["vm-toggle"] = function()
+    local enabled = hl.get_current_submap() ~= "archsetup-vm"
+    hl.dispatch(hl.dsp.submap(enabled and "archsetup-vm" or "reset"))
+    hl.exec_cmd("notify-send 'VM shortcut passthrough' '" .. (enabled and "Enabled. Super+Alt+F1 restores desktop shortcuts." or "Desktop shortcuts restored.") .. "'")
+end
 {% for binding in lookup('file', role_path + '/files/shortcuts.json') | from_json %}
-hl.bind({{ binding.key | to_json }}, {% if binding.action is defined %}hl.dsp.exec_cmd(action .. " {{ binding.action }}"){% else %}{{ binding.dispatcher }}{% endif %}, {
-    description = {{ binding.description | to_json }}{% if binding.mouse | default(false) %}, mouse = true{% endif %}{% if binding.locked | default(false) %}, locked = true{% endif %}
+{% if binding.submap is defined %}hl.define_submap({{ binding.submap | to_json }}, function()
+{% endif %}
+hl.bind({{ binding.key | to_json }}, {% if binding.action is defined %}hl.dsp.exec_cmd(action .. " {{ binding.action }}"){% elif binding.callback is defined %}callbacks[{{ binding.callback | to_json }}]{% else %}{{ binding.dispatcher }}{% endif %}, {
+    description = {{ binding.description | to_json(ensure_ascii=false) }}{% for flag in ['mouse', 'locked', 'repeating', 'release', 'submap_universal'] %}{% if binding[flag] | default(false) %}, {{ flag }} = true{% endif %}{% endfor %}
 })
+{% if binding.submap is defined %}end)
+{% endif %}
 {% endfor %}
 local colors = io.open(root .. "/theme/colors.lua", "r")
 if colors then colors:close(); dofile(root .. "/theme/colors.lua") end

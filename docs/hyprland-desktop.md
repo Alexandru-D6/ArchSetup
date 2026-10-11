@@ -111,7 +111,11 @@ factor 0.7. Adjust `archsetup_desktop_input` if the old 0.5 value was intended.
 
 Super+D opens applications, Super+Tab shows windows/workspaces, Super+Comma opens
 quick settings, Super+N opens notification history, Super+L locks, and Super+/
-shows all shortcuts. Super+W launches the configured browser without passing a
+shows all shortcuts. The [complete shortcut reference](desktop-shortcuts.md) lists
+application aliases, relative/keypad workspace controls, window actions, zoom,
+local OCR, recording, shell toggles and VM passthrough. Existing Super+D,
+Super+Equal and Super+Shift+S bindings are retained; their upstream conflicts
+have separate keys. Super+W launches the configured browser without passing a
 URL. Workspace buttons focus workspaces; task buttons focus windows and offer a
 right-click close menu. The overview supports arrow navigation and Enter.
 

@@ -190,10 +190,54 @@ class DesktopTests(unittest.TestCase):
 
     def test_all_shortcuts_unique_and_layout_switch_reserved(self):
         bindings = json.loads((self.profile / 'shortcuts.json').read_text())
-        keys = [item['key'] for item in bindings]
+        def canonical(key):
+            parts = [part.strip().lower() for part in key.split('+')]
+            return tuple(sorted(parts[:-1])) + (parts[-1],)
+        keys = [(canonical(item['key']), item.get('release', False)) for item in bindings]
         self.assertEqual(len(keys), len(set(keys)))
-        self.assertNotIn('SUPER + Space', keys)
+        self.assertNotIn((canonical('SUPER + Space'), False), keys)
+        self.assertNotIn((canonical('SUPER + Space'), True), keys)
+        self.assertTrue(all(sum(field in item for field in ['action', 'dispatcher', 'callback']) == 1 for item in bindings))
         self.assertTrue(all(not item.get('locked') for item in bindings if 'action' in item))
+
+    def test_cancelled_capture_aliases_do_not_run_ocr_or_save(self):
+        for action in ['screenshot-region-save', 'ocr']:
+            with self.subTest(action=action), patch.object(self.actions.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '')), patch.object(self.actions, 'run') as run:
+                self.actions.main(action)
+                run.assert_not_called()
+
+    def test_ocr_keeps_captured_data_in_local_process_stdin(self):
+        with patch.object(self.actions.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, '0,0 100x100\n')), patch.object(self.actions, 'run') as run:
+            run.side_effect = [subprocess.CompletedProcess([], 0, b'png-data'),
+                               subprocess.CompletedProcess([], 0, b'hello world'),
+                               subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 0)]
+            self.actions.main('ocr')
+            self.assertEqual(run.call_args_list[1].args, ('tesseract', 'stdin', 'stdout', '-l', 'eng'))
+            self.assertEqual(run.call_args_list[1].kwargs['input'], b'png-data')
+            self.assertEqual(run.call_args_list[2].args, ('wl-copy',))
+            self.assertEqual(run.call_args_list[2].kwargs['input'], b'hello world')
+
+    def test_record_stop_cannot_signal_unrelated_or_reused_pid(self):
+        import signal
+        loader = importlib.machinery.SourceFileLoader('recorder', str(ROLE / 'files/desktop-record'))
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        recorder = importlib.util.module_from_spec(spec)
+        loader.exec_module(recorder)
+        recorder.PROC = self.profile / 'proc'
+        process = recorder.PROC / '123'
+        process.mkdir(parents=True)
+        state = self.profile / 'record.json'
+        for command, start, permitted in [('/usr/bin/systemd', '456', False),
+                                          ('/usr/bin/wf-recorder', '789', False),
+                                          ('/usr/bin/wf-recorder', '456', True)]:
+            with self.subTest(command=command, start=start):
+                (process / 'cmdline').write_bytes(command.encode() + b'\0')
+                (process / 'stat').write_text('123 (wf-recorder) S ' + '0 ' * 18 + start + '\n')
+                state.write_text('{"pid":123,"start":"456"}')
+                with patch.object(recorder.os, 'kill') as kill:
+                    self.assertEqual(recorder.stop_recording(state), permitted)
+                    if permitted: kill.assert_called_once_with(123, signal.SIGINT)
+                    else: kill.assert_not_called()
 
     def test_rendered_lua_passes_real_compositor_parser(self):
         result = subprocess.run(['Hyprland', '--verify-config', '--config', str(self.profile / 'hyprland.lua')], capture_output=True, text=True)

@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Session-scoped recording controller; signals only its recorded child process."""
+from datetime import datetime
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+
+PROC = Path('/proc')
+
+
+def process_identity(pid):
+    process = PROC / str(pid)
+    try:
+        if pid <= 0 or process.stat().st_uid != os.getuid(): return None
+        command = (process / 'cmdline').read_bytes().split(b'\0')[0]
+        if Path(os.fsdecode(command)).name != 'wf-recorder': return None
+        return (process / 'stat').read_text().rsplit(')', 1)[1].split()[19]
+    except (OSError, IndexError):
+        return None
+
+
+def stop_recording(path):
+    try:
+        state = json.loads(path.read_text())
+        pid = int(state['pid'])
+        identity = process_identity(pid)
+        if identity is None or identity != state['start']:
+            path.unlink(missing_ok=True)
+            return False
+        os.kill(pid, signal.SIGINT)
+        return True
+    except (OSError, ValueError, KeyError, TypeError):
+        path.unlink(missing_ok=True)
+        return False
+
+
+def notify(title, body):
+    subprocess.run(['notify-send', title, body], check=False)
+
+
+def main(action):
+    if action not in ('record-region', 'record-full', 'record-full-audio', 'record-stop'):
+        raise ValueError('Unknown recording action')
+    signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE')
+    if not signature: raise ValueError('Recording must run inside Hyprland')
+    runtime = Path(os.environ['XDG_RUNTIME_DIR'])
+    name = 'archsetup-record-' + hashlib.sha256(signature.encode()).hexdigest()[:16]
+    state_path = runtime / (name + '.json')
+    with (runtime / (name + '.lock')).open('a') as guard:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        if stop_recording(state_path): return
+        if action == 'record-stop': return
+        args = ['wf-recorder']
+        if action == 'record-region':
+            region = subprocess.run(['slurp'], capture_output=True, text=True)
+            if region.returncode: return
+            args += ['-g', region.stdout.strip()]
+        else:
+            monitors = json.loads(subprocess.check_output(['hyprctl', '-j', 'monitors'], text=True))
+            monitor = next((item['name'] for item in monitors if item.get('focused')), None)
+            if not monitor: raise ValueError('No focused monitor')
+            args += ['-o', monitor]
+        if action == 'record-full-audio':
+            sink = subprocess.check_output(['pactl', 'get-default-sink'], text=True).strip()
+            if not sink or sink.startswith('@'): raise ValueError('No default output audio sink')
+            args += ['--audio-backend=pulse', '--audio=' + sink + '.monitor']
+        try:
+            folder = Path(subprocess.check_output(['xdg-user-dir', 'VIDEOS'], text=True).strip())
+            if not folder.is_absolute(): raise ValueError('Invalid video path')
+            configuration = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config')) / 'user-dirs.dirs'
+            if folder == Path.home() and not configuration.exists(): raise ValueError('Unconfigured video path')
+        except (OSError, subprocess.CalledProcessError, ValueError):
+            folder = Path.home() / 'Videos'
+        folder /= 'Recordings'
+        folder.mkdir(parents=True, exist_ok=True)
+        output = folder / ('Recording_' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f') + '.mp4')
+        args += ['-f', str(output)]
+        log_path = runtime / (name + '.log')
+        with log_path.open('w') as log:
+            child = subprocess.Popen(args, stdout=log, stderr=log)
+        # Allow exec to complete before storing the executable's identity.
+        for _ in range(20):
+            identity = process_identity(child.pid)
+            if identity is not None or child.poll() is not None: break
+            time.sleep(0.05)
+        if identity is None:
+            if child.poll() is None: child.terminate()
+            child.wait()
+            raise ValueError('Recorder failed to start; see ' + str(log_path))
+        descriptor = os.open(state_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, 'w') as state:
+            json.dump({'pid': child.pid, 'start': identity}, state)
+    notify('Recording started', 'Repeat the recording shortcut to stop and save.')
+    def stop_child(*_):
+        if child.poll() is None: child.send_signal(signal.SIGINT)
+    signal.signal(signal.SIGTERM, stop_child)
+    signal.signal(signal.SIGINT, stop_child)
+    try:
+        socket_path = runtime / 'hypr' / signature / '.socket.sock'
+        while child.poll() is None:
+            if not socket_path.exists():
+                stop_child()
+                try: child.wait(timeout=5)
+                except subprocess.TimeoutExpired: child.kill()
+                break
+            time.sleep(0.5)
+        result = child.wait()
+        if result == 0 and output.exists(): notify('Recording saved', str(output))
+        else: notify('Recording failed', 'See ' + str(log_path))
+    finally:
+        with (runtime / (name + '.lock')).open('a') as guard:
+            fcntl.flock(guard, fcntl.LOCK_EX)
+            if state_path.exists():
+                try:
+                    if json.loads(state_path.read_text()).get('pid') == child.pid:
+                        state_path.unlink()
+                except (OSError, ValueError): pass
+
+
+if __name__ == '__main__':
+    try: main(sys.argv[1])
+    except (IndexError, KeyError, ValueError, OSError, subprocess.SubprocessError) as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)

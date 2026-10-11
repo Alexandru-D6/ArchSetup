@@ -10,6 +10,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
+import qs
 
 ShellRoot {
     id: root
@@ -24,6 +25,13 @@ ShellRoot {
         }
     }
     property bool inhibitIdle: false
+    property bool barVisible: true
+    property bool barBottom: false
+    property bool desktopClockVisible: true
+    property bool toolsDetached: false
+    property bool keyboardVisible: false
+    property bool keyboardShift: false
+    property bool keyboardControl: false
     property var preferences: ({})
     property var userState: ({})
     property bool light: userState.light === true
@@ -41,6 +49,22 @@ ShellRoot {
     function action(name) { Quickshell.execDetached([profile + "/bin/desktop-action", name]); }
     function toggle(name) { page = page === name ? "" : name; }
     function workspace(number) { Hyprland.dispatch("hl.dsp.focus({workspace=" + number + "})"); }
+    function control(name) {
+        if (name === "bar") barVisible = !barVisible;
+        else if (name === "bar-position") barBottom = !barBottom;
+        else if (name === "widgets") desktopClockVisible = !desktopClockVisible;
+        else if (name === "keyboard") keyboardVisible = !keyboardVisible;
+        else if (name === "keep-awake") inhibitIdle = !inhibitIdle;
+        else if (name === "detach-tools") { page = ""; toolsDetached = !toolsDetached; }
+    }
+    function utility(name) { page = ""; toolsDetached = false; action(name); }
+    function typeKey(key) {
+        if (key === "Shift") { keyboardShift = !keyboardShift; return; }
+        if (key === "Ctrl") { keyboardControl = !keyboardControl; return; }
+        const mods = [keyboardShift ? "SHIFT" : "", keyboardControl ? "CTRL" : ""].filter(Boolean).join(" + ");
+        Hyprland.dispatch("hl.dsp.send_shortcut({mods=" + JSON.stringify(mods) + ",key=" + JSON.stringify(key) + "})");
+        keyboardShift = false;
+    }
     FileView {
         path: root.profile + "/preferences.json"
         watchChanges: true
@@ -80,10 +104,16 @@ ShellRoot {
     IpcHandler {
         target: "desktop"
         function toggle(name: string): void { root.toggle(name); }
+        function control(name: string): void { root.control(name); }
+        function key(key: string): void { root.typeKey(key); }
+        function awake(active: bool): void { root.inhibitIdle = active; }
         function status(): string {
             return JSON.stringify({page: root.page, windows: ToplevelManager.toplevels.values.length,
                 hyprlandWindows: Hyprland.toplevels.values.length, screens: Quickshell.screens.length,
-                overviewFocus: windows.activeFocus, selectedWindow: windows.currentIndex});
+                overviewFocus: windows.activeFocus, selectedWindow: windows.currentIndex,
+                barVisible: root.barVisible, barBottom: root.barBottom,
+                widgetsVisible: root.desktopClockVisible, keyboardVisible: root.keyboardVisible,
+                toolsDetached: root.toolsDetached, idleInhibited: root.inhibitIdle});
         }
     }
 
@@ -109,17 +139,29 @@ ShellRoot {
         }
     }
 
+    FloatingWindow {
+        visible: root.toolsDetached
+        onVisibleChanged: if (!visible) root.toolsDetached = false
+        title: "Desktop utilities"
+        implicitWidth: 420; implicitHeight: 520
+        color: root.surface
+        ToolsContent { desktop: root; anchors.fill: parent; anchors.margins: 20 }
+    }
+
     Variants {
         model: Quickshell.screens
         delegate: PanelWindow {
+            id: desktopBackground
             required property var modelData
             screen: modelData
             anchors { top: true; bottom: true; left: true; right: true }
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Background
+            IdleInhibitor { window: desktopBackground; enabled: root.inhibitIdle }
             color: root.surface
             Image { anchors.fill: parent; fillMode: Image.PreserveAspectCrop; source: "file://" + root.wallpaper + "?v=" + root.wallpaperRevision; cache: false }
             Image {
+                visible: root.desktopClockVisible
                 width: 230; height: 230
                 anchors { left: parent.left; bottom: parent.bottom; leftMargin: 70; bottomMargin: 70 }
                 source: root.clockRevision > 0 ? "file://" + root.profile + "/theme/clock.png?v=" + root.clockRevision : ""
@@ -133,11 +175,11 @@ ShellRoot {
             id: panel
             required property var modelData
             screen: modelData
-            anchors { top: true; left: true; right: true }
+            visible: root.barVisible
+            anchors { top: !root.barBottom; bottom: root.barBottom; left: true; right: true }
             implicitHeight: 40
             color: root.surface
             WlrLayershell.namespace: "archsetup-panel"
-            IdleInhibitor { window: panel; enabled: root.inhibitIdle }
             RowLayout {
                 id: barLeft
                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom; leftMargin: 12 }
@@ -245,7 +287,7 @@ ShellRoot {
                 anchors.fill: parent; anchors.margins: 24; spacing: 14
                 RowLayout {
                     Layout.fillWidth: true
-                    Text { text: root.page === "overview" ? "Your windows" : root.page === "settings" ? "Quick settings" : "Session"; color: root.ink; font.family: root.uiFont; font.pixelSize: 24; Layout.fillWidth: true }
+                    Text { text: root.page === "overview" ? "Your windows" : root.page === "settings" ? "Quick settings" : root.page === "tools" ? "Utilities" : root.page === "media" ? "Media" : "Session"; color: root.ink; font.family: root.uiFont; font.pixelSize: 24; Layout.fillWidth: true }
                     Chip { text: "Close"; onClicked: root.page = "" }
                 }
                 Item {
@@ -255,7 +297,7 @@ ShellRoot {
                     Keys.onEscapePressed: root.page = ""
                     StackLayout {
                         anchors.fill: parent
-                        currentIndex: root.page === "overview" ? 0 : root.page === "settings" ? 1 : 2
+                        currentIndex: root.page === "overview" ? 0 : root.page === "settings" ? 1 : root.page === "tools" ? 3 : root.page === "media" ? 4 : 2
                         ColumnLayout {
                             RowLayout {
                                 Repeater { model: 10; Chip { required property int index; text: String(index + 1); onClicked: { root.workspace(index + 1); root.page = ""; } } }
@@ -312,6 +354,7 @@ ShellRoot {
                                 Chip { text: "Previous"; onClicked: Quickshell.execDetached(["playerctl", "previous"]) }
                                 Chip { text: "Play / pause"; onClicked: Quickshell.execDetached(["playerctl", "play-pause"]) }
                                 Chip { text: "Next"; onClicked: Quickshell.execDetached(["playerctl", "next"]) }
+                                Chip { text: "Keyboard"; onClicked: { root.page = ""; root.control("keyboard"); } }
                             }
                             Item { Layout.fillHeight: true }
                             Text { text: Qt.formatDateTime(clock.date, "dddd, d MMMM yyyy"); color: root.ink }
@@ -323,6 +366,60 @@ ShellRoot {
                                 Chip { required property string modelData; text: modelData === "poweroff" ? "Shutdown" : modelData.charAt(0).toUpperCase() + modelData.slice(1); Layout.fillWidth: true; onClicked: { root.page = ""; root.action(modelData); } }
                             }
                             Item { Layout.fillHeight: true }
+                        }
+                        ToolsContent { desktop: root }
+                        ColumnLayout {
+                            spacing: 16
+                            Text { text: root.status.media || "Nothing playing"; textFormat: Text.PlainText; color: root.ink; font.family: root.uiFont; font.pixelSize: 20; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                            RowLayout {
+                                Chip { text: "Previous"; onClicked: Quickshell.execDetached(["playerctl", "previous"]) }
+                                Chip { text: "Play / pause"; onClicked: Quickshell.execDetached(["playerctl", "play-pause"]) }
+                                Chip { text: "Next"; onClicked: Quickshell.execDetached(["playerctl", "next"]) }
+                            }
+                            Chip { text: "Audio devices"; onClicked: root.action("audio") }
+                            Item { Layout.fillHeight: true }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    PanelWindow {
+        visible: root.keyboardVisible
+        screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) || Quickshell.screens[0]
+        anchors { bottom: true; left: true; right: true }
+        implicitHeight: 250
+        color: root.surface
+        WlrLayershell.namespace: "archsetup-keyboard"
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        ColumnLayout {
+            anchors.fill: parent; anchors.margins: 12; spacing: 5
+            RowLayout {
+                Text { text: "Keyboard"; color: root.ink; font.family: root.uiFont; Layout.fillWidth: true }
+                Chip { text: "Close"; onClicked: root.keyboardVisible = false }
+            }
+            Repeater {
+                model: [
+                    ["Escape", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "minus", "equal", "BackSpace"],
+                    ["Tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "bracketleft", "bracketright"],
+                    ["a", "s", "d", "f", "g", "h", "j", "k", "l", "semicolon", "apostrophe", "Return"],
+                    ["Shift", "z", "x", "c", "v", "b", "n", "m", "comma", "period", "slash", "Ctrl"],
+                    ["Left", "Down", "space", "Up", "Right"]
+                ]
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true; spacing: 4
+                    Repeater {
+                        model: parent.modelData
+                        Chip {
+                            required property string modelData
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 22
+                            text: ({minus: "−", equal: "=", bracketleft: "[", bracketright: "]", semicolon: ";", apostrophe: "'", comma: ",", period: ".", slash: "/", space: "Space", Return: "Enter", BackSpace: "⌫"})[modelData] || (root.keyboardShift && modelData.length === 1 ? modelData.toUpperCase() : modelData)
+                            selected: modelData === "Shift" && root.keyboardShift || modelData === "Ctrl" && root.keyboardControl
+                            onClicked: root.typeKey(modelData)
                         }
                     }
                 }

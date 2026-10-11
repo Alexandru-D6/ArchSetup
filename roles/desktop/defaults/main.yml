@@ -32,6 +32,10 @@ archsetup_desktop_input:
     scroll_factor: 0.7
 archsetup_desktop_reduced_motion: true
 archsetup_desktop_font: DejaVu Sans
+archsetup_desktop_code_editor: geany.desktop
+archsetup_desktop_text_editor: org.xfce.mousepad.desktop
+archsetup_desktop_office: libreoffice-startcenter.desktop
+archsetup_desktop_ocr_language: eng
 archsetup_desktop_lock_seconds: 300
 archsetup_desktop_dpms_seconds: 600
 archsetup_desktop_packages:
@@ -40,6 +44,10 @@ archsetup_desktop_packages:
   - hyprlock
   - hypridle
   - kitty
+  - geany
+  - mousepad
+  - libreoffice-fresh
+  - btop
   - thunar
   - fuzzel
   - swaync
@@ -60,6 +68,10 @@ archsetup_desktop_packages:
   - wl-clipboard
   - cliphist
   - grim
+  - wf-recorder
+  - libpulse
+  - tesseract-data-eng
+  - xdg-user-dirs
   - slurp
   - hyprpicker
   - playerctl
