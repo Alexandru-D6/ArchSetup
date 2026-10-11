@@ -1,5 +1,14 @@
 # Desktop validation — 2026-10-10
 
+## Follow window moves — 2026-10-11
+
+All 72 workspace-move bindings now explicitly follow the window, including
+numbered/physical/keypad, relative and scratch moves. The Super+Alt variants follow
+as well. All 20 local tests pass, including real compositor configuration parsing.
+An audit confirms every workspace-move binding has `follow=true` and matches the
+shortcut reference; whitespace checks pass. This change has not been deployed to
+the workstation or saved VM. The silent-move VM result below predates this change.
+
 ## Expanded shortcuts — 2026-10-11
 
 The shortcut map now contains 224 entries including physical-key/keypad aliases.

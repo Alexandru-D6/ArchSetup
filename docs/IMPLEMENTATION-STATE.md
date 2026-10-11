@@ -1,6 +1,16 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
-Latest task: expanded the single-source shortcut map to **224 bindings**, including
+Latest task: moving a window now follows it to the destination workspace.
+All 72 workspace-move bindings explicitly use `follow=true`: numbered workspaces,
+physical/keypad aliases, relative moves and scratch, with both Shift and Alt
+variants. Shortcut-help descriptions and the reference are updated. All 20 local
+tests pass, including the native compositor parser; the reference matches every
+changed binding and whitespace checks pass. No workstation or saved VM deployment
+was made for this change; the older silent-move acceptance below is historical.
+Apply using `./setup.sh desktop-apply -e @inventory/profiles/LittleArchy.yml
+--ask-become-pass`, then run `hyprctl reload` in the managed desktop session.
+
+Previous task: expanded the single-source shortcut map to **224 bindings**, including
 physical number-row/keypad aliases and relative workspace controls. Existing
 launcher/calculator/scratch keys are preserved; maximize, zoom-in and snip have
 nonconflicting alternatives. Implemented local OCR/screenshot saving, session-owned

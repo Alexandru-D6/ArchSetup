@@ -167,100 +167,103 @@ Quickshell configuration, not upstream code.
 
 ## Workspaces
 
+All window moves switch to the destination workspace and keep the moved window
+focused, including number-row/keypad aliases, relative moves and scratch.
+
 | Shortcut | Action |
 | --- | --- |
 | Super + S | Scratch workspace |
-| Super + Shift + S | Move to scratch |
+| Super + Shift + S | Move to scratch and follow |
 | Super + 1 | Workspace 1 |
-| Super + Shift + 1 | Move to workspace 1 |
+| Super + Shift + 1 | Move to workspace 1 and follow |
 | Super + 2 | Workspace 2 |
-| Super + Shift + 2 | Move to workspace 2 |
+| Super + Shift + 2 | Move to workspace 2 and follow |
 | Super + 3 | Workspace 3 |
-| Super + Shift + 3 | Move to workspace 3 |
+| Super + Shift + 3 | Move to workspace 3 and follow |
 | Super + 4 | Workspace 4 |
-| Super + Shift + 4 | Move to workspace 4 |
+| Super + Shift + 4 | Move to workspace 4 and follow |
 | Super + 5 | Workspace 5 |
-| Super + Shift + 5 | Move to workspace 5 |
+| Super + Shift + 5 | Move to workspace 5 and follow |
 | Super + 6 | Workspace 6 |
-| Super + Shift + 6 | Move to workspace 6 |
+| Super + Shift + 6 | Move to workspace 6 and follow |
 | Super + 7 | Workspace 7 |
-| Super + Shift + 7 | Move to workspace 7 |
+| Super + Shift + 7 | Move to workspace 7 and follow |
 | Super + 8 | Workspace 8 |
-| Super + Shift + 8 | Move to workspace 8 |
+| Super + Shift + 8 | Move to workspace 8 and follow |
 | Super + 9 | Workspace 9 |
-| Super + Shift + 9 | Move to workspace 9 |
+| Super + Shift + 9 | Move to workspace 9 and follow |
 | Super + 0 | Workspace 10 |
-| Super + Shift + 0 | Move to workspace 10 |
-| Super + Alt + 1 | Send to workspace 1 without following |
+| Super + Shift + 0 | Move to workspace 10 and follow |
+| Super + Alt + 1 | Move to workspace 1 and follow |
 | Super + code:10 | Workspace 1 (physical key) |
-| Super + Alt + code:10 | Send to workspace 1 (physical key) |
-| Super + Shift + code:10 | Move to workspace 1 (physical key) |
+| Super + Alt + code:10 | Move to workspace 1 and follow (physical key) |
+| Super + Shift + code:10 | Move to workspace 1 and follow (physical key) |
 | Super + code:87 | Workspace 1 (physical key) |
-| Super + Alt + code:87 | Send to workspace 1 (physical key) |
-| Super + Shift + code:87 | Move to workspace 1 (physical key) |
-| Super + Alt + 2 | Send to workspace 2 without following |
+| Super + Alt + code:87 | Move to workspace 1 and follow (physical key) |
+| Super + Shift + code:87 | Move to workspace 1 and follow (physical key) |
+| Super + Alt + 2 | Move to workspace 2 and follow |
 | Super + code:11 | Workspace 2 (physical key) |
-| Super + Alt + code:11 | Send to workspace 2 (physical key) |
-| Super + Shift + code:11 | Move to workspace 2 (physical key) |
+| Super + Alt + code:11 | Move to workspace 2 and follow (physical key) |
+| Super + Shift + code:11 | Move to workspace 2 and follow (physical key) |
 | Super + code:88 | Workspace 2 (physical key) |
-| Super + Alt + code:88 | Send to workspace 2 (physical key) |
-| Super + Shift + code:88 | Move to workspace 2 (physical key) |
-| Super + Alt + 3 | Send to workspace 3 without following |
+| Super + Alt + code:88 | Move to workspace 2 and follow (physical key) |
+| Super + Shift + code:88 | Move to workspace 2 and follow (physical key) |
+| Super + Alt + 3 | Move to workspace 3 and follow |
 | Super + code:12 | Workspace 3 (physical key) |
-| Super + Alt + code:12 | Send to workspace 3 (physical key) |
-| Super + Shift + code:12 | Move to workspace 3 (physical key) |
+| Super + Alt + code:12 | Move to workspace 3 and follow (physical key) |
+| Super + Shift + code:12 | Move to workspace 3 and follow (physical key) |
 | Super + code:89 | Workspace 3 (physical key) |
-| Super + Alt + code:89 | Send to workspace 3 (physical key) |
-| Super + Shift + code:89 | Move to workspace 3 (physical key) |
-| Super + Alt + 4 | Send to workspace 4 without following |
+| Super + Alt + code:89 | Move to workspace 3 and follow (physical key) |
+| Super + Shift + code:89 | Move to workspace 3 and follow (physical key) |
+| Super + Alt + 4 | Move to workspace 4 and follow |
 | Super + code:13 | Workspace 4 (physical key) |
-| Super + Alt + code:13 | Send to workspace 4 (physical key) |
-| Super + Shift + code:13 | Move to workspace 4 (physical key) |
+| Super + Alt + code:13 | Move to workspace 4 and follow (physical key) |
+| Super + Shift + code:13 | Move to workspace 4 and follow (physical key) |
 | Super + code:83 | Workspace 4 (physical key) |
-| Super + Alt + code:83 | Send to workspace 4 (physical key) |
-| Super + Shift + code:83 | Move to workspace 4 (physical key) |
-| Super + Alt + 5 | Send to workspace 5 without following |
+| Super + Alt + code:83 | Move to workspace 4 and follow (physical key) |
+| Super + Shift + code:83 | Move to workspace 4 and follow (physical key) |
+| Super + Alt + 5 | Move to workspace 5 and follow |
 | Super + code:14 | Workspace 5 (physical key) |
-| Super + Alt + code:14 | Send to workspace 5 (physical key) |
-| Super + Shift + code:14 | Move to workspace 5 (physical key) |
+| Super + Alt + code:14 | Move to workspace 5 and follow (physical key) |
+| Super + Shift + code:14 | Move to workspace 5 and follow (physical key) |
 | Super + code:84 | Workspace 5 (physical key) |
-| Super + Alt + code:84 | Send to workspace 5 (physical key) |
-| Super + Shift + code:84 | Move to workspace 5 (physical key) |
-| Super + Alt + 6 | Send to workspace 6 without following |
+| Super + Alt + code:84 | Move to workspace 5 and follow (physical key) |
+| Super + Shift + code:84 | Move to workspace 5 and follow (physical key) |
+| Super + Alt + 6 | Move to workspace 6 and follow |
 | Super + code:15 | Workspace 6 (physical key) |
-| Super + Alt + code:15 | Send to workspace 6 (physical key) |
-| Super + Shift + code:15 | Move to workspace 6 (physical key) |
+| Super + Alt + code:15 | Move to workspace 6 and follow (physical key) |
+| Super + Shift + code:15 | Move to workspace 6 and follow (physical key) |
 | Super + code:85 | Workspace 6 (physical key) |
-| Super + Alt + code:85 | Send to workspace 6 (physical key) |
-| Super + Shift + code:85 | Move to workspace 6 (physical key) |
-| Super + Alt + 7 | Send to workspace 7 without following |
+| Super + Alt + code:85 | Move to workspace 6 and follow (physical key) |
+| Super + Shift + code:85 | Move to workspace 6 and follow (physical key) |
+| Super + Alt + 7 | Move to workspace 7 and follow |
 | Super + code:16 | Workspace 7 (physical key) |
-| Super + Alt + code:16 | Send to workspace 7 (physical key) |
-| Super + Shift + code:16 | Move to workspace 7 (physical key) |
+| Super + Alt + code:16 | Move to workspace 7 and follow (physical key) |
+| Super + Shift + code:16 | Move to workspace 7 and follow (physical key) |
 | Super + code:79 | Workspace 7 (physical key) |
-| Super + Alt + code:79 | Send to workspace 7 (physical key) |
-| Super + Shift + code:79 | Move to workspace 7 (physical key) |
-| Super + Alt + 8 | Send to workspace 8 without following |
+| Super + Alt + code:79 | Move to workspace 7 and follow (physical key) |
+| Super + Shift + code:79 | Move to workspace 7 and follow (physical key) |
+| Super + Alt + 8 | Move to workspace 8 and follow |
 | Super + code:17 | Workspace 8 (physical key) |
-| Super + Alt + code:17 | Send to workspace 8 (physical key) |
-| Super + Shift + code:17 | Move to workspace 8 (physical key) |
+| Super + Alt + code:17 | Move to workspace 8 and follow (physical key) |
+| Super + Shift + code:17 | Move to workspace 8 and follow (physical key) |
 | Super + code:80 | Workspace 8 (physical key) |
-| Super + Alt + code:80 | Send to workspace 8 (physical key) |
-| Super + Shift + code:80 | Move to workspace 8 (physical key) |
-| Super + Alt + 9 | Send to workspace 9 without following |
+| Super + Alt + code:80 | Move to workspace 8 and follow (physical key) |
+| Super + Shift + code:80 | Move to workspace 8 and follow (physical key) |
+| Super + Alt + 9 | Move to workspace 9 and follow |
 | Super + code:18 | Workspace 9 (physical key) |
-| Super + Alt + code:18 | Send to workspace 9 (physical key) |
-| Super + Shift + code:18 | Move to workspace 9 (physical key) |
+| Super + Alt + code:18 | Move to workspace 9 and follow (physical key) |
+| Super + Shift + code:18 | Move to workspace 9 and follow (physical key) |
 | Super + code:81 | Workspace 9 (physical key) |
-| Super + Alt + code:81 | Send to workspace 9 (physical key) |
-| Super + Shift + code:81 | Move to workspace 9 (physical key) |
-| Super + Alt + 0 | Send to workspace 10 without following |
+| Super + Alt + code:81 | Move to workspace 9 and follow (physical key) |
+| Super + Shift + code:81 | Move to workspace 9 and follow (physical key) |
+| Super + Alt + 0 | Move to workspace 10 and follow |
 | Super + code:19 | Workspace 10 (physical key) |
-| Super + Alt + code:19 | Send to workspace 10 (physical key) |
-| Super + Shift + code:19 | Move to workspace 10 (physical key) |
+| Super + Alt + code:19 | Move to workspace 10 and follow (physical key) |
+| Super + Shift + code:19 | Move to workspace 10 and follow (physical key) |
 | Super + code:90 | Workspace 10 (physical key) |
-| Super + Alt + code:90 | Send to workspace 10 (physical key) |
-| Super + Shift + code:90 | Move to workspace 10 (physical key) |
+| Super + Alt + code:90 | Move to workspace 10 and follow (physical key) |
+| Super + Shift + code:90 | Move to workspace 10 and follow (physical key) |
 | Ctrl + Super + Left | Focus relative workspace r-1 |
 | Ctrl + Super + Right | Focus relative workspace r+1 |
 | Ctrl + Super + Alt + Left | Focus relative workspace m-1 |
@@ -277,19 +280,19 @@ Quickshell configuration, not upstream code.
 | Ctrl + Super + BracketRight | Focus relative workspace +1 |
 | Ctrl + Super + Up | Focus relative workspace r-5 |
 | Ctrl + Super + Down | Focus relative workspace r+5 |
-| Super + Shift + mouse_up | Send window to relative workspace r-1 |
-| Super + Shift + mouse_down | Send window to relative workspace r+1 |
-| Super + Alt + mouse_up | Send window to relative workspace r-1 |
-| Super + Alt + mouse_down | Send window to relative workspace r+1 |
-| Super + Shift + Page_Up | Send window to relative workspace r-1 |
-| Super + Shift + Page_Down | Send window to relative workspace r+1 |
-| Super + Alt + Page_Up | Send window to relative workspace r-1 |
-| Super + Alt + Page_Down | Send window to relative workspace r+1 |
-| Ctrl + Super + Shift + Left | Send window to relative workspace r-1 |
-| Ctrl + Super + Shift + Right | Send window to relative workspace r+1 |
+| Super + Shift + mouse_up | Move window to relative workspace r-1 and follow |
+| Super + Shift + mouse_down | Move window to relative workspace r+1 and follow |
+| Super + Alt + mouse_up | Move window to relative workspace r-1 and follow |
+| Super + Alt + mouse_down | Move window to relative workspace r+1 and follow |
+| Super + Shift + Page_Up | Move window to relative workspace r-1 and follow |
+| Super + Shift + Page_Down | Move window to relative workspace r+1 and follow |
+| Super + Alt + Page_Up | Move window to relative workspace r-1 and follow |
+| Super + Alt + Page_Down | Move window to relative workspace r+1 and follow |
+| Ctrl + Super + Shift + Left | Move window to relative workspace r-1 and follow |
+| Ctrl + Super + Shift + Right | Move window to relative workspace r+1 and follow |
 | Ctrl + Super + S | Toggle scratch workspace |
 | Super + mouse:275 | Toggle scratch workspace |
-| Super + Alt + S | Send to scratch without following |
+| Super + Alt + S | Move to scratch and follow |
 
 ## Session
 

@@ -116,8 +116,11 @@ application aliases, relative/keypad workspace controls, window actions, zoom,
 local OCR, recording, shell toggles and VM passthrough. Existing Super+D,
 Super+Equal and Super+Shift+S bindings are retained; their upstream conflicts
 have separate keys. Super+W launches the configured browser without passing a
-URL. Workspace buttons focus workspaces; task buttons focus windows and offer a
-right-click close menu. The overview supports arrow navigation and Enter.
+URL. Moving a window to another workspace also switches to that workspace and
+keeps the window focused. This applies to numbered/keypad, relative and scratch
+workspace shortcuts, including the Super+Alt variants. Workspace buttons focus
+workspaces; task buttons focus windows and offer a right-click close menu.
+The overview supports arrow navigation and Enter.
 
 Network, Bluetooth and audio-device buttons open their native configuration
 applications. Brightness controls are hidden without a backlight device.

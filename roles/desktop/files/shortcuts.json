@@ -115,8 +115,8 @@
   },
   {
     "key": "SUPER + SHIFT + S",
-    "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\"})",
-    "description": "Move to scratch",
+    "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\",follow=true})",
+    "description": "Move to scratch and follow",
     "category": "Workspaces"
   },
   {
@@ -175,8 +175,8 @@
   },
   {
     "key": "SUPER + SHIFT + 1",
-    "dispatcher": "hl.dsp.window.move({workspace=1})",
-    "description": "Move to workspace 1",
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=true})",
+    "description": "Move to workspace 1 and follow",
     "category": "Workspaces"
   },
   {
@@ -187,8 +187,8 @@
   },
   {
     "key": "SUPER + SHIFT + 2",
-    "dispatcher": "hl.dsp.window.move({workspace=2})",
-    "description": "Move to workspace 2",
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=true})",
+    "description": "Move to workspace 2 and follow",
     "category": "Workspaces"
   },
   {
@@ -199,8 +199,8 @@
   },
   {
     "key": "SUPER + SHIFT + 3",
-    "dispatcher": "hl.dsp.window.move({workspace=3})",
-    "description": "Move to workspace 3",
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=true})",
+    "description": "Move to workspace 3 and follow",
     "category": "Workspaces"
   },
   {
@@ -211,8 +211,8 @@
   },
   {
     "key": "SUPER + SHIFT + 4",
-    "dispatcher": "hl.dsp.window.move({workspace=4})",
-    "description": "Move to workspace 4",
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=true})",
+    "description": "Move to workspace 4 and follow",
     "category": "Workspaces"
   },
   {
@@ -223,8 +223,8 @@
   },
   {
     "key": "SUPER + SHIFT + 5",
-    "dispatcher": "hl.dsp.window.move({workspace=5})",
-    "description": "Move to workspace 5",
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=true})",
+    "description": "Move to workspace 5 and follow",
     "category": "Workspaces"
   },
   {
@@ -235,8 +235,8 @@
   },
   {
     "key": "SUPER + SHIFT + 6",
-    "dispatcher": "hl.dsp.window.move({workspace=6})",
-    "description": "Move to workspace 6",
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=true})",
+    "description": "Move to workspace 6 and follow",
     "category": "Workspaces"
   },
   {
@@ -247,8 +247,8 @@
   },
   {
     "key": "SUPER + SHIFT + 7",
-    "dispatcher": "hl.dsp.window.move({workspace=7})",
-    "description": "Move to workspace 7",
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=true})",
+    "description": "Move to workspace 7 and follow",
     "category": "Workspaces"
   },
   {
@@ -259,8 +259,8 @@
   },
   {
     "key": "SUPER + SHIFT + 8",
-    "dispatcher": "hl.dsp.window.move({workspace=8})",
-    "description": "Move to workspace 8",
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=true})",
+    "description": "Move to workspace 8 and follow",
     "category": "Workspaces"
   },
   {
@@ -271,8 +271,8 @@
   },
   {
     "key": "SUPER + SHIFT + 9",
-    "dispatcher": "hl.dsp.window.move({workspace=9})",
-    "description": "Move to workspace 9",
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=true})",
+    "description": "Move to workspace 9 and follow",
     "category": "Workspaces"
   },
   {
@@ -283,8 +283,8 @@
   },
   {
     "key": "SUPER + SHIFT + 0",
-    "dispatcher": "hl.dsp.window.move({workspace=10})",
-    "description": "Move to workspace 10",
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=true})",
+    "description": "Move to workspace 10 and follow",
     "category": "Workspaces"
   },
   {
@@ -780,9 +780,9 @@
   },
   {
     "key": "SUPER + ALT + 1",
-    "description": "Send to workspace 1 without following",
+    "description": "Move to workspace 1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=1,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=true})"
   },
   {
     "key": "SUPER + code:10",
@@ -792,15 +792,15 @@
   },
   {
     "key": "SUPER + ALT + code:10",
-    "description": "Send to workspace 1 (physical key)",
+    "description": "Move to workspace 1 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=1,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:10",
-    "description": "Move to workspace 1 (physical key)",
+    "description": "Move to workspace 1 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=1})"
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=true})"
   },
   {
     "key": "SUPER + code:87",
@@ -810,21 +810,21 @@
   },
   {
     "key": "SUPER + ALT + code:87",
-    "description": "Send to workspace 1 (physical key)",
+    "description": "Move to workspace 1 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=1,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:87",
-    "description": "Move to workspace 1 (physical key)",
+    "description": "Move to workspace 1 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=1})"
+    "dispatcher": "hl.dsp.window.move({workspace=1,follow=true})"
   },
   {
     "key": "SUPER + ALT + 2",
-    "description": "Send to workspace 2 without following",
+    "description": "Move to workspace 2 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=2,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=true})"
   },
   {
     "key": "SUPER + code:11",
@@ -834,15 +834,15 @@
   },
   {
     "key": "SUPER + ALT + code:11",
-    "description": "Send to workspace 2 (physical key)",
+    "description": "Move to workspace 2 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=2,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:11",
-    "description": "Move to workspace 2 (physical key)",
+    "description": "Move to workspace 2 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=2})"
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=true})"
   },
   {
     "key": "SUPER + code:88",
@@ -852,21 +852,21 @@
   },
   {
     "key": "SUPER + ALT + code:88",
-    "description": "Send to workspace 2 (physical key)",
+    "description": "Move to workspace 2 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=2,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:88",
-    "description": "Move to workspace 2 (physical key)",
+    "description": "Move to workspace 2 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=2})"
+    "dispatcher": "hl.dsp.window.move({workspace=2,follow=true})"
   },
   {
     "key": "SUPER + ALT + 3",
-    "description": "Send to workspace 3 without following",
+    "description": "Move to workspace 3 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=3,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=true})"
   },
   {
     "key": "SUPER + code:12",
@@ -876,15 +876,15 @@
   },
   {
     "key": "SUPER + ALT + code:12",
-    "description": "Send to workspace 3 (physical key)",
+    "description": "Move to workspace 3 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=3,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:12",
-    "description": "Move to workspace 3 (physical key)",
+    "description": "Move to workspace 3 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=3})"
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=true})"
   },
   {
     "key": "SUPER + code:89",
@@ -894,21 +894,21 @@
   },
   {
     "key": "SUPER + ALT + code:89",
-    "description": "Send to workspace 3 (physical key)",
+    "description": "Move to workspace 3 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=3,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:89",
-    "description": "Move to workspace 3 (physical key)",
+    "description": "Move to workspace 3 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=3})"
+    "dispatcher": "hl.dsp.window.move({workspace=3,follow=true})"
   },
   {
     "key": "SUPER + ALT + 4",
-    "description": "Send to workspace 4 without following",
+    "description": "Move to workspace 4 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=4,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=true})"
   },
   {
     "key": "SUPER + code:13",
@@ -918,15 +918,15 @@
   },
   {
     "key": "SUPER + ALT + code:13",
-    "description": "Send to workspace 4 (physical key)",
+    "description": "Move to workspace 4 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=4,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:13",
-    "description": "Move to workspace 4 (physical key)",
+    "description": "Move to workspace 4 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=4})"
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=true})"
   },
   {
     "key": "SUPER + code:83",
@@ -936,21 +936,21 @@
   },
   {
     "key": "SUPER + ALT + code:83",
-    "description": "Send to workspace 4 (physical key)",
+    "description": "Move to workspace 4 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=4,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:83",
-    "description": "Move to workspace 4 (physical key)",
+    "description": "Move to workspace 4 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=4})"
+    "dispatcher": "hl.dsp.window.move({workspace=4,follow=true})"
   },
   {
     "key": "SUPER + ALT + 5",
-    "description": "Send to workspace 5 without following",
+    "description": "Move to workspace 5 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=5,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=true})"
   },
   {
     "key": "SUPER + code:14",
@@ -960,15 +960,15 @@
   },
   {
     "key": "SUPER + ALT + code:14",
-    "description": "Send to workspace 5 (physical key)",
+    "description": "Move to workspace 5 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=5,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:14",
-    "description": "Move to workspace 5 (physical key)",
+    "description": "Move to workspace 5 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=5})"
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=true})"
   },
   {
     "key": "SUPER + code:84",
@@ -978,21 +978,21 @@
   },
   {
     "key": "SUPER + ALT + code:84",
-    "description": "Send to workspace 5 (physical key)",
+    "description": "Move to workspace 5 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=5,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:84",
-    "description": "Move to workspace 5 (physical key)",
+    "description": "Move to workspace 5 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=5})"
+    "dispatcher": "hl.dsp.window.move({workspace=5,follow=true})"
   },
   {
     "key": "SUPER + ALT + 6",
-    "description": "Send to workspace 6 without following",
+    "description": "Move to workspace 6 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=6,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=true})"
   },
   {
     "key": "SUPER + code:15",
@@ -1002,15 +1002,15 @@
   },
   {
     "key": "SUPER + ALT + code:15",
-    "description": "Send to workspace 6 (physical key)",
+    "description": "Move to workspace 6 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=6,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:15",
-    "description": "Move to workspace 6 (physical key)",
+    "description": "Move to workspace 6 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=6})"
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=true})"
   },
   {
     "key": "SUPER + code:85",
@@ -1020,21 +1020,21 @@
   },
   {
     "key": "SUPER + ALT + code:85",
-    "description": "Send to workspace 6 (physical key)",
+    "description": "Move to workspace 6 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=6,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:85",
-    "description": "Move to workspace 6 (physical key)",
+    "description": "Move to workspace 6 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=6})"
+    "dispatcher": "hl.dsp.window.move({workspace=6,follow=true})"
   },
   {
     "key": "SUPER + ALT + 7",
-    "description": "Send to workspace 7 without following",
+    "description": "Move to workspace 7 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=7,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=true})"
   },
   {
     "key": "SUPER + code:16",
@@ -1044,15 +1044,15 @@
   },
   {
     "key": "SUPER + ALT + code:16",
-    "description": "Send to workspace 7 (physical key)",
+    "description": "Move to workspace 7 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=7,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:16",
-    "description": "Move to workspace 7 (physical key)",
+    "description": "Move to workspace 7 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=7})"
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=true})"
   },
   {
     "key": "SUPER + code:79",
@@ -1062,21 +1062,21 @@
   },
   {
     "key": "SUPER + ALT + code:79",
-    "description": "Send to workspace 7 (physical key)",
+    "description": "Move to workspace 7 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=7,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:79",
-    "description": "Move to workspace 7 (physical key)",
+    "description": "Move to workspace 7 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=7})"
+    "dispatcher": "hl.dsp.window.move({workspace=7,follow=true})"
   },
   {
     "key": "SUPER + ALT + 8",
-    "description": "Send to workspace 8 without following",
+    "description": "Move to workspace 8 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=8,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=true})"
   },
   {
     "key": "SUPER + code:17",
@@ -1086,15 +1086,15 @@
   },
   {
     "key": "SUPER + ALT + code:17",
-    "description": "Send to workspace 8 (physical key)",
+    "description": "Move to workspace 8 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=8,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:17",
-    "description": "Move to workspace 8 (physical key)",
+    "description": "Move to workspace 8 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=8})"
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=true})"
   },
   {
     "key": "SUPER + code:80",
@@ -1104,21 +1104,21 @@
   },
   {
     "key": "SUPER + ALT + code:80",
-    "description": "Send to workspace 8 (physical key)",
+    "description": "Move to workspace 8 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=8,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:80",
-    "description": "Move to workspace 8 (physical key)",
+    "description": "Move to workspace 8 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=8})"
+    "dispatcher": "hl.dsp.window.move({workspace=8,follow=true})"
   },
   {
     "key": "SUPER + ALT + 9",
-    "description": "Send to workspace 9 without following",
+    "description": "Move to workspace 9 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=9,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=true})"
   },
   {
     "key": "SUPER + code:18",
@@ -1128,15 +1128,15 @@
   },
   {
     "key": "SUPER + ALT + code:18",
-    "description": "Send to workspace 9 (physical key)",
+    "description": "Move to workspace 9 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=9,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:18",
-    "description": "Move to workspace 9 (physical key)",
+    "description": "Move to workspace 9 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=9})"
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=true})"
   },
   {
     "key": "SUPER + code:81",
@@ -1146,21 +1146,21 @@
   },
   {
     "key": "SUPER + ALT + code:81",
-    "description": "Send to workspace 9 (physical key)",
+    "description": "Move to workspace 9 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=9,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:81",
-    "description": "Move to workspace 9 (physical key)",
+    "description": "Move to workspace 9 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=9})"
+    "dispatcher": "hl.dsp.window.move({workspace=9,follow=true})"
   },
   {
     "key": "SUPER + ALT + 0",
-    "description": "Send to workspace 10 without following",
+    "description": "Move to workspace 10 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=10,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=true})"
   },
   {
     "key": "SUPER + code:19",
@@ -1170,15 +1170,15 @@
   },
   {
     "key": "SUPER + ALT + code:19",
-    "description": "Send to workspace 10 (physical key)",
+    "description": "Move to workspace 10 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=10,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:19",
-    "description": "Move to workspace 10 (physical key)",
+    "description": "Move to workspace 10 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=10})"
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=true})"
   },
   {
     "key": "SUPER + code:90",
@@ -1188,15 +1188,15 @@
   },
   {
     "key": "SUPER + ALT + code:90",
-    "description": "Send to workspace 10 (physical key)",
+    "description": "Move to workspace 10 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=10,follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=true})"
   },
   {
     "key": "SUPER + SHIFT + code:90",
-    "description": "Move to workspace 10 (physical key)",
+    "description": "Move to workspace 10 and follow (physical key)",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=10})"
+    "dispatcher": "hl.dsp.window.move({workspace=10,follow=true})"
   },
   {
     "key": "CTRL + SUPER + Left",
@@ -1296,63 +1296,63 @@
   },
   {
     "key": "SUPER + SHIFT + mouse_up",
-    "description": "Send window to relative workspace r-1",
+    "description": "Move window to relative workspace r-1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=true})"
   },
   {
     "key": "SUPER + SHIFT + mouse_down",
-    "description": "Send window to relative workspace r+1",
+    "description": "Move window to relative workspace r+1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=true})"
   },
   {
     "key": "SUPER + ALT + mouse_up",
-    "description": "Send window to relative workspace r-1",
+    "description": "Move window to relative workspace r-1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=true})"
   },
   {
     "key": "SUPER + ALT + mouse_down",
-    "description": "Send window to relative workspace r+1",
+    "description": "Move window to relative workspace r+1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=true})"
   },
   {
     "key": "SUPER + SHIFT + Page_Up",
-    "description": "Send window to relative workspace r-1",
+    "description": "Move window to relative workspace r-1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=true})"
   },
   {
     "key": "SUPER + SHIFT + Page_Down",
-    "description": "Send window to relative workspace r+1",
+    "description": "Move window to relative workspace r+1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=true})"
   },
   {
     "key": "SUPER + ALT + Page_Up",
-    "description": "Send window to relative workspace r-1",
+    "description": "Move window to relative workspace r-1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=true})"
   },
   {
     "key": "SUPER + ALT + Page_Down",
-    "description": "Send window to relative workspace r+1",
+    "description": "Move window to relative workspace r+1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=true})"
   },
   {
     "key": "CTRL + SUPER + SHIFT + Left",
-    "description": "Send window to relative workspace r-1",
+    "description": "Move window to relative workspace r-1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r-1\",follow=true})"
   },
   {
     "key": "CTRL + SUPER + SHIFT + Right",
-    "description": "Send window to relative workspace r+1",
+    "description": "Move window to relative workspace r+1 and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"r+1\",follow=true})"
   },
   {
     "key": "CTRL + SUPER + S",
@@ -1368,9 +1368,9 @@
   },
   {
     "key": "SUPER + ALT + S",
-    "description": "Send to scratch without following",
+    "description": "Move to scratch and follow",
     "category": "Workspaces",
-    "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\",follow=false})"
+    "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\",follow=true})"
   },
   {
     "key": "SUPER + ALT + F1",
