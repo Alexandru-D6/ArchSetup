@@ -1,7 +1,193 @@
 # ArchSetup
 
-Ansible configuration for setting up and maintaining a computer after a fresh
-Arch Linux installation.
+Ansible setup for an installed Arch Linux system: Hyprland, a Quickshell taskbar
+and window overview, Brave, notifications, shortcuts, themes, and Hyprlock.
+Desktop animations are disabled by default. The custom desktop shell has no AI
+integrations.
+
+## Install the desktop after cloning
+
+### 1. Prepare the computer
+
+Start from a bootable Arch Linux installation with internet access, graphics
+support for your GPU, and a regular user account with a working password and sudo
+access. This project does not partition disks, install Arch, create users, or
+install GPU drivers. Run the following commands as the user who will use the desktop.
+
+Open a terminal in your cloned repository:
+
+```bash
+cd ArchSetup
+./setup.sh bootstrap
+./setup.sh upgrade --ask-become-pass
+```
+
+`bootstrap` installs missing Ansible prerequisites and required collections. If
+sudo is not installed yet, run bootstrap as root, configure sudo access for your
+regular user, then return to that user for the remaining steps. `upgrade` performs
+a full Arch upgrade; desktop installation does not refresh package databases.
+
+The current desktop configuration targets **Hyprland 0.56.x**. Installation stops
+if the installed compositor is outside that series; a newer series needs project
+compatibility work before proceeding.
+
+### 2. Create your machine profile
+
+Create a profile for the currently logged-in regular user:
+
+```bash
+cat > inventory/profiles/my-desktop.yml <<EOF
+---
+archsetup_desktop_enabled: true
+archsetup_desktop_user: "$(id -un)"
+archsetup_desktop_browser: brave-browser.desktop
+archsetup_desktop_install_brave: true
+archsetup_desktop_quickshell_package: quickshell
+archsetup_desktop_manage_login: true
+archsetup_desktop_autologin_locked: true
+archsetup_desktop_manage_network: false
+archsetup_desktop_reduced_motion: true
+archsetup_desktop_monitors:
+  - {output: "", mode: preferred, position: auto, scale: auto}
+EOF
+```
+
+This preserves your existing network service, detects monitors automatically,
+installs Brave when missing, and boots to Hyprlock. If NetworkManager should manage
+networking, set `archsetup_desktop_manage_network: true`; preflight rejects active
+or enabled competing network managers. With network management disabled, the
+panel's NetworkManager settings only work for interfaces it already manages.
+
+The supplied input defaults use US keyboard variants, Super+Space layout switching,
+and flat mouse acceleration. Review [desktop defaults](roles/desktop/defaults/main.yml)
+and override `archsetup_desktop_input` in your profile if needed.
+
+**Already using LittleArchy?** Skip profile creation and replace
+`my-desktop.yml` with `LittleArchy.yml` in every command below. That profile is for
+user `alex` and already selects Brave, automatic monitors, and disabled animations.
+
+### 3. Preview changes
+
+```bash
+./setup.sh desktop-check \
+  -e @inventory/profiles/my-desktop.yml --ask-become-pass
+```
+
+Review the diff before applying. Check mode predicts package installation; it does
+not download/build Brave or start services that have not been installed yet.
+
+If preflight detects an existing **unmanaged** Greetd configuration or ArchSetup
+profile, review those files and add `archsetup_desktop_adopt: true` to your machine
+profile, then repeat the preview. Adoption backs up existing configuration before
+replacing it. A competing display manager needs a separate migration; this role
+will not stop your current graphical session.
+
+### 4. Install
+
+```bash
+./setup.sh desktop-apply \
+  -e @inventory/profiles/my-desktop.yml --ask-become-pass
+```
+
+The installer creates `~/.config/archsetup`, registers the desktop session, and
+configures Greetd for the next boot. Your existing `~/.config/hypr` is retained.
+Browser web/HTML associations are updated to Brave.
+
+Missing Brave is built from a reviewed, pinned AUR `brave-bin` revision as your
+regular user, with source checksum verification, then installed through pacman.
+No AUR helper or passwordless sudo is required. The first installation downloads
+the browser archive and needs temporary disk space. Existing Brave is retained;
+Firefox is not uninstalled.
+
+If package installation reports stale metadata or pending updates, run
+`./setup.sh upgrade --ask-become-pass`, then repeat the preview and installation.
+
+### 5. Verify and reboot
+
+```bash
+./setup.sh desktop-verify \
+  -e @inventory/profiles/my-desktop.yml --ask-become-pass
+```
+
+Continue only after verification succeeds. Save your work, note any Greetd backup
+path shown during installation, then reboot:
+
+```bash
+sudo reboot
+```
+
+Greetd starts your Hyprland session in locked mode. **Unlock Hyprlock with your
+regular user's password.** Greetd's login prompt is the fallback after logout or
+session failure. To require Greetd authentication at boot instead, set
+`archsetup_desktop_autologin_locked: false` and reapply.
+
+### 6. Try the desktop
+
+| Shortcut | Action |
+| --- | --- |
+| Super+D | Application launcher |
+| Super+W | Brave |
+| Super+Tab | Window overview; arrows select, Enter focuses |
+| Super+Comma | Quick settings, theme and wallpaper |
+| Super+N | Notification history |
+| Super+L | Lock the screen |
+| Super+/ | All shortcuts |
+
+Check mouse feel, display resolution/refresh rate, audio and Bluetooth. Save your
+work before testing suspend. The QEMU test guest has a reproduced virtual GPU
+resume hang; physical GPU suspend/resume remains unverified. The latest automatic
+Brave installation and boot-to-Hyprlock flow have local checks but still need
+end-to-end graphical validation. See [validation results](docs/desktop-validation.md)
+and the [latest implementation state](docs/IMPLEMENTATION-STATE.md).
+
+If the graphical session fails, switch to a TTY with Ctrl+Alt+F3 and log in. Restore
+the recorded Greetd configuration backup if needed. See
+[ownership and recovery](docs/hyprland-desktop.md#ownership-and-recovery).
+
+## Apply later changes
+
+Update this repository on the target computer, retain your machine profile, then
+repeat **desktop-check → desktop-apply → desktop-verify** with the same profile.
+Log out and back in to refresh all desktop components; reboot for changes to the
+boot login flow. Reapplying an unchanged installation should report `changed=0`.
+
+System upgrades are explicit (`./setup.sh upgrade --ask-become-pass`). Brave is an
+AUR package: maintain it through your AUR update workflow separately; desktop
+reapplication does not upgrade an existing browser. User wallpaper/theme choices
+and `overrides.lua` are retained. See the [desktop guide](docs/hyprland-desktop.md)
+for configuration details and current feature limits.
+
+## Optional command-line tools
+
+To install the additional command-line tool set without enabling the desktop, run:
+
+```bash
+./setup.sh bootstrap
+./setup.sh check
+./setup.sh apply
+./setup.sh verify
+```
+
+`bootstrap` installs Git, Python, Ansible, and sudo if missing. Because Arch only
+supports full upgrades, that initial prerequisite installation uses `pacman -Syu`.
+`apply` does not refresh package databases or upgrade packages; it only ensures the
+declared tools are present. Use `./setup.sh upgrade` separately for a deliberate
+full system upgrade. Supply normal Ansible options after each command, such as
+`./setup.sh apply --ask-become-pass`.
+
+Run bootstrap as root when sudo is not yet installed. Later commands can run as a
+regular sudo-enabled user. The first `apply` needs current package metadata; if
+pacman cannot install a missing tool because the local metadata is stale, run the
+explicit upgrade command and retry.
+
+To change the tool set, edit
+[inventory/group_vars/all.yml](inventory/group_vars/all.yml). Removing a name from
+the installation list leaves an already installed package in place. To uninstall a
+package, add it to `archsetup_cli_packages_absent` and run `./setup.sh apply`.
+The removal list takes precedence, so adding `zip` there removes it even if it is
+also included in the default installation list. Removal uses pacman's normal
+dependency checks and preserves modified package configuration as `.pacsave`.
+
 
 ## Disposable Arch VM
 
@@ -35,51 +221,5 @@ To expand an existing stopped VM and its root filesystem, use, for example,
 `./scripts/vm.sh resize 30G`. QCOW2 is sparse, so the host file grows as the guest
 writes data rather than occupying its full virtual capacity immediately.
 
-The first implementation installs a configurable list of basic official-repository
-tools: build essentials, shell completion, Git, network tools, search tools, archive
-tools, terminal multiplexer, manuals, and package maintenance utilities. See
-[inventory/group_vars/all.yml](inventory/group_vars/all.yml) for the exact list.
 
-The central requirement is **idempotency**: applying the same configuration again
-should make no changes when the managed state already matches it. System upgrades
-will be an explicit maintenance operation.
-
-## Use
-
-On a fresh, installed Arch system, clone or copy this repository and run:
-
-```bash
-./setup.sh bootstrap
-./setup.sh check
-./setup.sh apply
-./setup.sh verify
-```
-
-`bootstrap` installs Git, Python, Ansible, and sudo if missing. Because Arch only
-supports full upgrades, that initial prerequisite installation uses `pacman -Syu`.
-`apply` does not refresh package databases or upgrade packages; it only ensures the
-declared tools are present. Use `./setup.sh upgrade` separately for a deliberate
-full system upgrade. Supply normal Ansible options after each command, such as
-`./setup.sh apply --ask-become-pass`.
-
-Run bootstrap as root when sudo is not yet installed. Later commands can run as a
-regular sudo-enabled user. The first `apply` needs current package metadata; if
-pacman cannot install a missing tool because the local metadata is stale, run the
-explicit upgrade command and retry.
-
-To change the tool set, edit
-[inventory/group_vars/all.yml](inventory/group_vars/all.yml). Removing a name from
-the installation list leaves an already installed package in place. To uninstall a
-package, add it to `archsetup_cli_packages_absent` and run `./setup.sh apply`.
-The removal list takes precedence, so adding `zip` there removes it even if it is
-also included in the default installation list. Removal uses pacman's normal
-dependency checks and preserves modified package configuration as `.pacsave`.
-
-See the [development plan](docs/development-plan.md) for the next roles, dotfiles,
-and VM-based repeatability tests.
-
-The [Hyprland desktop project plan](docs/hyprland-project-plan.md) defines the
-end-4-inspired taskbar, shortcuts, design, personal input/browser settings,
-AI removal, and Greetd/Hyprlock integration. Lua is allowed. The opt-in implementation and deployment commands are documented in
-[Hyprland desktop](docs/hyprland-desktop.md). Desktop tasks are skipped unless
-`archsetup_desktop_enabled=true`.
+See the [development plan](docs/development-plan.md) and [desktop project plan](docs/hyprland-project-plan.md) for project scope.
