@@ -253,57 +253,95 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(run.call_args.kwargs['input'], payload)
             self.assertTrue(all(not call.kwargs.get('shell') for call in run.call_args_list))
 
-    def test_popup_stop_only_signals_its_original_fuzzel_process(self):
-        self.actions.PROC = self.profile / 'popup-proc'
-        pid = os.getpid()
-        process = self.actions.PROC / str(pid)
-        process.mkdir(parents=True)
-        state = self.profile / 'popup.json'
-        uid = os.getuid()
-        cases = [('other-app', 'test-popup', '100', '100', uid, False),
-                 ('fuzzel', 'other-popup', '100', '100', uid, False),
-                 ('fuzzel', 'test-popup', '101', '100', uid, False),
-                 ('other-app', 'test-popup', '100', None, uid, False),
-                 ('fuzzel', 'test-popup', '100', '100', uid + 1, False),
-                 ('fuzzel', 'test-popup', '100', '100', uid, True)]
-        for executable, namespace, start, recorded, owner, allowed in cases:
-            with self.subTest(executable=executable, namespace=namespace, start=start, owner=owner):
-                (process / 'cmdline').write_bytes(f'{executable}\0--namespace={namespace}\0'.encode())
-                (process / 'stat').write_text(f'{pid} (fuzzel) S ' + '0 ' * 18 + start + '\n')
-                state.write_text(json.dumps({'pid': pid, 'start': recorded, 'name': 'launcher'}))
-                with patch.object(self.actions.os, 'getuid', return_value=owner), \
-                     patch.object(self.actions.signal, 'pidfd_send_signal') as send, \
-                     patch.object(self.actions.select, 'select', return_value=([1], [], [])):
-                    self.assertEqual(self.actions.close_popup(state, 'test-popup'), 'launcher' if allowed else None)
-                    self.assertEqual(send.call_count, int(allowed))
-        for content in ['invalid json', '{"pid":"invalid"}', '{"pid":null}']:
-            state.write_text(content)
-            self.assertIsNone(self.actions.close_popup(state, 'test-popup'))
-
-    def test_popup_toggle_cancels_and_old_cleanup_preserves_new_popup(self):
+    def popup_fixture(self):
         runtime = self.profile / 'popup-runtime'
         runtime.mkdir()
+        program = self.profile / 'fake-popup.py'
+        program.write_text('import sys, time\nprint(sys.stdin.read(), flush=True)\ntime.sleep(10)\n')
         environment = {'XDG_RUNTIME_DIR': str(runtime), 'HYPRLAND_INSTANCE_SIGNATURE': 'test-popup-session'}
-        with patch.dict(os.environ, environment), patch.object(self.actions, 'close_popup', return_value='launcher'), \
-             patch.object(self.actions.subprocess, 'Popen') as start:
-            result = self.actions.popup('launcher', ['fuzzel'], text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(result.stdout, '')
-            start.assert_not_called()
-        replacement = {'pid': 999, 'start': 'new', 'name': 'Emoji'}
-        def replace_popup(input):
-            self.assertEqual(input, 'clipboard data')
-            next(runtime.glob('*.json')).write_text(json.dumps(replacement))
-            return 'selection\n', None
-        with patch.dict(os.environ, environment), patch.object(self.actions, 'close_popup', return_value='launcher'), \
-             patch.object(self.actions, 'popup_identity', return_value='100'), \
-             patch.object(self.actions.subprocess, 'Popen') as start:
-            start.return_value.pid = 123
-            start.return_value.returncode = 0
-            start.return_value.communicate.side_effect = replace_popup
-            result = self.actions.popup('Clipboard', ['fuzzel'], input='clipboard data', text=True, stdout=subprocess.PIPE)
-            self.assertEqual(result.stdout, 'selection\n')
-        self.assertEqual(json.loads(next(runtime.glob('*.json')).read_text()), replacement)
+        return runtime, environment, [sys.executable, str(program)]
+
+    def wait_popup(self, runtime, name, future, previous=None):
+        import time
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if future.done():
+                future.result()  # Surface startup errors rather than timing out.
+                self.fail('Popup exited before it could be toggled')
+            paths = list(runtime.glob('*.json'))
+            if paths:
+                state = json.loads(paths[0].read_text())
+                if state['name'] == name and state['token'] != previous and paths[0].with_suffix('.sock').exists():
+                    return paths[0], state
+            time.sleep(0.01)
+        self.fail('Popup did not register')
+
+    def test_popup_opens_and_toggles_without_proc_access(self):
+        from concurrent.futures import ThreadPoolExecutor
+        runtime, environment, args = self.popup_fixture()
+        with patch.dict(os.environ, environment), \
+             patch.object(Path, 'read_bytes', side_effect=PermissionError('proc access denied')), \
+             ThreadPoolExecutor(max_workers=1) as executor:
+            opened = executor.submit(self.actions.popup, 'Shortcuts', args, input='shortcut help',
+                                     text=True, stdout=subprocess.PIPE)
+            path, state = self.wait_popup(runtime, 'Shortcuts', opened)
+            # Disk metadata is diagnostic only, never authority to choose a process.
+            state['pid'] = 2147483647
+            path.write_text(json.dumps(state))
+            closed = self.actions.popup('Shortcuts', args, text=True)
+            self.assertEqual(closed.returncode, 2)
+            self.assertEqual(closed.stdout, '')
+            self.assertNotEqual(opened.result(timeout=5).returncode, 0)
+        # The deliberately altered diagnostic record can remain, but its controller
+        # has exited and stale records do not prevent a subsequent popup.
+        with patch.dict(os.environ, environment), ThreadPoolExecutor(max_workers=1) as executor:
+            reopened = executor.submit(self.actions.popup, 'Shortcuts', args, input='',
+                                       text=True, stdout=subprocess.PIPE)
+            self.wait_popup(runtime, 'Shortcuts', reopened, previous=state['token'])
+            self.assertEqual(self.actions.close_popup(next(runtime.glob('*.sock'))), 'Shortcuts')
+            reopened.result(timeout=5)
+        self.assertEqual(list(runtime.glob('*.json')), [])
+        self.assertEqual(list(runtime.glob('*.sock')), [])
+
+    def test_popup_switching_preserves_the_new_controller(self):
+        from concurrent.futures import ThreadPoolExecutor
+        runtime, environment, args = self.popup_fixture()
+        with patch.dict(os.environ, environment), ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(self.actions.popup, 'launcher', args, input='',
+                                    text=True, stdout=subprocess.PIPE)
+            _, initial = self.wait_popup(runtime, 'launcher', first)
+            second = executor.submit(self.actions.popup, 'Shortcuts', args, input='',
+                                     text=True, stdout=subprocess.PIPE)
+            path, replacement = self.wait_popup(runtime, 'Shortcuts', second)
+            self.assertNotEqual(initial['token'], replacement['token'])
+            self.assertNotEqual(first.result(timeout=5).returncode, 0)
+            self.assertEqual(json.loads(path.read_text()), replacement)
+            self.assertEqual(self.actions.close_popup(next(runtime.glob('*.sock'))), 'Shortcuts')
+            second.result(timeout=5)
+        self.assertEqual(list(runtime.glob('*.json')), [])
+        self.assertEqual(list(runtime.glob('*.sock')), [])
+
+    def test_popup_controller_rejects_other_users_and_unknown_requests(self):
+        from unittest.mock import MagicMock
+        import struct
+        import threading
+        for uid, request, accepted in [(os.getuid() + 1, b'close\n', False),
+                                       (os.getuid(), b'kill 123\n', False),
+                                       (os.getuid(), b'close\n', True)]:
+            with self.subTest(uid=uid, request=request):
+                connection = MagicMock()
+                connection.__enter__.return_value = connection
+                connection.getsockopt.return_value = struct.pack('3i', 777, uid, 0)
+                connection.makefile.return_value.readline.return_value = request
+                listener = MagicMock()
+                listener.accept.side_effect = [(connection, None), OSError()]
+                with patch.object(self.actions.signal, 'pidfd_send_signal') as send, \
+                     patch.object(self.actions.select, 'select', side_effect=[([], [], []), ([321], [], [])]):
+                    self.actions.control_popup(listener, 321, 'Shortcuts', threading.Event())
+                    if accepted:
+                        send.assert_called_once_with(321, self.actions.signal.SIGTERM)
+                    else:
+                        send.assert_not_called()
 
     def test_cancelled_screenshot_does_not_capture(self):
         with patch.object(self.actions.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '')), patch.object(self.actions, 'run') as run:

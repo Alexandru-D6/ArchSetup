@@ -10,14 +10,16 @@ import os
 import random
 import select
 import signal
+import socket
+import struct
 import tempfile
+import threading
 from pathlib import Path
 import subprocess
 import sys
 from datetime import datetime
 
 ROOT = Path(__file__).resolve().parent.parent
-PROC = Path('/proc')
 
 def run(*args, **kwargs):
     if args and args[0] == 'wl-copy':
@@ -120,36 +122,41 @@ def refresh_theme(state):
     atomic_write(folder / 'colors.lua', 'hl.config({general={col={active_border="rgba(' + colors['45404f'] + '77)",inactive_border="rgba(' + colors['292332'] + '33)"}}})\n')
     atomic_write(ROOT / 'state.json', json.dumps(state) + '\n')
 
-def popup_identity(pid, namespace):
-    process = PROC / str(pid)
+def close_popup(path):
+    # The owning helper controls its own child. Never signal a PID read from disk.
     try:
-        if pid <= 0 or process.stat().st_uid != os.getuid(): return None
-        command = (process / 'cmdline').read_bytes().split(b'\0')
-        if Path(os.fsdecode(command[0])).name != 'fuzzel': return None
-        if ('--namespace=' + namespace).encode() not in command: return None
-        return (process / 'stat').read_text().rsplit(')', 1)[1].split()[19]
-    except (OSError, IndexError):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(3)
+            connection.connect(str(path))
+            connection.sendall(b'close\n')
+            response = json.loads(connection.makefile('r').readline(512))
+            if response.get('error'): raise ValueError(response['error'])
+            return response.get('name')
+    except (FileNotFoundError, ConnectionRefusedError, json.JSONDecodeError):
         return None
 
-def close_popup(path, namespace):
-    try:
-        state = json.loads(path.read_text())
-        pid = int(state['pid'])
-    except (OSError, ValueError, KeyError, TypeError):
-        return None
-    try:
-        descriptor = os.pidfd_open(pid)
+def control_popup(listener, descriptor, name, stopped):
+    while not stopped.is_set():
         try:
-            identity = popup_identity(pid, namespace)
-            if identity is None or identity != state['start']: return None
-            signal.pidfd_send_signal(descriptor, signal.SIGTERM)
-            if not select.select([descriptor], [], [], 2)[0]:
-                raise ValueError('The popup is still closing; try the shortcut again.')
-            return state['name']
-        finally:
-            os.close(descriptor)
-    except (OSError, KeyError, TypeError):
-        return None
+            connection, _ = listener.accept()
+        except socket.timeout:
+            continue
+        except OSError:
+            return
+        with connection:
+            connection.settimeout(2)
+            try:
+                credentials = connection.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i'))
+                if struct.unpack('3i', credentials)[1] != os.getuid(): continue
+                if connection.makefile('rb').readline(32) != b'close\n': continue
+                response = {'name': None}
+                if not select.select([descriptor], [], [], 0)[0]:
+                    signal.pidfd_send_signal(descriptor, signal.SIGTERM)
+                    if select.select([descriptor], [], [], 2)[0]: response['name'] = name
+                    else: response = {'error': 'The popup is still closing; try the shortcut again.'}
+                connection.sendall((json.dumps(response) + '\n').encode())
+            except (OSError, ValueError):
+                continue
 
 def popup(name, args, *, input=None, **kwargs):
     signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE')
@@ -157,28 +164,52 @@ def popup(name, args, *, input=None, **kwargs):
     namespace = 'archsetup-popup-' + hashlib.sha256((signature + str(ROOT)).encode()).hexdigest()[:16]
     runtime = Path(os.environ['XDG_RUNTIME_DIR'])
     path = runtime / (namespace + '.json')
+    socket_path = runtime / (namespace + '.sock')
     guard_path = runtime / (namespace + '.lock')
     args = [*args, '--namespace=' + namespace]
     with guard_path.open('a') as guard:
         fcntl.flock(guard, fcntl.LOCK_EX)
-        if close_popup(path, namespace) == name:
+        if close_popup(socket_path) == name:
             return subprocess.CompletedProcess(args, 2, '' if kwargs.get('text') else b'')
-        child = subprocess.Popen(args, stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL, **kwargs)
-        identity = popup_identity(child.pid, namespace)
-        if identity is None:
-            child.terminate()
-            child.wait()
-            raise ValueError('The popup failed to start')
-        state = {'pid': child.pid, 'start': identity, 'name': name}
-        atomic_write(path, json.dumps(state) + '\n')
+        socket_path.unlink(missing_ok=True)
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        child = None
+        descriptor = None
+        try:
+            listener.bind(str(socket_path))
+            socket_path.chmod(0o600)
+            listener.listen(1)
+            listener.settimeout(0.2)
+            child = subprocess.Popen(args, stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL, **kwargs)
+            # This descriptor pins the child we just created, without /proc access.
+            descriptor = os.pidfd_open(child.pid)
+            state = {'pid': child.pid, 'owner': os.getpid(), 'name': name, 'token': os.urandom(16).hex()}
+            atomic_write(path, json.dumps(state) + '\n')
+        except BaseException:
+            listener.close()
+            socket_path.unlink(missing_ok=True)
+            if child is not None:
+                child.terminate()
+                child.wait()
+            if descriptor is not None: os.close(descriptor)
+            raise
+    stopped = threading.Event()
+    controller = threading.Thread(target=control_popup, args=(listener, descriptor, name, stopped), daemon=True)
+    controller.start()
     try:
         stdout, stderr = child.communicate(input)
         return subprocess.CompletedProcess(args, child.returncode, stdout, stderr)
     finally:
+        stopped.set()
+        listener.close()
+        controller.join()
+        os.close(descriptor)
         with guard_path.open('a') as guard:
             fcntl.flock(guard, fcntl.LOCK_EX)
             try:
-                if json.loads(path.read_text()) == state: path.unlink()
+                if json.loads(path.read_text()) == state:
+                    path.unlink()
+                    socket_path.unlink(missing_ok=True)
             except (OSError, ValueError): pass
 
 def menu(lines, prompt):

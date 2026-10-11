@@ -1,5 +1,21 @@
 # Desktop validation — 2026-10-10
 
+## Shortcut-help startup repair — 2026-10-12
+
+The installed LittleArchy desktop reported `The popup failed to start` with
+Fuzzel 1.15.0. Removed the popup controller's immediate process-file identity
+check. A private Unix socket now asks the owning helper to close its own child
+through a retained PID file descriptor; disk metadata cannot select a process to
+signal. Socket peers are checked by UID, and controller tokens protect replacements
+from older cleanup.
+
+23 tests pass, covering popup startup/toggling with process-file reads denied,
+stale/tampered state, real menu replacement and control-request authentication.
+Native compositor parsing passes. QEMU physical key tests confirm Super+/ opens
+and closes shortcut help, alongside launcher, clipboard, emoji, calculator,
+wallpaper and panel toggles. VM apply: `ok=42 changed=1 failed=0 skipped=21`.
+The updated code has not been applied to the user's LittleArchy installation.
+
 ## Repeat-shortcut popup dismissal — 2026-10-12
 
 Super alone and Super+D now open/close the same launcher. Clipboard, emoji,

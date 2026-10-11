@@ -1,6 +1,27 @@
 # Resume checkpoint — 2026-10-12 (latest)
 
-Latest task: Super alone and Super+D toggle the launcher; pressing the opening
+Latest task: fixed shortcut-help startup on installed LittleArchy. The user
+reported `The popup failed to start` with Fuzzel 1.15.0. This message came from the
+new controller's immediate /proc identity check, which could reject and terminate
+its own popup. Replaced process-file checks with a private, session/profile-scoped
+Unix socket: the owning helper retains a PID file descriptor for its own child
+and accepts only close requests from the same UID. PID fields on disk are now
+diagnostic only. Unique controller tokens prevent older cleanup from deleting a
+replacement popup. The original open/close toggle behavior remains.
+
+Validation: 23 tests pass, including real open/close cycles with /proc-style reads
+denied, stale/tampered diagnostic records, menu replacement and rejection of
+foreign users/unknown control requests. Native configuration parsing passes.
+QEMU physical key acceptance confirms Super+/ opens/closes help, other menus toggle,
+and switching menus leaves one active popup. VM apply:
+`ok=42 changed=1 failed=0 skipped=21`; log `/tmp/desktop-help-fix-apply.log`.
+Host acceptance helper: `/tmp/archsetup-popup-acceptance.py`; guest probe:
+`/tmp/desktop-popup-state.py`. No deployment to LittleArchy or the workstation was
+made; apply the updated repository on LittleArchy. Source changes are uncommitted.
+The test VM is powered off, idle behavior is restored, the temporary account is
+locked and temporary host credentials were removed.
+
+Previous task: Super alone and Super+D toggle the launcher; pressing the opening
 shortcut again dismisses Fuzzel menus (clipboard, emoji, calculator, wallpaper,
 shortcut help). A session/profile-owned controller serializes opens/closes, waits
 for the previous menu to exit before switching and checks UID, executable,
