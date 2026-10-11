@@ -22,6 +22,8 @@
         - "{{ desktop_root }}/hyprland.lua"
         - "{{ desktop_root }}/hyprlock.conf"
         - "{{ desktop_root }}/hypridle.conf"
+        - "{{ desktop_root }}/kitty.conf"
+        - "{{ desktop_root }}/theme/kitty.conf"
         - "{{ desktop_root }}/shell/shell.qml"
         - /usr/share/wayland-sessions/archsetup.desktop
         - /usr/local/bin/archsetup-session
@@ -34,6 +36,19 @@
       loop: "{{ desktop_verified_files.results }}"
       loop_control:
         label: "{{ item.item }}"
+
+    - name: Check the default Kitty configuration
+      ansible.builtin.stat:
+        path: "{{ desktop_home }}/.config/kitty/kitty.conf"
+      register: desktop_kitty_configuration
+
+    - name: Require Kitty to use the managed desktop theme
+      ansible.builtin.assert:
+        that:
+          - desktop_kitty_configuration.stat.exists
+          - desktop_kitty_configuration.stat.islnk | default(false)
+          - desktop_kitty_configuration.stat.lnk_source | default('') == desktop_root + '/theme/kitty.conf'
+        fail_msg: Run desktop-apply to normalize the default Kitty configuration.
 
     - name: Validate the installed Lua configuration
       ansible.builtin.command:

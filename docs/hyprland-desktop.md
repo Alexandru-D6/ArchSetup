@@ -128,6 +128,14 @@ state so the windows can share the desktop. Super+Alt+D still maximizes explicit
 and Super+F toggles fullscreen. A single tile uses the available desktop space;
 additional terminals split that space.
 
+Kitty uses the managed desktop theme from terminal shortcuts, the application
+launcher and ordinary `kitty` commands. `~/.config/kitty/kitty.conf` links to
+`~/.config/archsetup/theme/kitty.conf`, which is refreshed during installation and
+theme changes. An existing default Kitty configuration is backed up once to
+`~/.config/kitty/kitty.conf.pre-archsetup`. Window and tab close confirmation is
+disabled (`confirm_os_window_close 0`). Open a new terminal after applying changes
+to load the new settings.
+
 Network, Bluetooth and audio-device buttons open their native configuration
 applications. Brightness controls are hidden without a backlight device.
 Screenshot actions copy PNG data to the clipboard. Clipboard history offers an
@@ -156,6 +164,8 @@ Managed paths:
 
 - `~/.config/archsetup/`: templates, shell, helpers and shortcut map, except
   `state.json` and `overrides.lua` which remain user-owned.
+- `~/.config/kitty/kitty.conf`: link to the generated managed Kitty theme; the
+  previous configuration is retained as `kitty.conf.pre-archsetup`.
 - HTTP, HTTPS and HTML keys in `~/.config/mimeapps.list`; other entries are kept.
 - `/usr/local/bin/archsetup-session` and
   `/usr/share/wayland-sessions/archsetup.desktop`.

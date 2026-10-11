@@ -1,5 +1,23 @@
 # Desktop validation — 2026-10-10
 
+## Unified Kitty theme and immediate closing — 2026-10-11
+
+The default Kitty configuration now links to the managed generated theme, with
+an existing configuration saved once as `kitty.conf.pre-archsetup`. Theme
+generation runs during apply after template changes or when the Kitty theme is
+missing; read-only verification checks the link. Window/tab close confirmation
+is disabled with `confirm_os_window_close 0`.
+
+All 20 local tests and both playbook syntax checks pass. A fresh configuration
+preview works before any theme/default Kitty files exist and writes no files.
+In the VM, real Kitty parsing confirms matching default/shortcut settings and
+zero confirmation threshold. The original configuration backup hash is preserved.
+The CLI, terminal shortcut helper and Kitty app launcher each opened a terminal,
+received a new-tab shortcut and closed without confirmation. The CLI case had a
+running foreground job as well. Repeat apply makes no changes:
+`ok=42 changed=0 failed=0 skipped=21`; verification:
+`ok=20 changed=0 failed=0 skipped=2`. No workstation configuration was modified.
+
 ## Terminal startup tiling — 2026-10-11
 
 Reproduced the second normally launched Kitty terminal entering maximized state

@@ -1,6 +1,29 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
-Latest task: new Kitty terminals open as normal tiles. A named native window rule
+Latest task: default Kitty launches now use the managed desktop theme, including
+the app launcher, CLI and terminal shortcuts. The role backs up the previous
+`~/.config/kitty/kitty.conf` once as `kitty.conf.pre-archsetup`, generates the current
+theme and replaces the default configuration with a link to
+`~/.config/archsetup/theme/kitty.conf`. Theme generation runs after template changes
+or if the generated Kitty theme is missing. Verification checks this link.
+`confirm_os_window_close` is now zero, disabling window/tab close confirmation.
+README and ownership/recovery documentation reflect the managed default config.
+
+Validation: all 20 local tests, both desktop playbook syntax checks and a fresh
+Kitty check-mode preview pass. Real Kitty parsing in the VM confirms matching
+default/shortcut settings and disabled confirmation; the original backup hash is
+unchanged. CLI, shortcut helper and `gtk-launch kitty` each opened and closed after
+adding a tab, without confirmation; the CLI case also had a running foreground
+job. First VM apply: `ok=44 changed=4 failed=0 skipped=19`; repeat:
+`ok=42 changed=0 failed=0 skipped=21`; verify:
+`ok=20 changed=0 failed=0 skipped=2`. VM helpers/logs are
+`/tmp/desktop-kitty-launch-test.py`, `/tmp/desktop-kitty-launch.log`,
+`/tmp/desktop-kitty-apply.log`, `/tmp/desktop-kitty-repeat.log` and
+`/tmp/desktop-kitty-verify.log`. No workstation deployment was performed.
+The VM is powered off, the temporary test account is locked, idle inhibition was
+restored by the acceptance helper and temporary host credentials were removed.
+
+Previous task: new Kitty terminals open as normal tiles. A named native window rule
 sets `tile=true`, initializes `fullscreen_state="0 0"` and suppresses client
 maximize/fullscreen requests. Explicit `on_focus_under_fullscreen=2` and
 `exit_window_retains_fullscreen=false` prevent fullscreen takeover/retention.

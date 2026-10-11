@@ -102,6 +102,11 @@ The installer creates `~/.config/archsetup`, registers the desktop session, and
 configures Greetd for the next boot. Your existing `~/.config/hypr` is retained.
 Browser web/HTML associations are updated to Brave.
 
+Kitty uses the desktop theme from shortcuts, the app launcher and command-line
+launches, with window/tab close confirmation disabled. The installer links
+`~/.config/kitty/kitty.conf` to the managed theme and saves an existing configuration
+once as `~/.config/kitty/kitty.conf.pre-archsetup`.
+
 Missing Brave is built from a reviewed, pinned AUR `brave-bin` revision as your
 regular user, with source checksum verification, then installed through pacman.
 No AUR helper or passwordless sudo is required. The first installation downloads

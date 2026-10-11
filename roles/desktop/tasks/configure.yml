@@ -82,6 +82,7 @@
     backup: true
     validate: "{{ desktop_root + '/bin/validate-config %s' if item == 'hyprland.lua' else omit }}"
   loop: [hyprland.lua, hyprlock.conf, hypridle.conf, fuzzel.ini, kitty.conf, swaync.json, swaync.css, preferences.json]
+  register: desktop_rendered_configuration
 
 - name: Initialize user-owned appearance state
   ansible.builtin.copy:
@@ -91,6 +92,54 @@
     group: "{{ desktop_group }}"
     mode: '0600'
     force: false
+
+- name: Create the default Kitty configuration directory
+  ansible.builtin.file:
+    path: "{{ desktop_home }}/.config/kitty"
+    state: directory
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
+    mode: '0755'
+
+- name: Inspect the default Kitty configuration and generated theme
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ desktop_home }}/.config/kitty/kitty.conf"
+    - "{{ desktop_root }}/theme/kitty.conf"
+  register: desktop_kitty_existing
+
+- name: Back up the previous default Kitty configuration once
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.command:
+    argv:
+      - cp
+      - -a
+      - --
+      - "{{ desktop_home }}/.config/kitty/kitty.conf"
+      - "{{ desktop_home }}/.config/kitty/kitty.conf.pre-archsetup"
+    creates: "{{ desktop_home }}/.config/kitty/kitty.conf.pre-archsetup"
+  when:
+    - desktop_kitty_existing.results[0].stat.exists
+    - desktop_kitty_existing.results[0].stat.lnk_source | default('') != desktop_root + '/theme/kitty.conf'
+
+- name: Generate the current managed theme
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.command:
+    argv: ["{{ desktop_root }}/bin/desktop-action", refresh-theme]
+  when:
+    - not ansible_check_mode
+    - desktop_rendered_configuration.changed or not desktop_kitty_existing.results[1].stat.exists
+  changed_when: true
+
+- name: Use the desktop theme for all default Kitty launches
+  ansible.builtin.file:
+    path: "{{ desktop_home }}/.config/kitty/kitty.conf"
+    src: "{{ desktop_root }}/theme/kitty.conf"
+    state: link
+    force: true
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
 
 - name: Validate rendered compositor configuration
   ansible.builtin.command:
