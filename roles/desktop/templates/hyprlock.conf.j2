@@ -1,6 +1,9 @@
 general {
     hide_cursor = true
 }
+animations {
+    enabled = {{ (not (archsetup_desktop_reduced_motion | bool)) | to_json }}
+}
 background {
     monitor =
     color = rgba(191620ff)

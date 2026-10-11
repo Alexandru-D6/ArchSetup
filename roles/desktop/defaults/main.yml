@@ -29,7 +29,7 @@ archsetup_desktop_input:
     disable_while_typing: true
     clickfinger_behavior: true
     scroll_factor: 0.7
-archsetup_desktop_reduced_motion: false
+archsetup_desktop_reduced_motion: true
 archsetup_desktop_lock_seconds: 300
 archsetup_desktop_dpms_seconds: 600
 archsetup_desktop_packages:

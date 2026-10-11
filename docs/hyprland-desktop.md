@@ -63,6 +63,12 @@ validated Hyprland API series.
 
 ## Configuration and controls
 
+Animations are disabled by default (`archsetup_desktop_reduced_motion: true`):
+Hyprland window/workspace effects, Hyprlock fades and input effects, and SwayNC
+transitions. The custom shell already switches its panels without animations.
+The lock setting follows the [Hyprlock animation configuration](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#animations);
+notification timing follows the [SwayNC schema](https://github.com/ErikReider/SwayNotificationCenter/blob/main/src/configSchema.json).
+
 `~/.config/archsetup` contains the managed profile. The existing `~/.config/hypr`
 is not changed. Account paths are discovered through the passwd database.
 The personal profile preserves flat pointer acceleration, sensitivity zero,

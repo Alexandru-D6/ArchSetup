@@ -1,4 +1,5 @@
 archsetup_desktop_enabled: true
+archsetup_desktop_reduced_motion: true
 archsetup_desktop_user: "alex"
 archsetup_desktop_browser: firefox.desktop
 archsetup_desktop_quickshell_package: quickshell
