@@ -5,7 +5,7 @@
     state: directory
     mode: '0755'
 
-- name: Configure password-authenticated login
+- name: Configure desktop login
   ansible.builtin.copy:
     content: |
       [terminal]
@@ -13,6 +13,11 @@
       [default_session]
       command = "tuigreet --time --remember --cmd /usr/local/bin/archsetup-session"
       user = "greeter"
+      {% if archsetup_desktop_autologin_locked | bool %}
+      [initial_session]
+      command = "/usr/local/bin/archsetup-session --locked"
+      user = "{{ archsetup_desktop_user }}"
+      {% endif %}
     dest: /etc/greetd/config.toml
     mode: '0644'
     backup: true

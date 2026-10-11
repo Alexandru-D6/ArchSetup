@@ -27,7 +27,12 @@ that host-specific provider override.
 
 An existing unmanaged Greetd configuration or profile requires explicit adoption:
 add `-e archsetup_desktop_adopt=true` to the reviewed check/apply invocation.
-This creates backups and replaces the current autologin with password login.
+This creates backups. By default, Greetd starts the selected user's desktop once
+at boot using Hyprland's `--locked-cmd` startup lock. Hyprlock is the first password
+screen; the user must have a working account password. Greetd's login screen is
+the fallback after logout or session failure. Set
+`archsetup_desktop_autologin_locked=false` to require Greetd authentication at boot.
+Automatic session creation does not supply a password to unlock the login keyring.
 A competing display manager causes a preflight failure; stop it only during a
 planned session transition, then disable its boot enablement before proceeding.
 The role never restarts Greetd during an apply. Reboot deliberately after review,

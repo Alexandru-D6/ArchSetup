@@ -1,5 +1,15 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
+Latest user change: skip Greetd's boot prompt and show Hyprlock. Implemented
+`archsetup_desktop_autologin_locked: true` by default, a Greetd initial_session
+for the selected user, and `archsetup-session --locked` passing Hyprland's native
+`--locked-cmd`. Authenticated greeter remains the post-logout/failure fallback.
+13 local tests pass, including parsed Greetd TOML and captured launcher arguments;
+syntax checks pass. This new boot flow has NOT yet been exercised graphically
+or deployed to the workstation. Earlier Greetd authentication results below
+describe the previous boot flow. Also fixed missing-service check-mode failures
+for Greetd, NetworkManager and Bluetooth, covered by an Ansible regression test.
+
 User authorized continuation. Repository changes remain uncommitted and the
 workstation is untouched. This section supersedes the historical checkpoint below.
 

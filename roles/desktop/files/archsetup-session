@@ -5,4 +5,14 @@ profile="${XDG_CONFIG_HOME:-$HOME/.config}/archsetup"
 export XDG_CURRENT_DESKTOP=Hyprland
 export XDG_SESSION_DESKTOP=Hyprland
 export XDG_SESSION_TYPE=wayland
-exec start-hyprland -- --config "$profile/hyprland.lua"
+args=(--config "$profile/hyprland.lua")
+case "${1:-}" in
+  --locked)
+    # Lock within the compositor's startup path, before desktop interaction.
+    printf -v locker '%q lock' "$profile/bin/desktop-action"
+    args+=(--locked-cmd "$locker")
+    ;;
+  '') ;;
+  *) echo 'Usage: archsetup-session [--locked]' >&2; exit 2 ;;
+esac
+exec start-hyprland -- "${args[@]}"

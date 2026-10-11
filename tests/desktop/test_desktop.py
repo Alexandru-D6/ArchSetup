@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import yaml
+import jinja2
 
 from render import render, ROLE
 
@@ -24,6 +25,45 @@ class DesktopTests(unittest.TestCase):
         self.actions = importlib.util.module_from_spec(spec)
         loader.exec_module(self.actions)
         self.actions.ROOT = self.profile
+
+    def test_locked_session_uses_compositor_startup_lock(self):
+        fake_bin = Path(self.directory.name) / 'fake-bin'
+        fake_bin.mkdir()
+        launcher = fake_bin / 'start-hyprland'
+        launcher.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+        launcher.chmod(0o755)
+        config = Path(self.directory.name) / 'config'
+        (config / 'archsetup').mkdir(parents=True)
+        (config / 'archsetup/hyprland.lua').write_text('-- test\n')
+        environment = dict(os.environ, XDG_CONFIG_HOME=str(config),
+                           PATH=str(fake_bin) + os.pathsep + os.environ['PATH'])
+        for locked in [False, True]:
+            result = subprocess.run(['bash', str(ROLE / 'files/archsetup-session')]
+                                    + (['--locked'] if locked else []),
+                                    env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            args = result.stdout.splitlines()
+            self.assertEqual(args[:3], ['--', '--config', str(config / 'archsetup/hyprland.lua')])
+            self.assertEqual('--locked-cmd' in args, locked)
+            if locked:
+                self.assertEqual(args[4], str(config / 'archsetup/bin/desktop-action') + ' lock')
+
+    def test_greetd_autologin_is_always_locked(self):
+        import tomllib
+        tasks = yaml.safe_load((ROLE / 'tasks/login.yml').read_text())
+        source = next(task['ansible.builtin.copy']['content'] for task in tasks
+                      if task.get('ansible.builtin.copy', {}).get('dest') == '/etc/greetd/config.toml')
+        env = jinja2.Environment(undefined=jinja2.StrictUndefined)
+        env.filters['bool'] = lambda value: str(value).lower() == 'true'
+        for enabled in ['true', 'false']:
+            config = tomllib.loads(env.from_string(source).render(
+                archsetup_desktop_autologin_locked=enabled, archsetup_desktop_user='tester'))
+            self.assertEqual(config['default_session']['user'], 'greeter')
+            if enabled == 'true':
+                self.assertEqual(config['initial_session'], {
+                    'command': '/usr/local/bin/archsetup-session --locked', 'user': 'tester'})
+            else:
+                self.assertNotIn('initial_session', config)
 
     def test_fresh_check_skips_services_not_created_by_package_preview(self):
         executable = shutil.which('ansible-playbook')
