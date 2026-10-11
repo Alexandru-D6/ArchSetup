@@ -21,43 +21,50 @@
     "key": "SUPER + D",
     "action": "launcher",
     "description": "Launcher",
-    "category": "Applications"
+    "category": "Applications",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + Tab",
     "action": "overview",
     "description": "Window overview",
-    "category": "Utilities"
+    "category": "Utilities",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + Slash",
     "action": "help",
     "description": "Shortcut help",
-    "category": "Utilities"
+    "category": "Utilities",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + V",
     "action": "clipboard",
     "description": "Clipboard",
-    "category": "Utilities"
+    "category": "Utilities",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + Period",
     "action": "emoji",
     "description": "Emoji",
-    "category": "Utilities"
+    "category": "Utilities",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + N",
     "action": "notifications",
     "description": "Notifications",
-    "category": "Utilities"
+    "category": "Utilities",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + Comma",
     "action": "settings",
     "description": "Quick settings",
-    "category": "Utilities"
+    "category": "Utilities",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + L",
@@ -69,7 +76,8 @@
     "key": "SUPER + SHIFT + Escape",
     "action": "session",
     "description": "Session menu",
-    "category": "Utilities"
+    "category": "Utilities",
+    "dont_inhibit": true
   },
   {
     "key": "Print",
@@ -372,7 +380,8 @@
     "key": "SUPER + equal",
     "action": "calculator",
     "description": "Calculator",
-    "category": "Applications"
+    "category": "Applications",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + T",
@@ -414,7 +423,8 @@
     "key": "SUPER + I",
     "description": "Quick settings",
     "category": "Applications",
-    "action": "settings"
+    "action": "settings",
+    "dont_inhibit": true
   },
   {
     "key": "CTRL + SHIFT + Escape",
@@ -427,50 +437,58 @@
     "description": "Launcher on left Super release",
     "category": "Applications",
     "release": true,
-    "action": "launcher"
+    "action": "launcher",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + SUPER_R",
     "description": "Launcher on right Super release",
     "category": "Applications",
     "release": true,
-    "action": "launcher"
+    "action": "launcher",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + A",
     "description": "Utilities",
     "category": "Shell",
-    "action": "tools"
+    "action": "tools",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + B",
     "description": "Utilities",
     "category": "Shell",
-    "action": "tools"
+    "action": "tools",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + O",
     "description": "Utilities",
     "category": "Shell",
-    "action": "tools"
+    "action": "tools",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + ALT + A",
     "description": "Detach utilities",
     "category": "Shell",
-    "action": "detach-tools"
+    "action": "detach-tools",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + K",
     "description": "On-screen keyboard",
     "category": "Shell",
-    "action": "keyboard"
+    "action": "keyboard",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + M",
     "description": "Media controls",
     "category": "Shell",
-    "action": "media"
+    "action": "media",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + G",
@@ -500,7 +518,8 @@
     "key": "CTRL + SUPER + T",
     "description": "Choose wallpaper",
     "category": "Shell",
-    "action": "wallpaper"
+    "action": "wallpaper",
+    "dont_inhibit": true
   },
   {
     "key": "CTRL + SUPER + ALT + T",
@@ -518,7 +537,8 @@
     "key": "SUPER + SHIFT + ALT + Slash",
     "description": "Shortcut help",
     "category": "Shell",
-    "action": "help"
+    "action": "help",
+    "dont_inhibit": true
   },
   {
     "key": "CTRL + SUPER + ALT + Slash",
@@ -1384,7 +1404,8 @@
     "key": "CTRL + ALT + Delete",
     "description": "Session menu",
     "category": "Session",
-    "action": "session"
+    "action": "session",
+    "dont_inhibit": true
   },
   {
     "key": "SUPER + SHIFT + L",

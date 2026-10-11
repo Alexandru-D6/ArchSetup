@@ -59,7 +59,7 @@ end
 {% if binding.submap is defined %}hl.define_submap({{ binding.submap | to_json }}, function()
 {% endif %}
 hl.bind({{ binding.key | to_json }}, {% if binding.action is defined %}hl.dsp.exec_cmd(action .. " {{ binding.action }}"){% elif binding.callback is defined %}callbacks[{{ binding.callback | to_json }}]{% else %}{{ binding.dispatcher }}{% endif %}, {
-    description = {{ binding.description | to_json(ensure_ascii=false) }}{% for flag in ['mouse', 'locked', 'repeating', 'release', 'submap_universal'] %}{% if binding[flag] | default(false) %}, {{ flag }} = true{% endif %}{% endfor %}
+    description = {{ binding.description | to_json(ensure_ascii=false) }}{% for flag in ['mouse', 'locked', 'repeating', 'release', 'submap_universal', 'dont_inhibit'] %}{% if binding[flag] | default(false) %}, {{ flag }} = true{% endif %}{% endfor %}
 })
 {% if binding.submap is defined %}end)
 {% endif %}

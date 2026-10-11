@@ -1,5 +1,22 @@
 # Desktop validation — 2026-10-10
 
+## Repeat-shortcut popup dismissal — 2026-10-12
+
+Super alone and Super+D now open/close the same launcher. Clipboard, emoji,
+calculator, wallpaper and help menus toggle through the same session-owned
+controller; changing menus replaces the active menu. Popup bindings bypass
+application shortcut inhibition while preserving the session-lock restriction.
+
+22 local tests pass, including process identity checks against stale/reused PIDs,
+unrelated executables/namespaces/users, cancellation and cleanup races. Physical
+QEMU key tests confirm left/right Super, Super+D and all five menu shortcuts
+open/close their surfaces. Switching launcher → clipboard → emoji leaves one
+managed popup. Overview, quick settings, utilities, media, session menu and the
+on-screen keyboard toggle correctly while focused. Whitespace checks pass.
+Repeat VM apply: `ok=42 changed=0 failed=0 skipped=21`; read-only verification:
+`ok=20 changed=0 failed=0 skipped=2`.
+No workstation configuration was modified.
+
 ## Unified Kitty theme and immediate closing — 2026-10-11
 
 The default Kitty configuration now links to the managed generated theme, with

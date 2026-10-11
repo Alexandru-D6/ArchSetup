@@ -8,6 +8,8 @@ import operator
 import json
 import os
 import random
+import select
+import signal
 import tempfile
 from pathlib import Path
 import subprocess
@@ -15,6 +17,7 @@ import sys
 from datetime import datetime
 
 ROOT = Path(__file__).resolve().parent.parent
+PROC = Path('/proc')
 
 def run(*args, **kwargs):
     if args and args[0] == 'wl-copy':
@@ -117,10 +120,71 @@ def refresh_theme(state):
     atomic_write(folder / 'colors.lua', 'hl.config({general={col={active_border="rgba(' + colors['45404f'] + '77)",inactive_border="rgba(' + colors['292332'] + '33)"}}})\n')
     atomic_write(ROOT / 'state.json', json.dumps(state) + '\n')
 
+def popup_identity(pid, namespace):
+    process = PROC / str(pid)
+    try:
+        if pid <= 0 or process.stat().st_uid != os.getuid(): return None
+        command = (process / 'cmdline').read_bytes().split(b'\0')
+        if Path(os.fsdecode(command[0])).name != 'fuzzel': return None
+        if ('--namespace=' + namespace).encode() not in command: return None
+        return (process / 'stat').read_text().rsplit(')', 1)[1].split()[19]
+    except (OSError, IndexError):
+        return None
+
+def close_popup(path, namespace):
+    try:
+        state = json.loads(path.read_text())
+        pid = int(state['pid'])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    try:
+        descriptor = os.pidfd_open(pid)
+        try:
+            identity = popup_identity(pid, namespace)
+            if identity is None or identity != state['start']: return None
+            signal.pidfd_send_signal(descriptor, signal.SIGTERM)
+            if not select.select([descriptor], [], [], 2)[0]:
+                raise ValueError('The popup is still closing; try the shortcut again.')
+            return state['name']
+        finally:
+            os.close(descriptor)
+    except (OSError, KeyError, TypeError):
+        return None
+
+def popup(name, args, *, input=None, **kwargs):
+    signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE')
+    if not signature: raise ValueError('Desktop popups must run inside Hyprland')
+    namespace = 'archsetup-popup-' + hashlib.sha256((signature + str(ROOT)).encode()).hexdigest()[:16]
+    runtime = Path(os.environ['XDG_RUNTIME_DIR'])
+    path = runtime / (namespace + '.json')
+    guard_path = runtime / (namespace + '.lock')
+    args = [*args, '--namespace=' + namespace]
+    with guard_path.open('a') as guard:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        if close_popup(path, namespace) == name:
+            return subprocess.CompletedProcess(args, 2, '' if kwargs.get('text') else b'')
+        child = subprocess.Popen(args, stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL, **kwargs)
+        identity = popup_identity(child.pid, namespace)
+        if identity is None:
+            child.terminate()
+            child.wait()
+            raise ValueError('The popup failed to start')
+        state = {'pid': child.pid, 'start': identity, 'name': name}
+        atomic_write(path, json.dumps(state) + '\n')
+    try:
+        stdout, stderr = child.communicate(input)
+        return subprocess.CompletedProcess(args, child.returncode, stdout, stderr)
+    finally:
+        with guard_path.open('a') as guard:
+            fcntl.flock(guard, fcntl.LOCK_EX)
+            try:
+                if json.loads(path.read_text()) == state: path.unlink()
+            except (OSError, ValueError): pass
+
 def menu(lines, prompt):
-    result = subprocess.run(['fuzzel', '--config', str(themed('fuzzel.ini')),
-                             '--dmenu', '--prompt', prompt + ': '],
-                            input='\n'.join(lines), text=True, stdout=subprocess.PIPE)
+    result = popup(prompt, ['fuzzel', '--config', str(themed('fuzzel.ini')),
+                            '--dmenu', '--prompt', prompt + ': '],
+                   input='\n'.join(lines), text=True, stdout=subprocess.PIPE)
     if result.returncode != 0:
         return None
     return result.stdout.rstrip('\n')
@@ -179,7 +243,7 @@ def main(action):
         path = ROOT / 'overrides.lua'
         if not path.exists(): path.write_text('-- Personal Hyprland overrides and additional bindings.\n')
         run('gtk-launch', json.loads((ROOT / 'preferences.json').read_text())['codeEditor'], str(path))
-    elif action == 'launcher': run('fuzzel', '--config', str(themed('fuzzel.ini')))
+    elif action == 'launcher': popup('launcher', ['fuzzel', '--config', str(themed('fuzzel.ini'))])
     elif action == 'lock':
         signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE', '')
         if not signature: raise ValueError('Lock must run inside a Hyprland session')

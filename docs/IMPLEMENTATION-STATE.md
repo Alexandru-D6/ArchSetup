@@ -1,6 +1,33 @@
-# Resume checkpoint — 2026-10-11 (latest)
+# Resume checkpoint — 2026-10-12 (latest)
 
-Latest task: default Kitty launches now use the managed desktop theme, including
+Latest task: Super alone and Super+D toggle the launcher; pressing the opening
+shortcut again dismisses Fuzzel menus (clipboard, emoji, calculator, wallpaper,
+shortcut help). A session/profile-owned controller serializes opens/closes, waits
+for the previous menu to exit before switching and checks UID, executable,
+namespace and process start time before signaling through a PID file descriptor.
+Cancellation returns no selection; old-menu cleanup cannot remove a newer menu's
+state. Added `dont_inhibit` to 21 popup/panel bindings and the native Lua renderer;
+they remain unavailable while the session is locked. The toggle scope is desktop
+popups and panels.
+
+Validation: 22 local tests pass, including stale/reused/unrelated PID rejection,
+popup cancellation and cleanup-race coverage. QEMU physical key tests pass for
+left/right Super and Super+D, clipboard, emoji, calculator, help and wallpaper;
+switching launcher → clipboard → emoji leaves one managed popup. Overview,
+settings, utilities, media, session menu and on-screen keyboard toggle correctly
+with the panel focused. Host acceptance helper:
+`/tmp/archsetup-popup-acceptance.py`; guest state probe:
+`/tmp/desktop-popup-state.py`. Initial VM apply:
+`ok=43 changed=3 failed=0 skipped=20`; logs are
+`/tmp/desktop-popup-apply.log` and `/tmp/desktop-popup-repeat.log` in the guest.
+Repeat apply: `ok=42 changed=0 failed=0 skipped=21`; verify:
+`ok=20 changed=0 failed=0 skipped=2` (`/tmp/desktop-popup-verify.log`).
+No workstation deployment was performed.
+The acceptance helper restored idle behavior and closed the test popups. The VM
+is powered off, its temporary test account is locked and host credentials were
+removed.
+
+Previous task: default Kitty launches now use the managed desktop theme, including
 the app launcher, CLI and terminal shortcuts. The role backs up the previous
 `~/.config/kitty/kitty.conf` once as `kitty.conf.pre-archsetup`, generates the current
 theme and replaces the default configuration with a link to

@@ -122,6 +122,11 @@ workspace shortcuts, including the Super+Alt variants. Workspace buttons focus
 workspaces; task buttons focus windows and offer a right-click close menu.
 The overview supports arrow navigation and Enter.
 
+Press Super alone to open the launcher and again to close it; Super+D also toggles
+the launcher. Repeat the opening shortcut to dismiss other desktop panels and
+menus, including clipboard, emoji, calculator, wallpaper selection and shortcut
+help. Switching between those menus replaces the current menu.
+
 New Kitty terminals open as normal tiles and ignore client requests to maximize
 or enter fullscreen. Opening another tile clears an existing maximized/fullscreen
 state so the windows can share the desktop. Super+Alt+D still maximizes explicitly,

@@ -9,7 +9,13 @@ calculator; zoom-in uses Ctrl+Super+Equal. Super+Shift+S stays "move to scratch"
 screen snip is Ctrl+Super+Shift+S (Print also selects a region). Super+Space remains
 reserved for keyboard-layout switching.
 
-Super alone opens the launcher on release. Utilities replace the upstream AI
+Super alone toggles the launcher on release: press it again to close the launcher.
+Super+D uses the same toggle. Repeating clipboard, emoji, calculator, wallpaper
+picker or shortcut-help keys dismisses that menu; choosing a different menu
+replaces the current one. Overview, settings, utilities, media and the on-screen
+keyboard also toggle with their opening shortcuts.
+
+Utilities replace the upstream AI
 sidebar. Ctrl+Super+P cycles top/bottom placement of the existing bar; it does not
 load a separate upstream shell. AI summaries, cloud screen translation, Google
 Lens, developer test notifications and upstream-only workspace grouping helpers
