@@ -27,3 +27,7 @@
     that: desktop_hyprland_version.stdout is search('0\.56\.')
     fail_msg: This profile targets Hyprland 0.56.x. Validate a newer API before updating the supported version gate.
   when: not ansible_check_mode
+
+- name: Discover existing services for installation previews
+  ansible.builtin.service_facts:
+  when: ansible_check_mode

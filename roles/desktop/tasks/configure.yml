@@ -124,7 +124,9 @@
     name: NetworkManager.service
     enabled: true
     state: started
-  when: archsetup_desktop_manage_network | bool
+  when:
+    - archsetup_desktop_manage_network | bool
+    - not ansible_check_mode or 'NetworkManager.service' in ansible_facts.services
 
 - name: Detect Bluetooth kernel support
   ansible.builtin.stat:
@@ -136,3 +138,4 @@
     name: bluetooth.service
     enabled: true
     state: "{{ 'started' if desktop_bluetooth.stat.exists else omit }}"
+  when: not ansible_check_mode or 'bluetooth.service' in ansible_facts.services

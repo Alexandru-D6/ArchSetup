@@ -2,11 +2,15 @@
 import importlib.machinery
 import importlib.util
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import yaml
 
 from render import render, ROLE
 
@@ -20,6 +24,37 @@ class DesktopTests(unittest.TestCase):
         self.actions = importlib.util.module_from_spec(spec)
         loader.exec_module(self.actions)
         self.actions.ROOT = self.profile
+
+    def test_fresh_check_skips_services_not_created_by_package_preview(self):
+        executable = shutil.which('ansible-playbook')
+        if executable is None:
+            sibling = Path(sys.executable).parent / 'ansible-playbook'
+            if sibling.exists():
+                executable = str(sibling)
+        if executable is None:
+            self.skipTest('ansible-playbook is required for the check-mode regression')
+        tasks = []
+        for filename in ['configure.yml', 'login.yml']:
+            tasks.extend(task for task in yaml.safe_load((ROLE / 'tasks' / filename).read_text())
+                         if 'ansible.builtin.systemd_service' in task)
+        self.assertEqual(len(tasks), 3)
+        playbook = Path(self.directory.name) / 'missing-services.yml'
+        playbook.write_text(yaml.safe_dump([{
+            'name': 'Fresh service preview regression',
+            'hosts': 'localhost', 'gather_facts': False, 'become': False,
+            'vars': {'ansible_facts': {'services': {}},
+                     'archsetup_desktop_manage_network': True,
+                     'desktop_bluetooth': {'stat': {'exists': True}}},
+            'tasks': tasks,
+        }]))
+        environment = dict(os.environ, ANSIBLE_HOME=self.directory.name,
+                           ANSIBLE_LOCAL_TEMP=str(Path(self.directory.name) / 'ansible-tmp'),
+                           ANSIBLE_NOCOLOR='1')
+        result = subprocess.run([executable, '-i', 'localhost,', '-c', 'local',
+                                 '--check', str(playbook)], env=environment,
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertRegex(result.stdout, r'changed=0\s+unreachable=0\s+failed=0\s+skipped=3')
 
     def test_cli_boolean_strings_render_as_booleans(self):
         render(self.profile, {'archsetup_desktop_reduced_motion': 'false'})
