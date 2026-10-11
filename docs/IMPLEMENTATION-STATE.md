@@ -1,12 +1,32 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
-Latest task: moving a window now follows it to the destination workspace.
+Latest task: new Kitty terminals open as normal tiles. A named native window rule
+sets `tile=true`, initializes `fullscreen_state="0 0"` and suppresses client
+maximize/fullscreen requests. Explicit `on_focus_under_fullscreen=2` and
+`exit_window_retains_fullscreen=false` prevent fullscreen takeover/retention.
+Reproduced the second normally launched terminal becoming maximized in the VM;
+after apply/reload, six terminals tile without overlap and both compositor/client
+fullscreen states remain zero. Forced client maximize/fullscreen requests are
+ignored; explicit compositor maximize/fullscreen still work, and opening another
+terminal restores tiling. All 20 local tests pass, including the native parser.
+VM apply: `ok=39 changed=2 failed=0 skipped=19`, including the earlier workspace
+follow change. No workstation deployment was performed. Temporary acceptance
+helper: `/tmp/desktop-terminal-tiling-test.py` in the guest and
+`/tmp/archsetup-terminal-tiling-test.py` on the host; apply log:
+`/tmp/desktop-terminal-apply.log` in the guest. Test terminals were closed, idle
+inhibition restored, the guest test account locked and temporary credentials
+removed. The VM is powered off; administrative shutdown was used because a remote
+SSH session cannot invoke the ordinary power helper without interactive Polkit
+authentication.
+
+Previous task: moving a window now follows it to the destination workspace.
 All 72 workspace-move bindings explicitly use `follow=true`: numbered workspaces,
 physical/keypad aliases, relative moves and scratch, with both Shift and Alt
 variants. Shortcut-help descriptions and the reference are updated. All 20 local
 tests pass, including the native compositor parser; the reference matches every
-changed binding and whitespace checks pass. No workstation or saved VM deployment
-was made for this change; the older silent-move acceptance below is historical.
+changed binding and whitespace checks pass. This change was first deployed to the
+saved VM during the terminal fix above; the older silent-move acceptance below is
+historical. No workstation deployment was made.
 Apply using `./setup.sh desktop-apply -e @inventory/profiles/LittleArchy.yml
 --ask-become-pass`, then run `hyprctl reload` in the managed desktop session.
 

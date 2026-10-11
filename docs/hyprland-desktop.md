@@ -122,6 +122,12 @@ workspace shortcuts, including the Super+Alt variants. Workspace buttons focus
 workspaces; task buttons focus windows and offer a right-click close menu.
 The overview supports arrow navigation and Enter.
 
+New Kitty terminals open as normal tiles and ignore client requests to maximize
+or enter fullscreen. Opening another tile clears an existing maximized/fullscreen
+state so the windows can share the desktop. Super+Alt+D still maximizes explicitly,
+and Super+F toggles fullscreen. A single tile uses the available desktop space;
+additional terminals split that space.
+
 Network, Bluetooth and audio-device buttons open their native configuration
 applications. Brightness controls are hidden without a backlight device.
 Screenshot actions copy PNG data to the clipboard. Clipboard history offers an

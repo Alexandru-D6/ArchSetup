@@ -27,7 +27,16 @@ hl.config({
         dim_inactive = true, dim_strength = 0.05 },
     animations = { enabled = {{ (not (archsetup_desktop_reduced_motion | bool)) | to_json }} },
     dwindle = { preserve_split = true },
-    misc = { disable_hyprland_logo = true, disable_splash_rendering = true },
+    misc = { disable_hyprland_logo = true, disable_splash_rendering = true,
+        on_focus_under_fullscreen = 2, exit_window_retains_fullscreen = false },
+})
+-- Let the layout arrange new terminals; fullscreen remains an explicit shortcut.
+hl.window_rule({
+    name = "archsetup-terminal-tiling",
+    match = { class = "^kitty$" },
+    tile = true,
+    fullscreen_state = "0 0",
+    suppress_event = "maximize fullscreen",
 })
 hl.env("XCURSOR_SIZE", "24")
 hl.env("XDG_CURRENT_DESKTOP", "Hyprland")

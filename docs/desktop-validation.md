@@ -1,13 +1,29 @@
 # Desktop validation — 2026-10-10
 
+## Terminal startup tiling — 2026-10-11
+
+Reproduced the second normally launched Kitty terminal entering maximized state
+and covering the first in the VM. The native terminal window rule now tiles Kitty,
+clears initial compositor/client fullscreen state and suppresses client
+maximize/fullscreen requests. Fullscreen focus/retention defaults are explicit.
+
+After apply/reload, six terminal windows shared the desktop with no overlapping
+rectangles and zero compositor/client fullscreen state. Explicit Kitty
+`--start-as maximized` and `--start-as fullscreen` requests were ignored. Manual
+compositor maximize/fullscreen dispatchers still worked; opening another terminal
+restored ordinary tiling. All 20 local tests and whitespace checks pass.
+VM apply: `ok=39 changed=2 failed=0 skipped=19`; the two changes also include the
+workspace-follow update below. No workstation configuration was modified.
+
 ## Follow window moves — 2026-10-11
 
 All 72 workspace-move bindings now explicitly follow the window, including
 numbered/physical/keypad, relative and scratch moves. The Super+Alt variants follow
 as well. All 20 local tests pass, including real compositor configuration parsing.
 An audit confirms every workspace-move binding has `follow=true` and matches the
-shortcut reference; whitespace checks pass. This change has not been deployed to
-the workstation or saved VM. The silent-move VM result below predates this change.
+shortcut reference; whitespace checks pass. This change is included in the VM
+deployment above. No workstation deployment was made. The silent-move VM result
+below predates this change.
 
 ## Expanded shortcuts — 2026-10-11
 
