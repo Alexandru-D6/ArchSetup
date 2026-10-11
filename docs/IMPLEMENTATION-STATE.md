@@ -1,6 +1,20 @@
 # Resume checkpoint — 2026-10-12 (latest)
 
-Latest task: fixed shortcut-help startup on installed LittleArchy. The user
+Latest task: emptied the left side of the taskbar. Removed the complete left row:
+Apps, View, the wide-screen Web/Files buttons and all running-window buttons and
+their close menus. Centered workspace/clock controls and right-side tray, audio,
+notification and power controls remain available. The overview is accessible by
+Super+Tab and application launching by Super/Super+D.
+
+Validation: 23 existing tests pass. Qt 6 qmlformat parses the updated shell and
+qmllint exits successfully with only the existing runtime qs-import/PanelWindow
+warnings. The unqualified /usr/bin Qt 5 tools cannot parse either the old or new
+configuration; use /usr/lib/qt6/bin for these checks. Whitespace checks pass. The
+VM was not started for this simple QML removal and remains powered off. No
+LittleArchy/workstation deployment was performed. Apply the desktop role, then
+press Ctrl+Super+R to restart the managed shell.
+
+Previous task: fixed shortcut-help startup on installed LittleArchy. The user
 reported `The popup failed to start` with Fuzzel 1.15.0. This message came from the
 new controller's immediate /proc identity check, which could reject and terminate
 its own popup. Replaced process-file checks with a private, session/profile-scoped

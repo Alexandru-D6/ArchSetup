@@ -180,33 +180,6 @@ ShellRoot {
             implicitHeight: 40
             color: root.surface
             WlrLayershell.namespace: "archsetup-panel"
-            RowLayout {
-                id: barLeft
-                anchors { left: parent.left; top: parent.top; bottom: parent.bottom; leftMargin: 12 }
-                width: Math.max(130, (parent.width - barCenter.width) / 2 - 30)
-                spacing: 4
-                Chip { text: "Apps"; onClicked: root.action("launcher") }
-                Chip { text: "View"; Accessible.name: "Overview"; onClicked: root.toggle("overview") }
-                Chip { text: "Web"; visible: panel.width > 1600; onClicked: root.action("browser") }
-                Chip { text: "Files"; visible: panel.width > 1600; onClicked: root.action("files") }
-                ListView {
-                    Layout.fillWidth: true; Layout.preferredHeight: 30
-                    orientation: ListView.Horizontal; spacing: 4; clip: true
-                    model: ToplevelManager.toplevels
-                    delegate: Chip {
-                        id: taskButton
-                        required property var modelData
-                        width: 140; text: modelData.title || modelData.appId
-                        selected: modelData.activated
-                        urgent: Hyprland.toplevels.values.some(t => t.wayland === taskButton.modelData && t.urgent)
-                        onClicked: modelData.activate()
-                        ToolTip.visible: hovered
-                        ToolTip.text: modelData.title
-                        TapHandler { acceptedButtons: Qt.RightButton; onTapped: windowMenu.popup() }
-                        Menu { id: windowMenu; MenuItem { text: "Close window"; onTriggered: taskButton.modelData.close() } }
-                    }
-                }
-            }
             Row {
                 id: barCenter
                 anchors.centerIn: parent

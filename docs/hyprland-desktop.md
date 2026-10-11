@@ -119,7 +119,8 @@ have separate keys. Super+W launches the configured browser without passing a
 URL. Moving a window to another workspace also switches to that workspace and
 keeps the window focused. This applies to numbered/keypad, relative and scratch
 workspace shortcuts, including the Super+Alt variants. Workspace buttons focus
-workspaces; task buttons focus windows and offer a right-click close menu.
+workspaces. The taskbar groups workspaces and clock in the center, with the tray,
+audio, notifications and power controls on the right. Its left side is empty.
 The overview supports arrow navigation and Enter.
 
 Press Super alone to open the launcher and again to close it; Super+D also toggles
@@ -158,10 +159,10 @@ Changing defaults should normally happen in inventory rather than managed files.
 Super+Equal opens a bounded, local arithmetic calculator and copies its result.
 Its overview uses live window
 previews when the compositor exposes the screencopy protocol. It currently shows
-all windows rather than grouping them into workspace preview cards. Taskbar
-buttons show active and urgent state; browser/files shortcuts are pinned, while
-running windows have individual buttons. App-grouped pinning is not implemented. These limitations supersede the broader target specification in the
-project plan; they are not claimed as complete features.
+all windows rather than grouping them into workspace preview cards. This overview
+limitation supersedes the broader target specification in the project plan.
+Launch apps through Super or Super+D, switch windows through Super+Tab and close
+them with Super+Q.
 
 ## Ownership and recovery
 
