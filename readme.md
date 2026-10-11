@@ -2,8 +2,8 @@
 
 Ansible setup for an installed Arch Linux system: Hyprland, a Quickshell taskbar
 and window overview, Brave, notifications, shortcuts, themes, and Hyprlock.
-The default ii-inspired theme includes a top bar, rounded windows, Google Sans Flex,
-and the upstream abstract wallpaper. Hyprlock uses a centered scalloped clock and
+The default ii-inspired theme includes a top bar, rounded windows, system typography,
+and an original generated gradient background. Hyprlock uses a centered scalloped clock and
 a bottom password toolbar. Desktop animations are disabled by default. The custom desktop shell has no AI
 integrations.
 
@@ -147,6 +147,9 @@ preserves existing keyring contents.
 | Super+N | Notification history |
 | Super+L | Lock the screen |
 | Super+/ | All shortcuts |
+
+The Power menu's Shutdown, Reboot, Suspend and Logout actions run immediately
+when selected, without a second confirmation prompt.
 
 Check mouse feel, display resolution/refresh rate, audio and Bluetooth. Save your
 work before testing suspend. The QEMU test guest has a reproduced virtual GPU

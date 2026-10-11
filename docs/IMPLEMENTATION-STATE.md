@@ -1,10 +1,25 @@
 # Resume checkpoint — 2026-10-11 (latest)
 
-Latest appearance change: the desktop now follows end-4's default ii look: top
+Latest user requests: remove bundled third-party assets and remove power-action
+confirmation. The copied wallpaper/font and accompanying files are removed from
+the working tree and Git index. Default backgrounds are generated gradients;
+clock and UI text use installed system fonts. Role apply removes the previously
+deployed copies at their known ArchSetup paths and refreshes the font cache.
+Personal wallpaper choices are preserved. Shutdown/reboot/suspend/logout now run
+directly. 17 local tests pass, including mocked direct-power execution and actual
+gradient/clock rendering without bundled assets. VM migration confirmed the old
+copies absent; repeated apply reports `ok=39 changed=0 failed=0 skipped=19` and
+verify reports `ok=18 changed=0 failed=0 skipped=2`. Updated screenshots show only
+the original gradient and system-font rendering. Used the direct poweroff helper
+to shut down the VM after locking its temporary test account; host credential
+files were removed. No workstation desktop changes were applied.
+
+Appearance overview (see latest changes above): the desktop now follows end-4's default ii look: top
 40px bar, grouped workspace/clock controls, neutral Material surfaces, 18px window
-corners, 1px borders and the original abstract wallpaper. Google Sans Flex is
-bundled under OFL; wallpaper is bundled with upstream GPL-3.0 and provenance in
-`docs/desktop-source.json`. No upstream shell/AI code was imported.
+corners, 1px borders, an original generated gradient and installed system fonts.
+Third-party font/wallpaper copies and their accompanying files were removed.
+`docs/desktop-source.json` records an empty bundled-assets list. No upstream
+shell/AI code was imported.
 
 Hyprlock now adapts the default Quickshell lock appearance: centered 14-scallop
 clock, blurred shared wallpaper, date/Locked labels and bottom password/user/layout

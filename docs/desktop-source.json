@@ -22,19 +22,8 @@
     "hyprlock": "0.9.6-3",
     "hypridle": "0.1.8-2"
   },
-  "bundled_assets": [
-    {
-      "path": "roles/desktop/files/assets/default-wallpaper.png",
-      "source": "https://github.com/end-4/dots-hyprland/blob/c4f0582cbf4ad29607dbf3c20337815de8690b34/dots/.config/quickshell/ii/assets/images/default_wallpaper.png",
-      "license": "GPL-3.0",
-      "sha256": "7ca63d4f4f1fcc5a5ad842ceb826b461707c7dbcc8bc189cafd52e7589ec2ab2"
-    },
-    {
-      "path": "roles/desktop/files/fonts/GoogleSansFlex.ttf",
-      "source": "https://github.com/end-4/google-sans-flex",
-      "license": "OFL-1.1",
-      "sha256": "2510a8b7a24beb1fe8163e9a49813ccfe96b5453444b9443d42665ca4fa320c9"
-    }
-  ],
-  "theme": "Default ii: top bar, grouped Material surfaces, cookie clock, abstract wallpaper, thin borders and 18px corners; native Hyprlock adaptation of default Quickshell lock appearance"
+  "bundled_assets": [],
+  "theme": "Original gradient background and system typography; ii-inspired top bar, grouped surfaces, clock and 18px corners; native Hyprlock lock layout",
+  "third_party_assets_included": false,
+  "font_policy": "Uses installed system fonts; no font files are distributed by this repository"
 }

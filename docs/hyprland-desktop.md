@@ -81,12 +81,12 @@ validated Hyprland API series.
 
 ## Configuration and controls
 
-The default appearance follows upstream's **ii** theme: its abstract wallpaper
-and Google Sans Flex typography, a 40-pixel top bar with grouped workspace/clock
+The default appearance follows the general **ii** style with an original gradient
+background, installed system typography and a 40-pixel top bar with grouped workspace/clock
 controls, muted Material surfaces, thin window borders, 5-pixel outer gaps and
 18-pixel window corners. A static scalloped clock sits on the desktop and updates
 once per minute. Existing user-selected wallpapers and light/dark choices remain
-in `state.json`; selecting the default background restores the bundled wallpaper.
+in `state.json`; selecting the default background restores the generated gradient.
 
 Upstream's default lock is a Quickshell lock surface. ArchSetup reproduces its
 centered scalloped clock, blurred wallpaper, lock/date labels and bottom password
@@ -95,7 +95,7 @@ keyboard layout flank the password field; Caps Lock and battery status are shown
 Hyprlock retains ordinary password dots; upstream's shaped password glyphs and
 lock-screen power buttons are not included in this initial appearance update.
 Power controls remain available in the desktop session menu. No animations or
-upstream AI modules are added. See [upstream source and asset licenses](desktop-source.json).
+upstream AI modules are added. No third-party artwork or font files are bundled. See [source provenance](desktop-source.json).
 
 Animations are disabled by default (`archsetup_desktop_reduced_motion: true`):
 Hyprland window/workspace effects, Hyprlock fades and input effects, and SwayNC
@@ -119,7 +119,7 @@ Network, Bluetooth and audio-device buttons open their native configuration
 applications. Brightness controls are hidden without a backlight device.
 Screenshot actions copy PNG data to the clipboard. Clipboard history offers an
 explicit clear action. The emoji picker ships a small editable starter list.
-Power actions require confirmation. Keep-awake inhibits idle locking/blanking,
+Power actions run immediately when selected. Keep-awake inhibits idle locking/blanking,
 but does not disable the before-suspend lock path.
 
 Put images in `~/Pictures/Wallpapers`, then use Wallpaper in quick settings.

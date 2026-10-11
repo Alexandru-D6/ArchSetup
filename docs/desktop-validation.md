@@ -1,9 +1,29 @@
 # Desktop validation — 2026-10-10
 
+## Asset removal and direct power actions — 2026-10-11
+
+Removed bundled third-party wallpaper/font files and their accompanying texts.
+The default background is now an original generated gradient, and typography
+comes from installed system fonts. Updated all preview screenshots to remove
+depictions of the old copied wallpaper. The migration removed the prior deployed
+copies in the test VM; explicit path checks confirmed they are absent.
+
+Shutdown, reboot, suspend and logout now execute directly without the extra
+confirmation picker. Mocked command checks cover all four actions without taking
+power actions on the workstation. The updated poweroff helper also successfully
+requested shutdown of the disposable VM without opening a picker.
+
+17 local tests pass, including original background/system-font clock rendering
+and preservation of a personal wallpaper. Repeat VM apply:
+`ok=39 changed=0 failed=0 skipped=19`; verify:
+`ok=18 changed=0 failed=0 skipped=2`. The new default lock screen boots and unlocks;
+the original gradient, system-font text, clock and overview render correctly.
+Earlier results below are historical where their asset/power behavior differs.
+
 ## Default ii appearance — 2026-10-11
 
-The general desktop appearance now follows end-4's default ii theme: the bundled
-abstract wallpaper, Google Sans Flex, 40-pixel top bar, grouped workspace/clock
+The general desktop appearance follows end-4's default ii layout, using an
+original generated gradient, system fonts, 40-pixel top bar, grouped workspace/clock
 controls, 18-pixel window corners, thin borders and muted Material colors.
 Native Hyprlock reproduces the centered scalloped clock and bottom password
 toolbar, with blurred wallpaper, user/layout labels and Caps Lock status.
@@ -16,7 +36,7 @@ Validated in the graphical QEMU guest:
   reports `unlocked login keyring` after the successful password entry.
 - Quickshell loads/reloads with no QML errors; expected portal registration
   warnings remain. Monitor reservation is `[0, 40, 0, 0]` for the top bar.
-- Clock image, default wallpaper, Google Sans font, task buttons, rounded Kitty
+- Clock image, default background, system font, task buttons, rounded Kitty
   window and live overview preview render. Fixed light-mode lock-label contrast
   and workspace 10 text clipping after screenshot inspection.
 - Repeat apply: `ok=40 changed=0 failed=0 skipped=19`; read-only verification:

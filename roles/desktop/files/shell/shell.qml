@@ -320,7 +320,7 @@ ShellRoot {
                             spacing: 10
                             Repeater {
                                 model: ["lock", "suspend", "logout", "reboot", "poweroff"]
-                                Chip { required property string modelData; text: modelData.charAt(0).toUpperCase() + modelData.slice(1); Layout.fillWidth: true; onClicked: { root.page = ""; root.action(modelData); } }
+                                Chip { required property string modelData; text: modelData === "poweroff" ? "Shutdown" : modelData.charAt(0).toUpperCase() + modelData.slice(1); Layout.fillWidth: true; onClicked: { root.page = ""; root.action(modelData); } }
                             }
                             Item { Layout.fillHeight: true }
                         }

@@ -214,11 +214,15 @@ class DesktopTests(unittest.TestCase):
             self.actions.main('screenshot')
             run.assert_not_called()
 
-    def test_power_action_requires_confirmation(self):
-        for answer in [None, 'Cancel']:
-            with patch.object(self.actions, 'menu', return_value=answer), patch.object(self.actions, 'run') as run:
-                self.actions.main('poweroff')
-                run.assert_not_called()
+    def test_power_actions_run_directly_without_confirmation(self):
+        for action in ['poweroff', 'reboot', 'suspend', 'logout']:
+            with self.subTest(action=action), patch.object(self.actions, 'menu') as menu, patch.object(self.actions, 'run') as run:
+                self.actions.main(action)
+                menu.assert_not_called()
+                if action == 'logout':
+                    run.assert_called_once_with('hyprctl', 'dispatch', 'hl.dsp.exit()')
+                else:
+                    run.assert_called_once_with('systemctl', action)
 
     def test_theme_preserves_wallpaper_and_managed_preferences(self):
         managed = (self.profile / 'preferences.json').read_bytes()
@@ -229,6 +233,25 @@ class DesktopTests(unittest.TestCase):
         self.assertTrue(state['light'])
         self.assertEqual(state['wallpaper'], '/tmp/picture.png')
         self.assertEqual((self.profile / 'preferences.json').read_bytes(), managed)
+
+    def test_default_background_and_system_font_need_no_bundled_assets(self):
+        from PIL import Image
+        self.actions.refresh_theme({})
+        generated = self.profile / 'theme/wallpaper.png'
+        with Image.open(generated) as image:
+            image.load()
+            self.assertNotEqual(image.getpixel((0, 0)), image.getpixel((0, image.height - 1)))
+        result = subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'), 'clock'],
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        with Image.open(self.profile / 'theme/clock.png') as image:
+            image.load()
+        personal = self.profile / 'personal wallpaper.png'
+        Image.new('RGB', (20, 20), color='red').save(personal)
+        state = {'wallpaper': str(personal)}
+        self.actions.refresh_theme(state)
+        self.assertEqual(generated.read_bytes(), personal.read_bytes())
+        self.assertEqual(json.loads((self.profile / 'state.json').read_text())['wallpaper'], str(personal))
 
     def test_candidate_validator_rejects_invalid_lua(self):
         candidate = self.profile / 'candidate'

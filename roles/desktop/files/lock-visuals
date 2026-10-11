@@ -19,13 +19,16 @@ def clock_image():
     scale, size = 3, 230
     image = Image.new('RGBA', (size * scale, size * scale))
     draw = ImageDraw.Draw(image)
+    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    font_path = subprocess.check_output(['fc-match', '-f', '%{file}',
+                                         preferences.get('font', 'DejaVu Sans')], text=True).strip()
+    fonts = {}
     def point(x, y):
         return round(x * scale), round(y * scale)
     def font(size):
-        preferences = json.loads((ROOT / 'preferences.json').read_text())
-        path = subprocess.check_output(['fc-match', '-f', '%{file}',
-                                        preferences.get('font', 'DejaVu Sans')], text=True).strip()
-        return ImageFont.truetype(str(path), round(size * scale))
+        if size not in fonts:
+            fonts[size] = ImageFont.truetype(font_path, round(size * scale))
+        return fonts[size]
     # Fourteen soft scallops, as in the reference cookie-clock silhouette.
     outline = []
     for step in range(720):

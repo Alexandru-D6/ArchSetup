@@ -50,7 +50,7 @@ def atomic_write(path, text):
         temporary.write(text)
     os.replace(temporary.name, path)
 
-def write_wallpaper(folder, state, palette, light):
+def write_wallpaper(folder, state, light):
     """Use a personal image, or draw an original gradient without bundled artwork."""
     from PIL import Image, ImageDraw
     wallpaper = Path(state['wallpaper']) if state.get('wallpaper') else None
@@ -102,7 +102,7 @@ def refresh_theme(state):
                'tertiary': '#d1c3c6' if not light else '#6c565e'}
     atomic_write(folder / 'palette.json', json.dumps(palette) + '\n')
     # Fixed local paths keep personal filenames out of config and shell commands.
-    write_wallpaper(folder, state, palette, light)
+    write_wallpaper(folder, state, light)
     for name in ['fuzzel.ini', 'swaync.css', 'hyprlock.conf', 'kitty.conf']:
         content = (ROOT / name).read_text()
         for original, replacement in colors.items(): content = content.replace(original, replacement)
@@ -204,7 +204,6 @@ def main(action):
         bindings = json.loads((ROOT / 'shortcuts.json').read_text())
         menu([f"{item['key']}  —  {item['description']}" for item in bindings], 'Shortcuts')
     elif action in ('logout', 'reboot', 'poweroff', 'suspend'):
-        if menu(['Cancel', 'Confirm'], action.capitalize()) != 'Confirm': return
         if action == 'logout': run('hyprctl', 'dispatch', 'hl.dsp.exit()')
         else:
             # Hypridle's sleep inhibitor locks before the system sleeps.
