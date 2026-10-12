@@ -217,8 +217,20 @@ def power_images(selected=None):
         icon = action
         if selected is not None:
             label, icon = ('Confirm', 'confirm') if selected == action else ('Cancel', 'cancel')
-        pill_image(label, f'lock-{action}.png', icon=icon, fixed_width=width,
-                   directory=power_directory())
+        output = pill_image(label, f'lock-{action}.png', icon=icon, fixed_width=width,
+                            directory=power_directory())
+        if selected is None and output.parent != ROOT / 'theme':
+            # Only idle buttons enter the persistent cache. Confirmation state
+            # stays in the private directory for this lock invocation.
+            folder = ROOT / 'theme'
+            folder.mkdir(exist_ok=True)
+            with tempfile.NamedTemporaryFile(dir=folder, delete=False) as cached:
+                temporary = Path(cached.name)
+            try:
+                temporary.write_bytes(output.read_bytes())
+                os.replace(temporary, folder / output.name)
+            finally:
+                temporary.unlink(missing_ok=True)
 
 
 def power_action(action):
@@ -343,6 +355,8 @@ def watch(parent, locker_fd=None):
             control.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
             control.bind(str(control_path))
             control_path.chmod(0o600)
+            power_images()
+            pending = True
         update_identity()
         next_clock = time.monotonic()
         # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
@@ -350,6 +364,7 @@ def watch(parent, locker_fd=None):
             started = time.monotonic()
             if started >= next_clock:
                 lock_clock_image()
+                pending = True
                 next_clock = started + 1
                 if connection is None:
                     connection = layout_events()

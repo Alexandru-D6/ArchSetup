@@ -94,6 +94,9 @@ digits, an outlined hour hand, a pink minute hand, a thin second hand, and separ
 day/month badges. A background helper updates it once a second, caches font
 lookups and redraws the layout pill only when its text changes. Hyprlock loads
 the images asynchronously; password input never waits for image generation.
+Super+L starts the locker using cached visuals, with fresh images generated
+afterward. Immediate rendering locks before waiting for wallpaper resources;
+the configured background color covers the screen while they load.
 The pill reacts to [Hyprland layout events](https://wiki.hypr.land/IPC/) and requests
 an immediate [Hyprlock image refresh](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#image),
 so switching layouts does not wait for the clock's one-second tick.

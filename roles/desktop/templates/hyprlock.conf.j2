@@ -1,5 +1,6 @@
 general {
     hide_cursor = false
+    immediate_render = true
 }
 auth {
     pam:enabled = true
@@ -46,7 +47,7 @@ image {
     border_size = 0
     # The lock launcher updates this file in the background. Image reload_cmd
     # runs synchronously in Hyprlock and would stall password input every tick.
-    reload_time = 1
+    reload_time = 0
     position = 0, 0
     halign = center
     valign = center

@@ -1,5 +1,28 @@
 # Desktop validation — 2026-10-10
 
+## Faster Super+L startup — 2026-10-12
+
+Lock requests no longer rebuild the desktop theme or run synchronous Pillow/font
+preparation. They copy cached idle button images into the private lock directory
+and start Hyprlock. The updater generates current clock/layout/button images
+afterward, maintains an idle-only button cache and signals image refreshes.
+The existing recording-stop request still runs before launching the locker.
+Hyprlock's [immediate-render mode](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#general)
+acquires the session lock before waiting for resources, showing its configured
+background color while the wallpaper loads. Short fades and PAM policy remain.
+
+All 42 regressions pass, including launching with missing/cached images,
+background creation of controls and keeping confirmation labels out of the
+idle cache. Three physical Super+L trials in the Arch VM reduced median time
+to the first lock-screen frame from 2,428 ms to 192 ms; the clock was visible
+by 262 ms. After moving all generated image caches aside, the first cold trial
+showed a lock frame in 203 ms and the clock in 279 ms. Later screenshots confirmed
+the wallpaper, identity pill and Confirm/Cancel controls rendered normally.
+These timings include screenshot polling overhead and describe the VM, not
+LittleArchy hardware. No password was submitted or workstation deployment made.
+Desktop, desktop-verify and site syntax checks pass. Repeated Ansible apply:
+`ok=45 changed=0 failed=0`.
+
 ## Lock-screen power confirmation — 2026-10-12
 
 Power off and Reboot now reuse the two existing button positions for confirmation.

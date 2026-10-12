@@ -10,6 +10,7 @@ import os
 import random
 import select
 import signal
+import shutil
 import socket
 import struct
 import tempfile
@@ -285,13 +286,16 @@ def main(action):
             except BlockingIOError: return
             recorder = ROOT / 'bin/desktop-record'
             if recorder.exists(): run(str(recorder), 'record-stop')
-            path = ROOT / 'state.json'
-            refresh_theme(json.loads(path.read_text()) if path.exists() else {})
             # Each lock owns its button images and control socket. Pending clicks
             # and confirmation labels cannot carry over to a later lock session.
             with tempfile.TemporaryDirectory(prefix='archsetup-lock-', dir=os.environ['XDG_RUNTIME_DIR']) as lock_dir:
                 environment = dict(os.environ, ARCHSETUP_LOCK_DIR=lock_dir)
-                run(str(ROOT / 'bin/lock-visuals'), 'prepare', env=environment)
+                # Copy ready default buttons when cached; image generation runs
+                # after Hyprlock starts, including on the first lock after install.
+                for power in ('poweroff', 'reboot'):
+                    cached = ROOT / f'theme/lock-{power}.png'
+                    if cached.is_file():
+                        shutil.copyfile(cached, Path(lock_dir) / cached.name)
                 configuration = themed('hyprlock.conf').read_text()
                 for power in ('poweroff', 'reboot'):
                     configuration = configuration.replace(str(ROOT / f'theme/lock-{power}.png'),
