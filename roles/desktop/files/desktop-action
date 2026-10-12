@@ -287,8 +287,8 @@ def main(action):
             if recorder.exists(): run(str(recorder), 'record-stop')
             path = ROOT / 'state.json'
             refresh_theme(json.loads(path.read_text()) if path.exists() else {})
-            run(str(ROOT / 'bin/lock-visuals'), 'clock')
-            run('hyprlock', '--no-fade-in', '-c', str(themed('hyprlock.conf')))
+            run(str(ROOT / 'bin/lock-visuals'), 'prepare')
+            run('hyprlock', '-c', str(themed('hyprlock.conf')))
     elif action in ('overview', 'settings', 'session', 'tools', 'media'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):

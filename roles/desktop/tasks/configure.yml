@@ -15,7 +15,15 @@
     owner: "{{ archsetup_desktop_user }}"
     group: "{{ desktop_group }}"
     mode: '0755'
-  loop: ['', shell, bin]
+  loop: ['', shell, bin, assets]
+
+- name: Install the requested lock-screen wallpaper
+  ansible.builtin.copy:
+    src: assets/lock-wallpaper.jpg
+    dest: "{{ desktop_root }}/assets/lock-wallpaper.jpg"
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
+    mode: '0644'
 
 - name: Create private configuration-validation runtime directory
   ansible.builtin.file:
@@ -49,7 +57,7 @@
     - {src: validate-config, dest: bin/validate-config, mode: '0755'}
     - {src: shortcuts.json, dest: shortcuts.json, mode: '0644'}
 
-- name: Remove previously bundled wallpaper and font files
+- name: Remove retired wallpaper and font files
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent

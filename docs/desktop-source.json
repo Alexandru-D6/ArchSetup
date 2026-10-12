@@ -22,9 +22,17 @@
     "hyprlock": "0.9.6-3",
     "hypridle": "0.1.8-2"
   },
-  "bundled_assets": [],
-  "theme": "Original gradient background and system typography; ii-inspired top bar, grouped surfaces, clock and 18px corners; native Hyprlock lock layout",
-  "third_party_assets_included": false,
+  "bundled_assets": [
+    {
+      "path": "roles/desktop/files/assets/lock-wallpaper.jpg",
+      "source": "User-provided Image #1",
+      "original_filename": "wp5493855-4k-scenery-sunset-anime-wallpapers.jpg",
+      "sha256": "1dfb12860ba97054e86ed4f42f913e7056865bab76913f0e924c540430d9d76d",
+      "usage": "Lock screen only; desktop wallpaper remains user-owned"
+    }
+  ],
+  "theme": "Original desktop gradient and system typography; ii-inspired top bar and desktop clock; native Hyprlock with the user-provided sunset wallpaper, blue reference clock, adaptive keyboard-layout pill and power/reboot controls",
+  "third_party_assets_included": true,
   "font_policy": "Uses installed system fonts; no font files are distributed by this repository",
   "shortcuts": {
     "count": 224,

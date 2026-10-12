@@ -1,15 +1,192 @@
 #!/usr/bin/env python3
-"""Original static Material clock artwork and lock status; never handles passwords."""
+"""Generated clocks, lock-screen controls and status; never handles passwords."""
 from datetime import datetime
 import json
 import math
 import os
 from pathlib import Path
+import pwd
 import subprocess
 import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def save_image(image, name):
+    output = ROOT / 'theme' / name
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=output.parent, suffix='.png', delete=False) as temporary:
+        path = Path(temporary.name)
+    try:
+        image.save(path, format='PNG')
+        os.replace(path, output)
+    finally:
+        path.unlink(missing_ok=True)
+    return output
+
+
+def font_file(style=''):
+    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    family = preferences.get('font', 'DejaVu Sans')
+    return subprocess.check_output(['fc-match', '-f', '%{file}', family + style], text=True).strip()
+
+
+def lock_clock_image(now=None):
+    """Blue cookie dial with hollow hours, pink minutes and separate day/month badges."""
+    from PIL import Image, ImageDraw, ImageFont
+    now = now or datetime.now()
+    scale = 3
+    image = Image.new('RGBA', (250 * scale, 260 * scale))
+    draw = ImageDraw.Draw(image)
+    regular = font_file()
+    bold = font_file(':weight=bold')
+    face, marks, digits = '#1d438f', '#3357a0', '#6f8bcd'
+    hour, minute = '#b2c5ff', '#e4b7f3'
+    cx, cy = 123, 132
+    def point(x, y):
+        return round(x * scale), round(y * scale)
+    def ellipse(x, y, radius, color):
+        draw.ellipse([point(x - radius, y - radius), point(x + radius, y + radius)], fill=color)
+    outline = []
+    for step in range(720):
+        angle = step * math.tau / 720
+        radius = 107 + 6 * math.cos(14 * angle)
+        outline.append(point(cx + radius * math.sin(angle), cy - radius * math.cos(angle)))
+    draw.polygon(outline, fill=face)
+    for index in range(12):
+        angle = index * math.tau / 12
+        ellipse(cx + 87 * math.sin(angle), cy - 87 * math.cos(angle), 5.5, marks)
+    digital_font = ImageFont.truetype(regular, 64 * scale)
+    draw.text(point(cx, 99), now.strftime('%H'), font=digital_font, fill=digits, anchor='mm')
+    draw.text(point(cx, 165), now.strftime('%M'), font=digital_font, fill=digits, anchor='mm')
+    # The hollow hand stays transparent so the digital time is visible through it.
+    hand = Image.new('RGBA', image.size)
+    hand_draw = ImageDraw.Draw(hand)
+    hand_draw.rounded_rectangle([point(cx - 8, cy - 9), point(cx + 60, cy + 9)],
+                                radius=9 * scale, outline=hour, width=4 * scale)
+    hour_angle = (now.hour % 12 + now.minute / 60) * 30
+    hand = hand.rotate(90 - hour_angle, resample=Image.Resampling.BICUBIC, center=point(cx, cy))
+    image.alpha_composite(hand)
+    draw = ImageDraw.Draw(image)
+    angle = now.minute * math.tau / 60
+    end = (cx + 83 * math.sin(angle), cy - 83 * math.cos(angle))
+    draw.line([point(cx, cy), point(*end)], fill=minute, width=12 * scale)
+    ellipse(cx, cy, 6, minute)
+    ellipse(*end, 6, minute)
+    angle = now.second * math.tau / 60
+    end = (cx + 103 * math.sin(angle), cy - 103 * math.cos(angle))
+    tail = (cx - 60 * math.sin(angle), cy + 60 * math.cos(angle))
+    draw.line([point(*tail), point(*end)], fill=hour, width=scale)
+    marker = (cx + 85 * math.sin(angle), cy - 85 * math.cos(angle))
+    ellipse(*marker, 2, hour)
+    ellipse(cx, cy, 3, face)
+    # Rounded pentagon for the day, round badge for the month, matching the reference.
+    badge = []
+    for index in range(5):
+        angle = -math.pi / 2 + index * math.tau / 5
+        badge.append((40 + 26 * math.cos(angle), 50 + 26 * math.sin(angle)))
+    draw.polygon([point(*vertex) for vertex in badge], fill='#5d386b')
+    draw.line([point(*vertex) for vertex in badge + badge[:1]], fill='#5d386b', width=10 * scale)
+    for vertex in badge:
+        ellipse(*vertex, 5, '#5d386b')
+    draw.text(point(40, 50), str(now.day), font=ImageFont.truetype(bold, 28 * scale),
+              fill='#f3d9ff', anchor='mm')
+    ellipse(206, 214, 31, '#304578')
+    draw.text(point(206, 214), str(now.month), font=ImageFont.truetype(regular, 32 * scale),
+              fill='#dce3ff', anchor='mm')
+    output = save_image(image, 'lock-clock.png')
+    print(output)
+    return output
+
+
+def compact_layout(keymap):
+    lower = keymap.lower()
+    if lower.startswith('english (intl') and 'altgr' in lower:
+        return 'US · AltGr'
+    if lower.startswith('english (us'):
+        if 'euro' in lower:
+            return 'US · Euro'
+        if 'alt' in lower and ('intl' in lower or 'international' in lower):
+            return 'US · AltGr'
+        if 'intl' in lower or 'international' in lower:
+            return 'US · Intl'
+        for variant in ['Dvorak', 'Colemak', 'Workman']:
+            if variant.lower() in lower:
+                return 'US · ' + variant
+        return 'US'
+    return {'english (uk)': 'UK', 'spanish': 'ES', 'french': 'FR', 'german': 'DE'}.get(lower, keymap)
+
+
+def keyboard_layout():
+    try:
+        result = subprocess.run(['hyprctl', '-j', 'devices'], capture_output=True, text=True,
+                                timeout=2, check=True)
+        keyboards = json.loads(result.stdout).get('keyboards', [])
+        main = next((keyboard for keyboard in keyboards if keyboard.get('main')), {})
+        layouts = main.get('layout', '').split(',')
+        index = main.get('active_layout_index')
+        if isinstance(index, int) and 0 <= index < len(layouts) and layouts[index]:
+            variants = main.get('variant', '').split(',')
+            variant = variants[index] if index < len(variants) else ''
+            suffix = {'euro': 'Euro', 'altgr-intl': 'AltGr', 'intl': 'Intl'}.get(variant, variant)
+            return layouts[index].upper() + (' · ' + suffix if suffix else '')
+        return compact_layout(main.get('active_keymap') or 'Keyboard')
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return 'Keyboard'
+
+
+def pill_image(text, name, icon=None, max_width=None):
+    """Measure text and draw its background/border as one consistently sized widget."""
+    from PIL import Image, ImageDraw, ImageFont
+    scale, height = 3, 50
+    path = font_file()
+    font_size = 13
+    icon_space = 28 if icon else 0
+    while True:
+        font = ImageFont.truetype(path, font_size * scale)
+        text_width = math.ceil(font.getlength(text) / scale)
+        width = text_width + 32 + icon_space
+        if max_width is None or width <= max_width or font_size <= 10:
+            break
+        font_size -= 1
+    if max_width and width > max_width:
+        while text and math.ceil(font.getlength(text + '…') / scale) + 32 + icon_space > max_width:
+            text = text[:-1]
+        text += '…'
+        text_width = math.ceil(font.getlength(text) / scale)
+        width = text_width + 32 + icon_space
+    image = Image.new('RGBA', (width * scale, height * scale))
+    draw = ImageDraw.Draw(image)
+    def point(x, y):
+        return round(x * scale), round(y * scale)
+    ink = '#f0eaff'
+    draw.rounded_rectangle([point(1, 1), point(width - 1, height - 1)],
+                           radius=24 * scale, fill='#1d293f', outline='#567099', width=scale)
+    if icon == 'poweroff':
+        draw.arc([point(16, 17), point(32, 33)], -60, 240, fill=ink, width=2 * scale)
+        draw.line([point(24, 14), point(24, 24)], fill=ink, width=2 * scale)
+    elif icon == 'reboot':
+        draw.arc([point(16, 17), point(32, 33)], -65, 240, fill=ink, width=2 * scale)
+        draw.polygon([point(16, 14), point(16, 23), point(24, 20)], fill=ink)
+    draw.text(point(16 + icon_space, height / 2), text, font=font, fill=ink, anchor='lm')
+    output = save_image(image, name)
+    return output
+
+
+def identity_image(username=None, layout=None):
+    username = username or pwd.getpwuid(os.getuid()).pw_name
+    layout = layout or keyboard_layout()
+    output = pill_image(username + '  ·  ' + layout, 'lock-identity.png', max_width=196)
+    print(output)
+    return output
+
+
+def prepare():
+    lock_clock_image()
+    identity_image()
+    pill_image('Power off', 'lock-poweroff.png', icon='poweroff', max_width=116)
+    pill_image('Reboot', 'lock-reboot.png', icon='reboot', max_width=104)
 
 
 def clock_image():
@@ -89,7 +266,8 @@ def capslock():
 
 if __name__ == '__main__':
     try:
-        {'clock': clock_image, 'status': status, 'capslock': capslock}[sys.argv[1]]()
+        {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity': identity_image,
+         'prepare': prepare, 'status': status, 'capslock': capslock}[sys.argv[1]]()
     except (IndexError, KeyError, OSError, ValueError, subprocess.SubprocessError) as error:
         print(error, file=sys.stderr)
         sys.exit(1)

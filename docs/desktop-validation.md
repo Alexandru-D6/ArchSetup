@@ -1,5 +1,25 @@
 # Desktop validation — 2026-10-10
 
+## Lock-screen wallpaper, reference clock and power controls — 2026-10-12
+
+The lock screen now deploys the user-provided 4K sunset image as its own asset;
+desktop wallpaper state and generated background are preserved. Its clock uses
+the supplied reference's blue dial, dot markers, hollow hour hand, pink minute
+hand, second hand and separate day/month badges. The user/layout pill measures
+its text and border together, with compact US Euro/AltGr labels. Native Hyprlock
+images provide clickable Power off/Reboot controls; PAM/keyring authentication
+is unchanged. The lock launcher prepares assets before starting Hyprlock and
+honors the configured short fades.
+
+All 31 regressions and the desktop/desktop-verify/site syntax checks pass. Live
+VM testing confirmed the lock wallpaper, clock, password field and controls
+render at boot, and Super+Space switches the compact layout label while locked.
+The Reboot button changed the VM boot ID and returned to the updated locked
+screen. Power off shut the VM down from that screen. Repeated Ansible apply:
+`ok=45 changed=0 failed=0`. The refreshed screenshot is
+[the lock-screen preview](images/desktop-lock.png). No workstation deployment
+was made.
+
 ## Automatic shell refresh after apply — 2026-10-12
 
 Shell-source and preference changes now notify one Ansible handler after the

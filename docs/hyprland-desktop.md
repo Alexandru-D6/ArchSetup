@@ -88,14 +88,19 @@ controls, muted Material surfaces, thin window borders, 5-pixel outer gaps and
 once per minute. Existing user-selected wallpapers and light/dark choices remain
 in `state.json`; selecting the default background restores the generated gradient.
 
-Upstream's default lock is a Quickshell lock surface. ArchSetup reproduces its
-centered scalloped clock, blurred wallpaper, lock/date labels and bottom password
-islands through native Hyprlock, preserving the PAM/keyring integration. User and
-keyboard layout flank the password field; Caps Lock and battery status are shown.
-Hyprlock retains ordinary password dots; upstream's shaped password glyphs and
-lock-screen power buttons are not included in this initial appearance update.
-Power controls remain available in the desktop session menu. No upstream AI
-modules, third-party artwork or font files are bundled. See [source provenance](desktop-source.json).
+The lock screen uses the supplied sunset/anime wallpaper independently of the
+desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
+digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
+day/month badges. It updates once a second. Native Hyprlock retains the existing
+PAM/keyring integration and ordinary password dots.
+
+The bottom toolbar has a compact user/keyboard-layout pill, the password field,
+and clickable **Power off** and **Reboot** buttons. Layouts such as US Euro and
+US AltGr use short names; the pill's text and outline are measured together and
+resize when the layout changes. Caps Lock and battery status remain visible.
+Power controls execute the requested action directly while the session is locked.
+No upstream AI modules or font files are bundled. The wallpaper's
+[source provenance](desktop-source.json) records the user-provided image.
 
 Animations are enabled by default (`archsetup_desktop_reduced_motion: false`),
 including the LittleArchy profile. Window opening takes 120 ms, closing and fades

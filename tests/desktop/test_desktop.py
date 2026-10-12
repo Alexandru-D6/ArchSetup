@@ -486,6 +486,81 @@ else:
                 else:
                     run.assert_called_once_with('systemctl', action)
 
+    def lock_visuals(self):
+        loader = importlib.machinery.SourceFileLoader('lock_visuals', str(ROLE / 'files/lock-visuals'))
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        visuals = importlib.util.module_from_spec(spec)
+        loader.exec_module(visuals)
+        visuals.ROOT = self.profile
+        return visuals
+
+    def test_lock_clock_updates_its_time_day_and_month(self):
+        from datetime import datetime
+        from PIL import Image
+        visuals = self.lock_visuals()
+        visuals.lock_clock_image(datetime(2026, 10, 12, 15, 12, 35))
+        with Image.open(self.profile / 'theme/lock-clock.png') as generated:
+            before = generated.copy()
+        self.assertEqual(before.size, (750, 780))
+        self.assertEqual(before.getpixel((0, 0))[3], 0)
+        visuals.lock_clock_image(datetime(2026, 10, 13, 15, 12, 35))
+        with Image.open(self.profile / 'theme/lock-clock.png') as after:
+            self.assertNotEqual(before.crop((0, 45, 225, 255)).tobytes(),
+                                after.crop((0, 45, 225, 255)).tobytes())
+            self.assertEqual(before.crop((520, 550, 735, 750)).tobytes(),
+                             after.crop((520, 550, 735, 750)).tobytes())
+        visuals.lock_clock_image(datetime(2026, 11, 12, 15, 13, 36))
+        with Image.open(self.profile / 'theme/lock-clock.png') as after:
+            self.assertNotEqual(before.crop((520, 550, 735, 750)).tobytes(),
+                                after.crop((520, 550, 735, 750)).tobytes())
+            self.assertNotEqual(before.crop((250, 210, 500, 585)).tobytes(),
+                                after.crop((250, 210, 500, 585)).tobytes())
+
+    def test_keyboard_layout_uses_main_keyboard_and_pill_tracks_text(self):
+        from PIL import Image
+        visuals = self.lock_visuals()
+        devices = {'keyboards': [
+            {'main': False, 'active_keymap': 'German'},
+            {'main': True, 'active_keymap': 'English (US, euro on 5)'},
+        ]}
+        response = subprocess.CompletedProcess([], 0, json.dumps(devices))
+        with patch.object(visuals.subprocess, 'run', return_value=response):
+            self.assertEqual(visuals.keyboard_layout(), 'US · Euro')
+        self.assertEqual(visuals.compact_layout('English (US, alt. intl.)'), 'US · AltGr')
+        self.assertEqual(visuals.compact_layout('English (intl., with AltGr dead keys)'), 'US · AltGr')
+        devices['keyboards'][1].update(layout='us,us', variant='euro,altgr-intl',
+                                       active_layout_index=1,
+                                       active_keymap='English (intl., with AltGr dead keys)')
+        response = subprocess.CompletedProcess([], 0, json.dumps(devices))
+        with patch.object(visuals.subprocess, 'run', return_value=response):
+            self.assertEqual(visuals.keyboard_layout(), 'US · AltGr')
+        visuals.identity_image('alex', 'US')
+        with Image.open(self.profile / 'theme/lock-identity.png') as image:
+            short_width = image.width
+        visuals.identity_image('alex', 'US · AltGr')
+        with Image.open(self.profile / 'theme/lock-identity.png') as image:
+            self.assertGreater(image.width, short_width)
+            self.assertLessEqual(image.width, 196 * 3)
+            self.assertEqual(image.height, 50 * 3)
+            self.assertEqual(image.getpixel((0, 0))[3], 0)
+        visuals.identity_image('a_very_long_desktop_username', 'A very long keyboard layout name')
+        with Image.open(self.profile / 'theme/lock-identity.png') as image:
+            self.assertLessEqual(image.width, 196 * 3)
+
+    def test_lock_prepares_clickable_controls_before_starting_hyprlock(self):
+        environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
+                       'XDG_RUNTIME_DIR': self.directory.name}
+        with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
+             patch.object(self.actions, 'run') as run:
+            self.actions.main('lock')
+            self.assertEqual(run.call_args_list[-2].args, (str(self.profile / 'bin/lock-visuals'), 'prepare'))
+            self.assertEqual(run.call_args_list[-1].args,
+                             ('hyprlock', '-c', str(self.profile / 'hyprlock.conf')))
+        config = (self.profile / 'hyprlock.conf').read_text()
+        self.assertIn('hide_cursor = false', config)
+        for action in ['poweroff', 'reboot']:
+            self.assertIn(f'onclick = {self.profile}/bin/desktop-action {action}', config)
+
     def test_theme_preserves_wallpaper_and_managed_preferences(self):
         managed = (self.profile / 'preferences.json').read_bytes()
         (self.profile / 'state.json').write_text('{"wallpaper":"/tmp/picture.png"}')
@@ -496,8 +571,9 @@ else:
         self.assertEqual(state['wallpaper'], '/tmp/picture.png')
         self.assertEqual((self.profile / 'preferences.json').read_bytes(), managed)
 
-    def test_default_background_and_system_font_need_no_bundled_assets(self):
+    def test_desktop_background_and_font_are_independent_of_lock_wallpaper(self):
         from PIL import Image
+        lock_wallpaper = (self.profile / 'assets/lock-wallpaper.jpg').read_bytes()
         self.actions.refresh_theme({})
         generated = self.profile / 'theme/wallpaper.png'
         with Image.open(generated) as image:
@@ -514,6 +590,9 @@ else:
         self.actions.refresh_theme(state)
         self.assertEqual(generated.read_bytes(), personal.read_bytes())
         self.assertEqual(json.loads((self.profile / 'state.json').read_text())['wallpaper'], str(personal))
+        self.assertEqual((self.profile / 'assets/lock-wallpaper.jpg').read_bytes(), lock_wallpaper)
+        self.assertIn(str(self.profile / 'assets/lock-wallpaper.jpg'),
+                      (self.profile / 'hyprlock.conf').read_text())
 
     def test_candidate_validator_rejects_invalid_lua(self):
         candidate = self.profile / 'candidate'
@@ -532,7 +611,7 @@ else:
         import re
         banned = re.compile(r'\b(ollama|gemini|openai|mistral|anthropic)\b|api[_-]?key|services/ai/', re.I)
         for path in self.profile.rglob('*'):
-            if path.is_file() and path.suffix.lower() not in ('.png', '.ttf'):
+            if path.is_file() and path.suffix.lower() not in ('.png', '.jpg', '.jpeg', '.webp', '.ttf'):
                 self.assertIsNone(banned.search(path.read_text()), str(path))
 
 if __name__ == '__main__':
