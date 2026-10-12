@@ -303,18 +303,21 @@ def main(action):
                 config_path = Path(lock_dir) / 'hyprlock.conf'
                 config_path.write_text(configuration)
                 arguments = ['hyprlock', '-c', str(config_path)]
-                locker = subprocess.Popen(arguments, env=environment)
+                # Hyprlock 0.9.6 runs unsafe timer callbacks in its SIGUSR2
+                # handler. Native image timers replace that refresh path. Block
+                # the signal before exec so every locker thread inherits the
+                # mask, including during startup and cleanup; restore our mask.
+                previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR2})
+                try:
+                    locker = subprocess.Popen(arguments, env=environment)
+                finally:
+                    signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
                 updater = None
                 try:
                     try:
-                        locker_fd = os.pidfd_open(locker.pid)
-                        try:
-                            updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch',
-                                                        str(os.getpid()), str(locker_fd)],
-                                                       pass_fds=(locker_fd,), stdin=subprocess.DEVNULL,
-                                                       stdout=subprocess.DEVNULL, env=environment)
-                        finally:
-                            os.close(locker_fd)
+                        updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                                   env=environment)
                     except OSError as error:
                         # Visual-helper failures must leave the password screen running.
                         print(f'Lock image updater unavailable: {error}', file=sys.stderr)

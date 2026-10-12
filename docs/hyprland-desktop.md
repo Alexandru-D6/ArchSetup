@@ -92,14 +92,17 @@ The lock screen uses the supplied sunset/anime wallpaper independently of the
 desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
 digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
 day/month badges. A background helper updates it once a second, caches font
-lookups and redraws the layout pill only when its text changes. Hyprlock loads
-the images asynchronously; password input never waits for image generation.
+lookups and redraws the layout pill only when its text changes. Hyprlock checks
+the files once per second using its native image timers and loads changed images
+asynchronously; password input never waits for image generation.
 Super+L starts the locker using cached visuals, with fresh images generated
 afterward. Immediate rendering locks before waiting for wallpaper resources;
 the configured background color covers the screen while they load.
-The pill reacts to [Hyprland layout events](https://wiki.hypr.land/IPC/) and requests
-an immediate [Hyprlock image refresh](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#image),
-so switching layouts does not wait for the clock's one-second tick.
+The pill's file reacts to [Hyprland layout events](https://wiki.hypr.land/IPC/);
+its visible text changes on the next native image check, usually within a second.
+Image updates never send refresh signals. The launcher blocks SIGUSR2 in
+Hyprlock and its threads because that version's signal handler can deadlock
+while updating images.
 The helper stops when the lock screen closes. Native Hyprlock retains the existing
 PAM/keyring integration, with password dots appearing immediately on each keystroke.
 
@@ -109,7 +112,10 @@ US AltGr use short names; the pill's text and outline are measured together and
 resize when the layout changes. Caps Lock and battery status remain visible.
 Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
 other to **Cancel**. Confirm runs the selected action; Cancel restores both
-original buttons. Each new lock starts with the original labels.
+original buttons. Label changes appear on the next image check. The selected
+button ignores confirmation clicks for 1.5 seconds while its new label loads;
+the other button can cancel immediately. Each new lock starts with the original
+labels.
 
 The profile uses [software cursor rendering](https://wiki.hypr.land/configuring/core/config-options/#cursor)
 by default to avoid hardware cursor wake issues after the display blanks while

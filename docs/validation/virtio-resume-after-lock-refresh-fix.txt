@@ -1,0 +1,25 @@
+VM kernel 7.2.9-arch1-1; 2026-10-12; full S3 resume with the lock refresh fix.
+Hyprlock PID 540 stayed alive. Clock image generation continued after resume.
+The monitor remained DPMS-enabled and locked, but QEMU showed no active output.
+Hyprlock status: SigBlk=0000000000000800, ShdPnd=0000000000000800.
+
+Excerpt from journalctl -b -k after SysRq w at 21:29:14 UTC:
+sysrq: Show Blocked State
+task:kworker/u16:2   state:D stack:0 pid:49 tgid:49 ppid:2
+Workqueue: events_unbound commit_work
+Call Trace:
+ <TASK>
+ __schedule+0x420/0x1770
+ schedule+0x27/0xa0
+ virtio_gpu_queue_fenced_ctrl_buffer+0x20f/0x5a0 [virtio_gpu]
+ ? __pfx_autoremove_wake_function+0x10/0x10
+ virtio_gpu_primary_plane_update+0x1eb/0x4b0 [virtio_gpu]
+ drm_atomic_helper_commit_planes+0x114/0x330
+ drm_atomic_helper_commit_tail+0x5e/0xc0
+ commit_tail+0xfb/0x160
+ process_one_work+0x19f/0x370
+ worker_thread+0x1b1/0x310
+ kthread+0xe4/0x120
+ ret_from_fork+0x2a7/0x330
+ ret_from_fork_asm+0x1a/0x30
+ </TASK>

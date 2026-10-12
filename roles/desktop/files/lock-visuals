@@ -252,8 +252,9 @@ class PowerControls:
         if self.selected is None:
             self.paint(action)
             self.selected = action
-            # Ignore a rapid second press while the replacement image is loading.
-            self.ready_at = self.clock() + 0.25
+            # Leave a full native image-refresh interval plus loading time before
+            # the same button can confirm. The other button can cancel at once.
+            self.ready_at = self.clock() + 1.5
             return True
         if action != self.selected:
             self.paint(None)
@@ -304,30 +305,7 @@ def layout_events():
         return None
 
 
-def refresh_lock(locker_fd):
-    if locker_fd is None:
-        return True
-    try:
-        # The inherited pidfd refers only to this launcher's Hyprlock child.
-        info = Path(f'/proc/self/fdinfo/{locker_fd}').read_text().splitlines()
-        pid = int(next(line.split()[1] for line in info if line.startswith('Pid:')))
-        if pid < 1:
-            return True
-        status = Path(f'/proc/{pid}/status').read_text().splitlines()
-        caught = int(next(line.split()[1] for line in status if line.startswith('SigCgt:')), 16)
-        # Hyprlock installs SIGUSR2 after acquiring the session lock. Queue an
-        # early update until then; sending it sooner could terminate the locker.
-        if not caught & (1 << (signal.SIGUSR2 - 1)):
-            return False
-        signal.pidfd_send_signal(locker_fd, signal.SIGUSR2)
-        return True
-    except ProcessLookupError:
-        return True
-    except OSError:
-        return False
-
-
-def watch(parent, locker_fd=None):
+def watch(parent):
     """Refresh images outside Hyprlock's input loop for this lock invocation only."""
     if parent == 1 or os.getppid() != parent:
         return
@@ -337,14 +315,12 @@ def watch(parent, locker_fd=None):
     buttons = PowerControls()
     buffer = b''
     layout = None
-    pending = False
     def update_identity():
-        nonlocal layout, pending
+        nonlocal layout
         current_layout = keyboard_layout()
         if current_layout != layout:
             identity_image(layout=current_layout)
             layout = current_layout
-            pending = True
     def stop(*_):
         raise SystemExit(0)
     previous_handler = signal.signal(signal.SIGTERM, stop)
@@ -356,7 +332,6 @@ def watch(parent, locker_fd=None):
             control.bind(str(control_path))
             control_path.chmod(0o600)
             power_images()
-            pending = True
         update_identity()
         next_clock = time.monotonic()
         # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
@@ -364,24 +339,19 @@ def watch(parent, locker_fd=None):
             started = time.monotonic()
             if started >= next_clock:
                 lock_clock_image()
-                pending = True
                 next_clock = started + 1
                 if connection is None:
                     connection = layout_events()
                     buffer = b''
                     update_identity()
-            if pending and refresh_lock(locker_fd):
-                pending = False
             timeout = max(0, next_clock - time.monotonic())
-            if pending:
-                timeout = min(timeout, 0.05)
             sockets = [item for item in (connection, control) if item is not None]
             if not sockets:
                 time.sleep(timeout)
                 continue
             ready = select.select(sockets, [], [], timeout)[0]
             if control is not None and control in ready:
-                pending = buttons.press(receive_power(control)) or pending
+                buttons.press(receive_power(control))
             if connection is None or connection not in ready:
                 continue
             try:
@@ -485,7 +455,9 @@ def capslock():
 if __name__ == '__main__':
     try:
         output = {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity': identity_image,
-                  'prepare': prepare, 'watch': lambda: watch(int(sys.argv[2]), int(sys.argv[3]) if len(sys.argv) > 3 else None),
+                  # Ignore a legacy pidfd argument during a partial deployment.
+                  # This updater only writes files; it never signals the locker.
+                  'prepare': prepare, 'watch': lambda: watch(int(sys.argv[2])),
                   'click-poweroff': lambda: click_power('poweroff'), 'click-reboot': lambda: click_power('reboot'),
                   'status': status, 'capslock': capslock}[sys.argv[1]]()
         if output is not None:

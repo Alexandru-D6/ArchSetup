@@ -1,5 +1,63 @@
 # Desktop validation — 2026-10-10
 
+## Hyprlock refresh deadlock — 2026-10-12
+
+LittleArchy's journal records Hyprlock aborting at 19:13:30, with image/timer
+callbacks running inside the forced-refresh signal handler on several threads.
+Arch Hyprlock 0.9.6-3 debug symbols map offset 0x63609 to
+handleForceUpdateSignal. The long-running VM lock also stopped updating while
+the helper kept generating current clock images. Its main and timer threads
+were blocked in that handler after interrupting normal timer work. No full
+system suspend occurred in that VM boot. The earlier short lock tests below
+did not establish prolonged stability.
+
+The updater now only writes images; it no longer receives a locker descriptor
+or sends refresh signals. All four dynamic images use positive one-second
+[native image timers](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#image).
+The launcher blocks SIGUSR2 before exec so locker threads inherit the mask,
+then restores its own mask on success or failure. This also prevents an old
+updater or manual refresh from entering the unsafe handler. The updater ignores
+the retired descriptor argument during a partial deployment, and its existing
+owner/socket cleanup and PAM policy remain.
+
+The layout file still updates on keyboard events, but visible image changes now
+wait for the next native check. Confirmation is delayed for 1.5 seconds so a
+rapid second click cannot commit before the changed button label loads;
+cancellation remains immediate. Cached launch and background image generation
+preserve fast locking and immediate password feedback.
+
+All 44 regressions pass, including a real child receiving a blocked refresh
+signal, parent-mask restoration on both successful and failed spawn, image
+updates with a retired locker descriptor, controller messages and cleanup.
+The two mask tests explicitly start with SIGUSR2 unblocked. Desktop,
+desktop-verify and site syntax checks pass; repeat apply:
+ok=45 changed=0 failed=0.
+
+An uninterrupted 20-minute native VM lock passed 267 visible clock-update
+checks, 100 unsubmitted dummy keystrokes, 20 layout switches and 20 alternating
+confirmation/cancellation cycles. Rapid second presses did not commit either
+power action. The same locker remained running after a burst of 100 SIGUSR2
+signals; every inspected locker thread had the signal blocked. Maximum sampled
+password feedback was 57.1 ms; maximum visible layout delay was 1,087.1 ms,
+including screenshot polling overhead.
+
+Full S3 resume still did not pass in the Virtio VM: the guest returned from
+sleep and thawed user.slice, Hyprland reported the display enabled and locked,
+and clock generation continued, but QEMU reported no active display output.
+The [new blocked-task excerpt](validation/virtio-resume-after-lock-refresh-fix.txt)
+again shows a DRM commit worker waiting in virtio_gpu_queue_fenced_ctrl_buffer,
+via virtio_gpu_primary_plane_update. Hyprlock remained alive, with SIGUSR2
+blocked and pending. The three-cycle resume test stopped at its first failed
+display check; this result must not be counted as a successful suspend test.
+The physical AMD laptop's resume path still needs acceptance after deployment.
+The VM was reset after its graphics hang prevented a normal reboot from
+finishing. Its fresh boot returned to a responsive lock; 20 further unsubmitted
+dummy keys measured 40.25 ms median and 43.1 ms maximum feedback.
+
+Apply the desktop profile and start a new locker to load both the signal mask
+and the native image timers. An already crashed lock requires session recovery
+or a reboot. No workstation deployment or password submission was made.
+
 ## Cursor visibility after display wake — 2026-10-12
 
 The user reports that the pointer stays invisible after the locked display wakes,

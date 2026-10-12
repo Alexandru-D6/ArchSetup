@@ -47,7 +47,8 @@ image {
     border_size = 0
     # The lock launcher updates this file in the background. Image reload_cmd
     # runs synchronously in Hyprlock and would stall password input every tick.
-    reload_time = 0
+    # Positive intervals run on the normal event loop, without SIGUSR2 callbacks.
+    reload_time = 1
     position = 0, 0
     halign = center
     valign = center
@@ -76,14 +77,14 @@ label {
     zindex = 1
 }
 # Text and border share one measured image, so layout changes resize the pill.
-# Layout events refresh it immediately through Hyprlock's SIGUSR2 image reload.
+# Layout events update the file; Hyprlock checks it on its normal image timer.
 image {
     monitor =
     path = {{ desktop_root }}/theme/lock-identity.png
     size = 50
     rounding = 0
     border_size = 0
-    reload_time = 0
+    reload_time = 1
     position = -270, 20
     halign = center
     valign = bottom
@@ -114,7 +115,7 @@ image {
     size = 50
     rounding = 0
     border_size = 0
-    reload_time = 0
+    reload_time = 1
     position = 230, 20
     halign = center
     valign = bottom
@@ -127,7 +128,7 @@ image {
     size = 50
     rounding = 0
     border_size = 0
-    reload_time = 0
+    reload_time = 1
     position = 346, 20
     halign = center
     valign = bottom
