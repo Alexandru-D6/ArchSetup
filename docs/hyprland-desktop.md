@@ -124,7 +124,11 @@ have separate keys. Super+W launches the configured browser without passing a
 URL. Moving a window to another workspace also switches to that workspace and
 keeps the window focused. This applies to numbered/keypad, relative and scratch
 workspace shortcuts, including the Super+Alt variants. Workspace buttons focus
-workspaces. The taskbar groups workspaces and clock in the center, with the tray,
+workspaces and follow the active workspace's range: 1–10, 11–20, 21–30, and so on.
+The taskbar shows groups of five on narrow screens and tracks each monitor
+independently; the overview shows ten for its monitor. Button labels and
+highlights update when switching to higher-numbered workspaces.
+The taskbar groups workspaces and clock in the center, with the tray,
 audio, notifications and power controls on the right. Its left side is empty.
 The overview supports arrow navigation and Enter.
 

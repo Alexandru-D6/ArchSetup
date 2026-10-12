@@ -49,6 +49,7 @@ ShellRoot {
     function action(name) { Quickshell.execDetached([profile + "/bin/desktop-action", name]); }
     function toggle(name) { page = page === name ? "" : name; }
     function workspace(number) { Hyprland.dispatch("hl.dsp.focus({workspace=" + number + "})"); }
+    function workspaceStart(active, count) { return Math.floor((Math.max(1, active || 1) - 1) / count) * count + 1; }
     function control(name) {
         if (name === "bar") barVisible = !barVisible;
         else if (name === "bar-position") barBottom = !barBottom;
@@ -188,16 +189,19 @@ ShellRoot {
                     width: workspaceRow.implicitWidth + 12; height: 32; radius: 16; color: root.raised
                     Row {
                         id: workspaceRow
+                        readonly property int workspaceCount: panel.width > 1100 ? 10 : 5
+                        readonly property int firstWorkspace: root.workspaceStart(Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id, workspaceCount)
                         anchors.centerIn: parent
                         spacing: 2
                         Repeater {
-                            model: panel.width > 1100 ? 10 : 5
+                            model: workspaceRow.workspaceCount
                             Chip {
                                 required property int index
-                                implicitWidth: 26; implicitHeight: 26
-                                text: String(index + 1)
-                                selected: Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id === index + 1
-                                onClicked: root.workspace(index + 1)
+                                readonly property int workspaceId: workspaceRow.firstWorkspace + index
+                                implicitWidth: Math.max(26, contentItem.implicitWidth + 10); implicitHeight: 26
+                                text: String(workspaceId)
+                                selected: Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id === workspaceId
+                                onClicked: root.workspace(workspaceId)
                             }
                         }
                     }
@@ -273,7 +277,18 @@ ShellRoot {
                         currentIndex: root.page === "overview" ? 0 : root.page === "settings" ? 1 : root.page === "tools" ? 3 : root.page === "media" ? 4 : 2
                         ColumnLayout {
                             RowLayout {
-                                Repeater { model: 10; Chip { required property int index; text: String(index + 1); onClicked: { root.workspace(index + 1); root.page = ""; } } }
+                                id: overviewWorkspaces
+                                readonly property int firstWorkspace: root.workspaceStart(Hyprland.monitorFor(overlay.screen)?.activeWorkspace?.id, 10)
+                                Repeater {
+                                    model: 10
+                                    Chip {
+                                        required property int index
+                                        readonly property int workspaceId: overviewWorkspaces.firstWorkspace + index
+                                        text: String(workspaceId)
+                                        selected: Hyprland.monitorFor(overlay.screen)?.activeWorkspace?.id === workspaceId
+                                        onClicked: { root.workspace(workspaceId); root.page = ""; }
+                                    }
+                                }
                             }
                             GridView {
                                 id: windows
