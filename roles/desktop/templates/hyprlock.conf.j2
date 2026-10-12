@@ -7,6 +7,13 @@ auth {
 }
 animations {
     enabled = {{ (not (archsetup_desktop_reduced_motion | bool)) | to_json }}
+    bezier = archsetupSharp, 0.16, 1, 0.3, 1
+    # Hyprlock 0.9.6 requires whole deciseconds; every effect takes 100 ms.
+    animation = global, 1, 1, archsetupSharp
+    animation = fadeIn, 1, 1, archsetupSharp
+    animation = fadeOut, 1, 1, archsetupSharp
+    animation = inputField, 1, 1, archsetupSharp
+    animation = inputFieldColors, 1, 1, archsetupSharp
 }
 background {
     monitor =

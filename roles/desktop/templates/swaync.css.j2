@@ -1,6 +1,9 @@
 * { font-family: "{{ archsetup_desktop_font }}"; font-size: 13px; }
 {% if archsetup_desktop_reduced_motion | bool %}
 * { transition: none; animation: none; }
+{% else %}
+* { transition-duration: 80ms; transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+button { transition: background-color 80ms cubic-bezier(0.16, 1, 0.3, 1); }
 {% endif %}
 .control-center, .notification { background: #191620; color: #eae0f5; border-radius: 16px; border: 1px solid #45404f; }
 .notification { padding: 12px; }

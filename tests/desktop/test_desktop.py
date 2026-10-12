@@ -181,12 +181,17 @@ class DesktopTests(unittest.TestCase):
         self.assertRegex(result.stdout, r'changed=0\s+unreachable=0\s+failed=0\s+skipped=3')
 
     def test_cli_boolean_strings_render_as_booleans(self):
-        render(self.profile, {'archsetup_desktop_reduced_motion': 'false'})
-        self.assertFalse(json.loads((self.profile / 'preferences.json').read_text())['reducedMotion'])
-        self.assertIn('animations = { enabled = true }', (self.profile / 'hyprland.lua').read_text())
-        render(self.profile, {'archsetup_desktop_reduced_motion': 'true'})
-        self.assertTrue(json.loads((self.profile / 'preferences.json').read_text())['reducedMotion'])
-        self.assertIn('animations = { enabled = false }', (self.profile / 'hyprland.lua').read_text())
+        for value, reduced in [('false', False), ('true', True)]:
+            with self.subTest(value=value):
+                render(self.profile, {'archsetup_desktop_reduced_motion': value})
+                self.assertEqual(json.loads((self.profile / 'preferences.json').read_text())['reducedMotion'], reduced)
+                enabled = 'false' if reduced else 'true'
+                self.assertIn(f'animations = {{ enabled = {enabled} }}', (self.profile / 'hyprland.lua').read_text())
+                self.assertIn(f'enabled = {enabled}', (self.profile / 'hyprlock.conf').read_text())
+                timing = json.loads((self.profile / 'swaync.json').read_text())['transition-time']
+                self.assertEqual(timing == 0, reduced)
+                self.assertLessEqual(timing, 140)
+                self.assertEqual('transition: none; animation: none;' in (self.profile / 'swaync.css').read_text(), reduced)
 
     def test_all_shortcuts_unique_and_layout_switch_reserved(self):
         bindings = json.loads((self.profile / 'shortcuts.json').read_text())

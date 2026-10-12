@@ -94,12 +94,17 @@ islands through native Hyprlock, preserving the PAM/keyring integration. User an
 keyboard layout flank the password field; Caps Lock and battery status are shown.
 Hyprlock retains ordinary password dots; upstream's shaped password glyphs and
 lock-screen power buttons are not included in this initial appearance update.
-Power controls remain available in the desktop session menu. No animations or
-upstream AI modules are added. No third-party artwork or font files are bundled. See [source provenance](desktop-source.json).
+Power controls remain available in the desktop session menu. No upstream AI
+modules, third-party artwork or font files are bundled. See [source provenance](desktop-source.json).
 
-Animations are disabled by default (`archsetup_desktop_reduced_motion: true`):
-Hyprland window/workspace effects, Hyprlock fades and input effects, and SwayNC
-transitions. The custom shell already switches its panels without animations.
+Animations are enabled by default (`archsetup_desktop_reduced_motion: false`),
+including the LittleArchy profile. Window opening takes 120 ms, closing and fades
+80 ms, moving/resizing 100 ms, and workspace switching 140 ms. A sharp ease-out
+curve avoids bounce; windows scale from 98% and workspace slides travel only 12%
+of the screen. Shell surfaces use the compositor's 80–100 ms layer fades.
+Hyprlock uses 100 ms fades/input effects; SwayNC uses 120 ms transitions and
+80 ms hover effects. Set `archsetup_desktop_reduced_motion: true` to disable them.
+Compositor timing follows the [Hyprland animation configuration](https://wiki.hypr.land/Configuring/Advanced-and-Cool/Animations/).
 The lock setting follows the [Hyprlock animation configuration](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#animations);
 notification timing follows the [SwayNC schema](https://github.com/ErikReider/SwayNotificationCenter/blob/main/src/configSchema.json).
 

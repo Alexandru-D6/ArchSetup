@@ -30,7 +30,7 @@ archsetup_desktop_input:
     disable_while_typing: true
     clickfinger_behavior: true
     scroll_factor: 0.7
-archsetup_desktop_reduced_motion: true
+archsetup_desktop_reduced_motion: false
 archsetup_desktop_font: DejaVu Sans
 archsetup_desktop_code_editor: geany.desktop
 archsetup_desktop_text_editor: org.xfce.mousepad.desktop

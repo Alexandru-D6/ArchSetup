@@ -1,5 +1,5 @@
 archsetup_desktop_enabled: true
-archsetup_desktop_reduced_motion: true
+archsetup_desktop_reduced_motion: false
 archsetup_desktop_user: "alex"
 archsetup_desktop_browser: brave-browser.desktop
 archsetup_desktop_quickshell_package: quickshell
