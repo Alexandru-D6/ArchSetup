@@ -94,6 +94,9 @@ digits, an outlined hour hand, a pink minute hand, a thin second hand, and separ
 day/month badges. A background helper updates it once a second, caches font
 lookups and redraws the layout pill only when its text changes. Hyprlock loads
 the images asynchronously; password input never waits for image generation.
+The pill reacts to [Hyprland layout events](https://wiki.hypr.land/IPC/) and requests
+an immediate [Hyprlock image refresh](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#image),
+so switching layouts does not wait for the clock's one-second tick.
 The helper stops when the lock screen closes. Native Hyprlock retains the existing
 PAM/keyring integration, with password dots appearing immediately on each keystroke.
 

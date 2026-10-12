@@ -7,6 +7,9 @@ import math
 import os
 from pathlib import Path
 import pwd
+import select
+import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -191,18 +194,96 @@ def prepare():
     pill_image('Reboot', 'lock-reboot.png', icon='reboot', max_width=104)
 
 
-def watch(parent):
+def layout_events():
+    """Subscribe before reading the current layout so a switch cannot be missed."""
+    connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        path = Path(os.environ['XDG_RUNTIME_DIR']) / 'hypr' / os.environ['HYPRLAND_INSTANCE_SIGNATURE'] / '.socket2.sock'
+        connection.connect(str(path))
+        connection.setblocking(False)
+        return connection
+    except (KeyError, OSError):
+        connection.close()
+        return None
+
+
+def refresh_lock(locker_fd):
+    if locker_fd is None:
+        return True
+    try:
+        # The inherited pidfd refers only to this launcher's Hyprlock child.
+        info = Path(f'/proc/self/fdinfo/{locker_fd}').read_text().splitlines()
+        pid = int(next(line.split()[1] for line in info if line.startswith('Pid:')))
+        if pid < 1:
+            return True
+        status = Path(f'/proc/{pid}/status').read_text().splitlines()
+        caught = int(next(line.split()[1] for line in status if line.startswith('SigCgt:')), 16)
+        # Hyprlock installs SIGUSR2 after acquiring the session lock. Queue an
+        # early update until then; sending it sooner could terminate the locker.
+        if not caught & (1 << (signal.SIGUSR2 - 1)):
+            return False
+        signal.pidfd_send_signal(locker_fd, signal.SIGUSR2)
+        return True
+    except ProcessLookupError:
+        return True
+    except OSError:
+        return False
+
+
+def watch(parent, locker_fd=None):
     """Refresh images outside Hyprlock's input loop for this lock invocation only."""
+    if parent == 1 or os.getppid() != parent:
+        return
+    connection = layout_events()
+    buffer = b''
     layout = None
-    # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
-    while parent != 1 and os.getppid() == parent:
-        started = time.monotonic()
-        lock_clock_image()
+    pending = False
+    def update_identity():
+        nonlocal layout, pending
         current_layout = keyboard_layout()
         if current_layout != layout:
             identity_image(layout=current_layout)
             layout = current_layout
-        time.sleep(max(0.05, 1 - (time.monotonic() - started)))
+            pending = True
+    try:
+        update_identity()
+        next_clock = time.monotonic()
+        # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
+        while os.getppid() == parent:
+            started = time.monotonic()
+            if started >= next_clock:
+                lock_clock_image()
+                next_clock = started + 1
+                if connection is None:
+                    connection = layout_events()
+                    buffer = b''
+                    update_identity()
+            if pending and refresh_lock(locker_fd):
+                pending = False
+            timeout = max(0, next_clock - time.monotonic())
+            if pending:
+                timeout = min(timeout, 0.05)
+            if connection is None:
+                time.sleep(timeout)
+                continue
+            if not select.select([connection], [], [], timeout)[0]:
+                continue
+            try:
+                data = connection.recv(65536)
+            except OSError:
+                data = b''
+            if not data:
+                connection.close()
+                connection = None
+                continue
+            lines = (buffer + data).split(b'\n')
+            buffer = lines.pop()
+            # Coalesce a burst and query the main keyboard, ignoring other devices.
+            if any(line.startswith(b'activelayout>>') for line in lines):
+                update_identity()
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 def clock_image():
@@ -283,7 +364,7 @@ def capslock():
 if __name__ == '__main__':
     try:
         output = {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity': identity_image,
-                  'prepare': prepare, 'watch': lambda: watch(int(sys.argv[2])),
+                  'prepare': prepare, 'watch': lambda: watch(int(sys.argv[2]), int(sys.argv[3]) if len(sys.argv) > 3 else None),
                   'status': status, 'capslock': capslock}[sys.argv[1]]()
         if output is not None:
             print(output)

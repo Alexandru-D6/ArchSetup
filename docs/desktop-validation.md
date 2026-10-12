@@ -1,5 +1,33 @@
 # Desktop validation — 2026-10-10
 
+## Keyboard-layout label responsiveness — 2026-10-12
+
+The user confirmed the remaining delay affected the layout name. The updater's
+one-second keyboard poll and Hyprlock's one-second image reload delayed that
+label. The helper now subscribes to [Hyprland layout events](https://wiki.hypr.land/IPC/),
+queries the main keyboard on a change, redraws the measured pill, and requests
+Hyprlock's [SIGUSR2 image refresh](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#image).
+The clock continues ticking independently. The launcher passes a descriptor for
+its own Hyprlock process; updates wait until that process installs its refresh
+handler. A failed visual-helper start still waits for the password screen.
+
+All 36 regressions pass, including event updates within 500 ms, partial IPC
+messages, unrelated keyboard events, no keyboard polling on clock ticks,
+startup signal readiness, exited lockers and helper cleanup/failure handling.
+Eight physical Super+Space switches in the Arch VM measured the displayed
+label's median delay dropping from 865 ms to 40 ms, and maximum delay from
+1,078 ms to 85 ms. Nine rapid switches finished with the correct label.
+Twenty unsubmitted dummy password keystrokes measured 41 ms median / 52 ms
+maximum feedback afterward. These measurements include screenshot polling
+overhead and describe the VM, not LittleArchy hardware.
+The Reboot button returned to the updated boot lock screen, whose layout badge
+also refreshed after switching. Closing the lock screen removed its updater.
+
+Desktop, desktop-verify and site syntax checks pass. Repeated Ansible apply:
+`ok=45 changed=0 failed=0`. Apply the desktop profile and reopen the lock screen
+to load the changed helper and image configuration. No workstation deployment
+was made.
+
 ## Password input responsiveness — 2026-10-12
 
 The image `reload_cmd` hooks rebuilt the clock and keyboard badge synchronously

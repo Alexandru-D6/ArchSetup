@@ -75,13 +75,14 @@ label {
     zindex = 1
 }
 # Text and border share one measured image, so layout changes resize the pill.
+# Layout events refresh it immediately through Hyprlock's SIGUSR2 image reload.
 image {
     monitor =
     path = {{ desktop_root }}/theme/lock-identity.png
     size = 50
     rounding = 0
     border_size = 0
-    reload_time = 1
+    reload_time = 0
     position = -270, 20
     halign = center
     valign = bottom

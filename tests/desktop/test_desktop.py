@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import yaml
 import jinja2
 
@@ -551,36 +551,66 @@ else:
     def test_lock_prepares_clickable_controls_before_starting_hyprlock(self):
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
                        'XDG_RUNTIME_DIR': self.directory.name}
+        locker, updater = Mock(pid=123), Mock()
+        locker.wait.return_value = 0
         with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
-             patch.object(self.actions, 'run') as run, patch.object(self.actions.subprocess, 'Popen') as spawn:
+             patch.object(self.actions, 'run') as run, \
+             patch.object(self.actions.subprocess, 'Popen', side_effect=[locker, updater]) as spawn, \
+             patch.object(self.actions.os, 'pidfd_open', return_value=42), patch.object(self.actions.os, 'close') as close:
             self.actions.main('lock')
-            self.assertEqual(run.call_args_list[-2].args, (str(self.profile / 'bin/lock-visuals'), 'prepare'))
-            self.assertEqual(run.call_args_list[-1].args,
-                             ('hyprlock', '-c', str(self.profile / 'hyprlock.conf')))
-            spawn.assert_called_once_with([str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
-                                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            spawn.return_value.terminate.assert_called_once_with()
-            spawn.return_value.wait.assert_called_once_with(timeout=3)
+            self.assertEqual(run.call_args_list[-1].args, (str(self.profile / 'bin/lock-visuals'), 'prepare'))
+            self.assertEqual(spawn.call_args_list[0].args,
+                             (['hyprlock', '-c', str(self.profile / 'hyprlock.conf')],))
+            self.assertEqual(spawn.call_args_list[1].args,
+                             ([str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid()), '42'],))
+            self.assertEqual(spawn.call_args_list[1].kwargs['pass_fds'], (42,))
+            locker.wait.assert_called_once_with()
+            close.assert_called_once_with(42)
+            updater.terminate.assert_called_once_with()
+            updater.wait.assert_called_once_with(timeout=3)
         config = (self.profile / 'hyprlock.conf').read_text()
         self.assertIn('hide_cursor = false', config)
         self.assertNotIn('reload_cmd =', config)
         self.assertIn('animation = inputFieldDots, 0', config)
+        identity = config.split('path = ' + str(self.profile / 'theme/lock-identity.png'))[1].split('}')[0]
+        self.assertIn('reload_time = 0', identity)
         for action in ['poweroff', 'reboot']:
             self.assertIn(f'onclick = {self.profile}/bin/desktop-action {action}', config)
 
     def test_lock_stops_image_updater_if_hyprlock_fails(self):
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
                        'XDG_RUNTIME_DIR': self.directory.name}
-        def fail_hyprlock(*args):
-            if args[0] == 'hyprlock':
-                raise subprocess.CalledProcessError(1, args)
+        locker, updater = Mock(pid=123), Mock()
+        locker.wait.return_value = 1
         with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
-             patch.object(self.actions, 'run', side_effect=fail_hyprlock), \
-             patch.object(self.actions.subprocess, 'Popen') as spawn:
+             patch.object(self.actions, 'run'), \
+             patch.object(self.actions.subprocess, 'Popen', side_effect=[locker, updater]), \
+             patch.object(self.actions.os, 'pidfd_open', return_value=42), patch.object(self.actions.os, 'close'):
             with self.assertRaises(subprocess.CalledProcessError):
                 self.actions.main('lock')
-            spawn.return_value.terminate.assert_called_once_with()
-            spawn.return_value.wait.assert_called_once_with(timeout=3)
+            updater.terminate.assert_called_once_with()
+            updater.wait.assert_called_once_with(timeout=3)
+
+    def test_image_updater_startup_failure_still_waits_for_hyprlock(self):
+        import contextlib
+        import io
+        environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
+                       'XDG_RUNTIME_DIR': self.directory.name}
+        for pidfd_failure in [False, True]:
+            with self.subTest(pidfd_failure=pidfd_failure):
+                locker = Mock(pid=123)
+                locker.wait.return_value = 0
+                errors = io.StringIO()
+                with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
+                     patch.object(self.actions, 'run'), \
+                     patch.object(self.actions.subprocess, 'Popen', side_effect=[locker, OSError('unavailable')]), \
+                     patch.object(self.actions.os, 'pidfd_open', side_effect=OSError('unavailable') if pidfd_failure else None,
+                                  return_value=42), patch.object(self.actions.os, 'close'), \
+                     contextlib.redirect_stderr(errors):
+                    self.actions.main('lock')
+                locker.wait.assert_called_once_with()
+                locker.terminate.assert_not_called()
+                self.assertIn('Lock image updater unavailable', errors.getvalue())
 
     def test_background_lock_updates_clock_and_only_rewrites_changed_layouts(self):
         devices = self.profile / 'devices.json'
@@ -589,7 +619,8 @@ else:
         hyprctl.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
                            + f'print(Path({str(devices)!r}).read_text())\n')
         hyprctl.chmod(0o755)
-        environment = dict(os.environ, PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'])
+        environment = dict(os.environ, PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'],
+                           XDG_RUNTIME_DIR=self.directory.name, HYPRLAND_INSTANCE_SIGNATURE='missing-test-socket')
         updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
                                    env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         def wait_until(condition):
@@ -601,7 +632,7 @@ else:
         try:
             clock = self.profile / 'theme/lock-clock.png'
             identity = self.profile / 'theme/lock-identity.png'
-            wait_until(identity.exists)
+            wait_until(lambda: identity.exists() and clock.exists())
             identity_mtime = identity.stat().st_mtime_ns
             clock_mtime = clock.stat().st_mtime_ns
             before = clock.read_bytes()
@@ -621,6 +652,89 @@ else:
                                 env=environment, capture_output=True, timeout=3)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertEqual(clock.stat().st_mtime_ns, final_mtime)
+
+    def test_layout_events_refresh_badge_without_waiting_for_clock_tick(self):
+        import socket
+        devices = self.profile / 'devices.json'
+        devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'English (US)'}]}))
+        probes = self.profile / 'keyboard-probes'
+        hyprctl = self.profile / 'bin/hyprctl'
+        hyprctl.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
+                           + f'with Path({str(probes)!r}).open("a") as log: log.write("probe\\n")\n'
+                           + f'print(Path({str(devices)!r}).read_text())\n')
+        hyprctl.chmod(0o755)
+        socket_dir = self.profile / 'hypr/test-compositor'
+        socket_dir.mkdir(parents=True)
+        environment = dict(os.environ, PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'],
+                           XDG_RUNTIME_DIR=str(self.profile), HYPRLAND_INSTANCE_SIGNATURE='test-compositor')
+        with socket.socket(socket.AF_UNIX) as server:
+            server.bind(str(socket_dir / '.socket2.sock'))
+            server.listen(1)
+            server.settimeout(3)
+            updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                       env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            def wait_until(condition, timeout=3):
+                deadline = time.monotonic() + timeout
+                while not condition():
+                    self.assertIsNone(updater.poll(), 'Lock image updater stopped unexpectedly')
+                    self.assertLess(time.monotonic(), deadline, 'Layout event did not update the badge')
+                    time.sleep(0.01)
+            try:
+                with server.accept()[0] as peer:
+                    identity = self.profile / 'theme/lock-identity.png'
+                    clock = self.profile / 'theme/lock-clock.png'
+                    wait_until(lambda: identity.exists() and clock.exists())
+                    identity_mtime = identity.stat().st_mtime_ns
+                    identity_before = identity.read_bytes()
+                    clock_mtime = clock.stat().st_mtime_ns
+                    peer.sendall(b'activewindow>>example,title\n')
+                    wait_until(lambda: clock.stat().st_mtime_ns != clock_mtime)
+                    self.assertEqual(identity.stat().st_mtime_ns, identity_mtime)
+                    self.assertEqual(probes.read_text().count('probe'), 1)
+                    # Partial reads and unrelated keyboards must not corrupt the main layout.
+                    peer.sendall(b'activelayout>>secondary,German\n')
+                    wait_until(lambda: probes.read_text().count('probe') == 2)
+                    self.assertEqual(identity.stat().st_mtime_ns, identity_mtime)
+                    devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'Spanish'}]}))
+                    peer.sendall(b'activelay')
+                    peer.sendall(b'out>>main,Spanish\nactivelayout>>main,Spanish\n')
+                    wait_until(lambda: identity.stat().st_mtime_ns != identity_mtime, timeout=0.5)
+                    self.assertNotEqual(identity.read_bytes(), identity_before)
+            finally:
+                updater.terminate()
+                _, error = updater.communicate(timeout=3)
+            self.assertFalse(error, error.decode())
+
+    def test_lock_refresh_waits_for_signal_handler_and_handles_exited_locker(self):
+        visuals = self.lock_visuals()
+        started = self.profile / 'locker-started'
+        refreshed = self.profile / 'locker-refreshed'
+        code = ('import signal, sys\nfrom pathlib import Path\n'
+                + f'Path({str(started)!r}).touch()\n'
+                + 'sys.stdin.buffer.read(1)\n'
+                + f'signal.signal(signal.SIGUSR2, lambda *_: Path({str(refreshed)!r}).touch())\n'
+                + 'print("ready", flush=True)\nsignal.pause()\n')
+        with subprocess.Popen([sys.executable, '-c', code], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE) as locker:
+            descriptor = os.pidfd_open(locker.pid)
+            try:
+                deadline = time.monotonic() + 3
+                while not started.exists():
+                    self.assertLess(time.monotonic(), deadline)
+                    time.sleep(0.01)
+                self.assertFalse(visuals.refresh_lock(descriptor))
+                self.assertIsNone(locker.poll())
+                locker.stdin.write(b'x')
+                locker.stdin.flush()
+                self.assertEqual(locker.stdout.readline(), b'ready\n')
+                self.assertTrue(visuals.refresh_lock(descriptor))
+                locker.wait(timeout=3)
+                self.assertTrue(refreshed.exists())
+                self.assertTrue(visuals.refresh_lock(descriptor))
+            finally:
+                os.close(descriptor)
+                if locker.poll() is None:
+                    locker.terminate()
 
     def test_theme_preserves_wallpaper_and_managed_preferences(self):
         managed = (self.profile / 'preferences.json').read_bytes()

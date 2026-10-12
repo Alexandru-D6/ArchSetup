@@ -288,17 +288,33 @@ def main(action):
             path = ROOT / 'state.json'
             refresh_theme(json.loads(path.read_text()) if path.exists() else {})
             run(str(ROOT / 'bin/lock-visuals'), 'prepare')
-            updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch', str(os.getpid())],
-                                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            arguments = ['hyprlock', '-c', str(themed('hyprlock.conf'))]
+            locker = subprocess.Popen(arguments)
+            updater = None
             try:
-                run('hyprlock', '-c', str(themed('hyprlock.conf')))
-            finally:
-                updater.terminate()
                 try:
-                    updater.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    updater.kill()
-                    updater.wait()
+                    locker_fd = os.pidfd_open(locker.pid)
+                    try:
+                        updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch',
+                                                    str(os.getpid()), str(locker_fd)],
+                                                   pass_fds=(locker_fd,), stdin=subprocess.DEVNULL,
+                                                   stdout=subprocess.DEVNULL)
+                    finally:
+                        os.close(locker_fd)
+                except OSError as error:
+                    # Visual-helper failures must leave the password screen running.
+                    print(f'Lock image updater unavailable: {error}', file=sys.stderr)
+                result = locker.wait()
+                if result:
+                    raise subprocess.CalledProcessError(result, arguments)
+            finally:
+                if updater is not None:
+                    updater.terminate()
+                    try:
+                        updater.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        updater.kill()
+                        updater.wait()
     elif action in ('overview', 'settings', 'session', 'tools', 'media'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):
