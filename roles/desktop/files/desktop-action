@@ -287,34 +287,44 @@ def main(action):
             if recorder.exists(): run(str(recorder), 'record-stop')
             path = ROOT / 'state.json'
             refresh_theme(json.loads(path.read_text()) if path.exists() else {})
-            run(str(ROOT / 'bin/lock-visuals'), 'prepare')
-            arguments = ['hyprlock', '-c', str(themed('hyprlock.conf'))]
-            locker = subprocess.Popen(arguments)
-            updater = None
-            try:
+            # Each lock owns its button images and control socket. Pending clicks
+            # and confirmation labels cannot carry over to a later lock session.
+            with tempfile.TemporaryDirectory(prefix='archsetup-lock-', dir=os.environ['XDG_RUNTIME_DIR']) as lock_dir:
+                environment = dict(os.environ, ARCHSETUP_LOCK_DIR=lock_dir)
+                run(str(ROOT / 'bin/lock-visuals'), 'prepare', env=environment)
+                configuration = themed('hyprlock.conf').read_text()
+                for power in ('poweroff', 'reboot'):
+                    configuration = configuration.replace(str(ROOT / f'theme/lock-{power}.png'),
+                                                          str(Path(lock_dir) / f'lock-{power}.png'))
+                config_path = Path(lock_dir) / 'hyprlock.conf'
+                config_path.write_text(configuration)
+                arguments = ['hyprlock', '-c', str(config_path)]
+                locker = subprocess.Popen(arguments, env=environment)
+                updater = None
                 try:
-                    locker_fd = os.pidfd_open(locker.pid)
                     try:
-                        updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch',
-                                                    str(os.getpid()), str(locker_fd)],
-                                                   pass_fds=(locker_fd,), stdin=subprocess.DEVNULL,
-                                                   stdout=subprocess.DEVNULL)
-                    finally:
-                        os.close(locker_fd)
-                except OSError as error:
-                    # Visual-helper failures must leave the password screen running.
-                    print(f'Lock image updater unavailable: {error}', file=sys.stderr)
-                result = locker.wait()
-                if result:
-                    raise subprocess.CalledProcessError(result, arguments)
-            finally:
-                if updater is not None:
-                    updater.terminate()
-                    try:
-                        updater.wait(timeout=3)
-                    except subprocess.TimeoutExpired:
-                        updater.kill()
-                        updater.wait()
+                        locker_fd = os.pidfd_open(locker.pid)
+                        try:
+                            updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch',
+                                                        str(os.getpid()), str(locker_fd)],
+                                                       pass_fds=(locker_fd,), stdin=subprocess.DEVNULL,
+                                                       stdout=subprocess.DEVNULL, env=environment)
+                        finally:
+                            os.close(locker_fd)
+                    except OSError as error:
+                        # Visual-helper failures must leave the password screen running.
+                        print(f'Lock image updater unavailable: {error}', file=sys.stderr)
+                    result = locker.wait()
+                    if result:
+                        raise subprocess.CalledProcessError(result, arguments)
+                finally:
+                    if updater is not None:
+                        updater.terminate()
+                        try:
+                            updater.wait(timeout=3)
+                        except subprocess.TimeoutExpired:
+                            updater.kill()
+                            updater.wait()
     elif action in ('overview', 'settings', 'session', 'tools', 'media'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):

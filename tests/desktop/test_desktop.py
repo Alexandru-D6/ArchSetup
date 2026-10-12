@@ -553,19 +553,38 @@ else:
                        'XDG_RUNTIME_DIR': self.directory.name}
         locker, updater = Mock(pid=123), Mock()
         locker.wait.return_value = 0
+        opened = []
+        configurations = []
+        def descriptor(_):
+            opened.append(os.open(os.devnull, os.O_RDONLY))
+            return opened[-1]
+        def launch(arguments, **kwargs):
+            if arguments[0] == 'hyprlock':
+                configurations.append(Path(arguments[2]).read_text())
+                self.assertEqual(run.call_args_list[-1].kwargs['env'], kwargs['env'])
+                return locker
+            return updater
         with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
              patch.object(self.actions, 'run') as run, \
-             patch.object(self.actions.subprocess, 'Popen', side_effect=[locker, updater]) as spawn, \
-             patch.object(self.actions.os, 'pidfd_open', return_value=42), patch.object(self.actions.os, 'close') as close:
+             patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn, \
+             patch.object(self.actions.os, 'pidfd_open', side_effect=descriptor):
             self.actions.main('lock')
+            private = Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR'])
             self.assertEqual(run.call_args_list[-1].args, (str(self.profile / 'bin/lock-visuals'), 'prepare'))
             self.assertEqual(spawn.call_args_list[0].args,
-                             (['hyprlock', '-c', str(self.profile / 'hyprlock.conf')],))
+                             (['hyprlock', '-c', str(private / 'hyprlock.conf')],))
             self.assertEqual(spawn.call_args_list[1].args,
-                             ([str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid()), '42'],))
-            self.assertEqual(spawn.call_args_list[1].kwargs['pass_fds'], (42,))
+                             ([str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid()), str(opened[0])],))
+            self.assertEqual(spawn.call_args_list[1].kwargs['pass_fds'], (opened[0],))
+            self.assertEqual(spawn.call_args_list[1].kwargs['env'], spawn.call_args_list[0].kwargs['env'])
+            for action in ['poweroff', 'reboot']:
+                self.assertIn(str(private / f'lock-{action}.png'), configurations[0])
+                self.assertNotIn(str(self.profile / f'theme/lock-{action}.png'), configurations[0])
+            self.assertIn('pam:module = archsetup-hyprlock', configurations[0])
+            self.assertFalse(private.exists())
             locker.wait.assert_called_once_with()
-            close.assert_called_once_with(42)
+            with self.assertRaises(OSError):
+                os.fstat(opened[0])
             updater.terminate.assert_called_once_with()
             updater.wait.assert_called_once_with(timeout=3)
         config = (self.profile / 'hyprlock.conf').read_text()
@@ -575,7 +594,9 @@ else:
         identity = config.split('path = ' + str(self.profile / 'theme/lock-identity.png'))[1].split('}')[0]
         self.assertIn('reload_time = 0', identity)
         for action in ['poweroff', 'reboot']:
-            self.assertIn(f'onclick = {self.profile}/bin/desktop-action {action}', config)
+            self.assertIn(f'onclick = {self.profile}/bin/lock-visuals click-{action}', config)
+            button = config.split('path = ' + str(self.profile / f'theme/lock-{action}.png'))[1].split('}')[0]
+            self.assertIn('reload_time = 0', button)
 
     def test_lock_stops_image_updater_if_hyprlock_fails(self):
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
@@ -585,7 +606,7 @@ else:
         with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
              patch.object(self.actions, 'run'), \
              patch.object(self.actions.subprocess, 'Popen', side_effect=[locker, updater]), \
-             patch.object(self.actions.os, 'pidfd_open', return_value=42), patch.object(self.actions.os, 'close'):
+             patch.object(self.actions.os, 'pidfd_open', side_effect=lambda _: os.open(os.devnull, os.O_RDONLY)):
             with self.assertRaises(subprocess.CalledProcessError):
                 self.actions.main('lock')
             updater.terminate.assert_called_once_with()
@@ -604,13 +625,143 @@ else:
                 with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
                      patch.object(self.actions, 'run'), \
                      patch.object(self.actions.subprocess, 'Popen', side_effect=[locker, OSError('unavailable')]), \
-                     patch.object(self.actions.os, 'pidfd_open', side_effect=OSError('unavailable') if pidfd_failure else None,
-                                  return_value=42), patch.object(self.actions.os, 'close'), \
+                     patch.object(self.actions.os, 'pidfd_open', side_effect=OSError('unavailable') if pidfd_failure
+                                  else lambda _: os.open(os.devnull, os.O_RDONLY)), \
                      contextlib.redirect_stderr(errors):
                     self.actions.main('lock')
                 locker.wait.assert_called_once_with()
                 locker.terminate.assert_not_called()
                 self.assertIn('Lock image updater unavailable', errors.getvalue())
+
+    def test_lock_power_buttons_confirm_selected_action_or_cancel(self):
+        visuals = self.lock_visuals()
+        for selected, other in [('poweroff', 'reboot'), ('reboot', 'poweroff')]:
+            with self.subTest(selected=selected):
+                paint, execute, clock = Mock(), Mock(), Mock(return_value=100)
+                buttons = visuals.PowerControls(paint=paint, execute=execute, clock=clock)
+                self.assertTrue(buttons.press(selected))
+                paint.assert_called_once_with(selected)
+                execute.assert_not_called()
+                clock.return_value = 100.1
+                self.assertFalse(buttons.press(selected))
+                execute.assert_not_called()
+                self.assertTrue(buttons.press(other))
+                self.assertIsNone(buttons.selected)
+                self.assertEqual(paint.call_args.args, (None,))
+                execute.assert_not_called()
+                self.assertTrue(buttons.press(selected))
+                clock.return_value = 101
+                buttons.press(selected)
+                execute.assert_called_once_with(selected)
+                buttons.press(selected)
+                buttons.press(other)
+                execute.assert_called_once_with(selected)
+
+    def test_failed_power_confirmation_restores_original_buttons(self):
+        import contextlib
+        import io
+        visuals = self.lock_visuals()
+        paint, clock = Mock(), Mock(return_value=0)
+        execute = Mock(side_effect=subprocess.CalledProcessError(1, ['systemctl', 'reboot']))
+        buttons = visuals.PowerControls(paint=paint, execute=execute, clock=clock)
+        buttons.press('reboot')
+        clock.return_value = 1
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertTrue(buttons.press('reboot'))
+        execute.assert_called_once_with('reboot')
+        self.assertEqual(paint.call_args.args, (None,))
+        self.assertIsNone(buttons.selected)
+        self.assertTrue(buttons.press('poweroff'))
+        self.assertEqual(paint.call_args.args, ('poweroff',))
+
+    def test_power_labels_keep_button_hit_areas_and_reset_images(self):
+        from PIL import Image
+        visuals = self.lock_visuals()
+        private = self.profile / 'power-images'
+        private.mkdir(mode=0o700)
+        with patch.dict(os.environ, {'ARCHSETUP_LOCK_DIR': str(private)}):
+            visuals.power_images()
+            original = {}
+            for action, width in [('poweroff', 116), ('reboot', 104)]:
+                with Image.open(private / f'lock-{action}.png') as image:
+                    original[action] = image.tobytes()
+                    self.assertEqual(image.size, (width * 3, 150))
+            for selected in ['poweroff', 'reboot', None]:
+                visuals.power_images(selected)
+                for action, width in [('poweroff', 116), ('reboot', 104)]:
+                    with Image.open(private / f'lock-{action}.png') as image:
+                        self.assertEqual(image.size, (width * 3, 150))
+                        if selected is None:
+                            self.assertEqual(image.tobytes(), original[action])
+                        else:
+                            self.assertNotEqual(image.tobytes(), original[action])
+
+    def test_power_control_messages_require_valid_button_and_same_user(self):
+        import socket
+        import struct
+        visuals = self.lock_visuals()
+        control = Mock()
+        for uid, data, flags, expected in [
+            (os.getuid(), b'p', 0, 'poweroff'), (os.getuid(), b'r', 0, 'reboot'),
+            (os.getuid() + 1, b'p', 0, None), (os.getuid(), b'pp', 0, None),
+            (os.getuid(), b'p', socket.MSG_TRUNC, None),
+        ]:
+            with self.subTest(uid=uid, data=data, flags=flags):
+                control.recvmsg.return_value = (data, [(socket.SOL_SOCKET, socket.SCM_CREDENTIALS,
+                                                       struct.pack('3i', os.getpid(), uid, os.getgid()))], flags, None)
+                self.assertEqual(visuals.receive_power(control), expected)
+
+    def test_live_lock_power_controller_confirms_cancels_and_cleans_up(self):
+        private = self.profile / 'lock-session'
+        private.mkdir(mode=0o700)
+        log = self.profile / 'power-actions'
+        action = self.profile / 'bin/desktop-action'
+        action.write_text('#!/usr/bin/env python3\nimport sys\nfrom pathlib import Path\n'
+                          + f'with Path({str(log)!r}).open("a") as output: output.write(sys.argv[1] + "\\n")\n')
+        hyprctl = self.profile / 'bin/hyprctl'
+        hyprctl.write_text('#!/bin/sh\nprintf \'{"keyboards":[]}\\n\'\n')
+        hyprctl.chmod(0o755)
+        environment = dict(os.environ, ARCHSETUP_LOCK_DIR=str(private), XDG_RUNTIME_DIR=str(self.profile),
+                           HYPRLAND_INSTANCE_SIGNATURE='test-controls',
+                           PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'])
+        subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'), 'prepare'],
+                       env=environment, check=True, capture_output=True)
+        originals = {name: (private / f'lock-{name}.png').read_bytes() for name in ['poweroff', 'reboot']}
+        updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                   env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        def wait_until(condition):
+            deadline = time.monotonic() + 3
+            while not condition():
+                self.assertIsNone(updater.poll(), 'Power controller stopped unexpectedly')
+                self.assertLess(time.monotonic(), deadline, 'Power controls did not update')
+                time.sleep(0.01)
+        def click(name):
+            result = subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'), f'click-{name}'],
+                                    env=environment, capture_output=True, timeout=3)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+        try:
+            endpoint = private / 'control.sock'
+            wait_until(endpoint.exists)
+            self.assertEqual(endpoint.stat().st_mode & 0o777, 0o600)
+            click('poweroff')
+            wait_until(lambda: all((private / f'lock-{name}.png').read_bytes() != originals[name] for name in originals))
+            self.assertFalse(log.exists())
+            click('reboot')
+            wait_until(lambda: all((private / f'lock-{name}.png').read_bytes() == originals[name] for name in originals))
+            self.assertFalse(log.exists())
+            click('reboot')
+            wait_until(lambda: (private / 'lock-reboot.png').read_bytes() != originals['reboot'])
+            time.sleep(0.3)
+            click('reboot')
+            wait_until(log.exists)
+            self.assertEqual(log.read_text(), 'reboot\n')
+            click('reboot')
+            self.assertEqual(log.read_text(), 'reboot\n')
+        finally:
+            updater.terminate()
+            _, error = updater.communicate(timeout=3)
+        self.assertEqual(updater.returncode, 0, error.decode())
+        self.assertFalse(endpoint.exists())
 
     def test_background_lock_updates_clock_and_only_rewrites_changed_layouts(self):
         devices = self.profile / 'devices.json'

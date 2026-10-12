@@ -1,5 +1,33 @@
 # Desktop validation — 2026-10-10
 
+## Lock-screen power confirmation — 2026-10-12
+
+Power off and Reboot now reuse the two existing button positions for confirmation.
+The selected button becomes Confirm, and the other becomes Cancel. Cancel
+restores the original labels; Confirm runs the selected action once. Rapid
+second presses during image replacement are ignored. Button hit areas remain
+fixed while their text/icons change.
+
+The lock launcher creates a private runtime directory for its control socket,
+button images and generated Hyprlock configuration. Confirmation state stays in
+the updater's memory and resets on the next lock. The updater checks socket-peer
+credentials and refreshes the images through the existing owned-locker signal.
+It cleans up on termination; PAM/keyring policy is unchanged.
+
+All 41 regressions pass, covering both actions, cancellation, duplicate presses,
+failed action recovery, fixed image sizes, message validation, live control
+delivery, private configuration paths and cleanup. Desktop, desktop-verify and
+site syntax checks pass. Native VM mouse tests verified both Confirm/Cancel
+arrangements, cancellation without a power action, reset on reopening the lock,
+confirmed reboot with a new boot ID, and confirmed power off shutting down QEMU.
+Repeated Ansible apply: `ok=45 changed=0 failed=0`.
+
+While confirmation was open, layout labels measured 52 ms median / 97 ms maximum
+across eight switches, and unsubmitted dummy password input measured 41 ms median
+/ 54 ms maximum across twenty keys. These include screenshot polling overhead
+and describe the VM. Apply the desktop profile and reopen the lock screen to
+load the controls. No workstation deployment was made.
+
 ## Keyboard-layout label responsiveness — 2026-10-12
 
 The user confirmed the remaining delay affected the layout name. The updater's

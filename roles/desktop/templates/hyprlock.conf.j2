@@ -113,11 +113,12 @@ image {
     size = 50
     rounding = 0
     border_size = 0
+    reload_time = 0
     position = 230, 20
     halign = center
     valign = bottom
     zindex = 1
-    onclick = {{ desktop_root }}/bin/desktop-action poweroff
+    onclick = {{ desktop_root }}/bin/lock-visuals click-poweroff
 }
 image {
     monitor =
@@ -125,11 +126,12 @@ image {
     size = 50
     rounding = 0
     border_size = 0
+    reload_time = 0
     position = 346, 20
     halign = center
     valign = bottom
     zindex = 1
-    onclick = {{ desktop_root }}/bin/desktop-action reboot
+    onclick = {{ desktop_root }}/bin/lock-visuals click-reboot
 }
 label {
     monitor =

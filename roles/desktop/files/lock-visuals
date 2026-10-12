@@ -10,6 +10,7 @@ import pwd
 import select
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import tempfile
@@ -18,8 +19,8 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def save_image(image, name):
-    output = ROOT / 'theme' / name
+def save_image(image, name, directory=None):
+    output = (directory or ROOT / 'theme') / name
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=output.parent, suffix='.png', delete=False) as temporary:
         path = Path(temporary.name)
@@ -142,10 +143,12 @@ def keyboard_layout():
         return 'Keyboard'
 
 
-def pill_image(text, name, icon=None, max_width=None):
+def pill_image(text, name, icon=None, max_width=None, fixed_width=None, directory=None):
     """Measure text and draw its background/border as one consistently sized widget."""
     from PIL import Image, ImageDraw, ImageFont
     scale, height = 3, 50
+    if fixed_width is not None:
+        max_width = fixed_width
     path = font_file()
     font_size = 13
     icon_space = 28 if icon else 0
@@ -162,6 +165,8 @@ def pill_image(text, name, icon=None, max_width=None):
         text += '…'
         text_width = math.ceil(font.getlength(text) / scale)
         width = text_width + 32 + icon_space
+    if fixed_width is not None:
+        width = fixed_width
     image = Image.new('RGBA', (width * scale, height * scale))
     draw = ImageDraw.Draw(image)
     def point(x, y):
@@ -175,8 +180,13 @@ def pill_image(text, name, icon=None, max_width=None):
     elif icon == 'reboot':
         draw.arc([point(16, 17), point(32, 33)], -65, 240, fill=ink, width=2 * scale)
         draw.polygon([point(16, 14), point(16, 23), point(24, 20)], fill=ink)
+    elif icon == 'confirm':
+        draw.line([point(17, 25), point(22, 30), point(32, 19)], fill=ink, width=2 * scale)
+    elif icon == 'cancel':
+        draw.line([point(18, 19), point(30, 31)], fill=ink, width=2 * scale)
+        draw.line([point(30, 19), point(18, 31)], fill=ink, width=2 * scale)
     draw.text(point(16 + icon_space, height / 2), text, font=font, fill=ink, anchor='lm')
-    output = save_image(image, name)
+    output = save_image(image, name, directory)
     return output
 
 
@@ -190,8 +200,83 @@ def identity_image(username=None, layout=None):
 def prepare():
     lock_clock_image()
     identity_image()
-    pill_image('Power off', 'lock-poweroff.png', icon='poweroff', max_width=116)
-    pill_image('Reboot', 'lock-reboot.png', icon='reboot', max_width=104)
+    power_images()
+
+
+def power_directory(required=False):
+    folder = os.environ.get('ARCHSETUP_LOCK_DIR')
+    if folder:
+        return Path(folder)
+    if required:
+        raise ValueError('Power controls require a running managed lock screen')
+    return ROOT / 'theme'
+
+
+def power_images(selected=None):
+    for action, label, width in [('poweroff', 'Power off', 116), ('reboot', 'Reboot', 104)]:
+        icon = action
+        if selected is not None:
+            label, icon = ('Confirm', 'confirm') if selected == action else ('Cancel', 'cancel')
+        pill_image(label, f'lock-{action}.png', icon=icon, fixed_width=width,
+                   directory=power_directory())
+
+
+def power_action(action):
+    subprocess.run([str(ROOT / 'bin/desktop-action'), action], check=True)
+
+
+class PowerControls:
+    def __init__(self, paint=None, execute=None, clock=None):
+        self.paint = paint or power_images
+        self.execute = execute or power_action
+        self.clock = clock or time.monotonic
+        self.selected = None
+        self.ready_at = 0
+        self.executing = False
+
+    def press(self, action):
+        if action not in ('poweroff', 'reboot') or self.executing:
+            return False
+        if self.selected is None:
+            self.paint(action)
+            self.selected = action
+            # Ignore a rapid second press while the replacement image is loading.
+            self.ready_at = self.clock() + 0.25
+            return True
+        if action != self.selected:
+            self.paint(None)
+            self.selected = None
+            return True
+        if self.clock() < self.ready_at:
+            return False
+        self.executing = True
+        try:
+            self.execute(self.selected)
+        except (OSError, subprocess.SubprocessError) as error:
+            self.paint(None)
+            self.selected = None
+            self.executing = False
+            print(f'Power action failed: {error}', file=sys.stderr)
+            return True
+        return False
+
+
+def click_power(action):
+    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as client:
+        client.connect(str(power_directory(required=True) / 'control.sock'))
+        client.send({'poweroff': b'p', 'reboot': b'r'}[action])
+
+
+def receive_power(control):
+    data, credentials, flags, _ = control.recvmsg(16, socket.CMSG_SPACE(struct.calcsize('3i')))
+    if flags & (socket.MSG_TRUNC | socket.MSG_CTRUNC):
+        return None
+    for level, kind, value in credentials:
+        if level == socket.SOL_SOCKET and kind == socket.SCM_CREDENTIALS:
+            _, uid, _ = struct.unpack('3i', value)
+            if uid == os.getuid():
+                return {b'p': 'poweroff', b'r': 'reboot'}.get(data)
+    return None
 
 
 def layout_events():
@@ -235,6 +320,9 @@ def watch(parent, locker_fd=None):
     if parent == 1 or os.getppid() != parent:
         return
     connection = layout_events()
+    control = None
+    control_path = None
+    buttons = PowerControls()
     buffer = b''
     layout = None
     pending = False
@@ -245,7 +333,16 @@ def watch(parent, locker_fd=None):
             identity_image(layout=current_layout)
             layout = current_layout
             pending = True
+    def stop(*_):
+        raise SystemExit(0)
+    previous_handler = signal.signal(signal.SIGTERM, stop)
     try:
+        if os.environ.get('ARCHSETUP_LOCK_DIR'):
+            control_path = power_directory() / 'control.sock'
+            control = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            control.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
+            control.bind(str(control_path))
+            control_path.chmod(0o600)
         update_identity()
         next_clock = time.monotonic()
         # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
@@ -263,10 +360,14 @@ def watch(parent, locker_fd=None):
             timeout = max(0, next_clock - time.monotonic())
             if pending:
                 timeout = min(timeout, 0.05)
-            if connection is None:
+            sockets = [item for item in (connection, control) if item is not None]
+            if not sockets:
                 time.sleep(timeout)
                 continue
-            if not select.select([connection], [], [], timeout)[0]:
+            ready = select.select(sockets, [], [], timeout)[0]
+            if control is not None and control in ready:
+                pending = buttons.press(receive_power(control)) or pending
+            if connection is None or connection not in ready:
                 continue
             try:
                 data = connection.recv(65536)
@@ -282,6 +383,11 @@ def watch(parent, locker_fd=None):
             if any(line.startswith(b'activelayout>>') for line in lines):
                 update_identity()
     finally:
+        signal.signal(signal.SIGTERM, previous_handler)
+        if control is not None:
+            control.close()
+        if control_path is not None:
+            control_path.unlink(missing_ok=True)
         if connection is not None:
             connection.close()
 
@@ -365,6 +471,7 @@ if __name__ == '__main__':
     try:
         output = {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity': identity_image,
                   'prepare': prepare, 'watch': lambda: watch(int(sys.argv[2]), int(sys.argv[3]) if len(sys.argv) > 3 else None),
+                  'click-poweroff': lambda: click_power('poweroff'), 'click-reboot': lambda: click_power('reboot'),
                   'status': status, 'capslock': capslock}[sys.argv[1]]()
         if output is not None:
             print(output)

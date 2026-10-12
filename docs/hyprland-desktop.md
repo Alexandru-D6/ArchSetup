@@ -104,7 +104,9 @@ The bottom toolbar has a compact user/keyboard-layout pill, the password field,
 and clickable **Power off** and **Reboot** buttons. Layouts such as US Euro and
 US AltGr use short names; the pill's text and outline are measured together and
 resize when the layout changes. Caps Lock and battery status remain visible.
-Power controls execute the requested action directly while the session is locked.
+Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
+other to **Cancel**. Confirm runs the selected action; Cancel restores both
+original buttons. Each new lock starts with the original labels.
 No upstream AI modules or font files are bundled. The wallpaper's
 [source provenance](desktop-source.json) records the user-provided image.
 
