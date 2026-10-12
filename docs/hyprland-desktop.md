@@ -91,15 +91,21 @@ in `state.json`; selecting the default background restores the generated gradien
 The lock screen uses the supplied sunset/anime wallpaper independently of the
 desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
 digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
-day/month badges. A background helper updates it once a second, caches font
-lookups and redraws the layout pill only when its text changes. Hyprlock checks
-the files once per second using its native image timers and loads changed images
+day/month badges. A background helper updates it once a second and caches font
+lookups. Hyprlock checks the clock and power-button files once per second using
+its native image timers and loads changed images
 asynchronously; password input never waits for image generation.
 Super+L starts the locker using cached visuals, with fresh images generated
 afterward. Immediate rendering locks before waiting for wallpaper resources;
 the configured background color covers the screen while they load.
-The pill's file reacts to [Hyprland layout events](https://wiki.hypr.land/IPC/);
-its visible text changes on the next native image check, usually within a second.
+The keyboard name uses Hyprlock's [native layout variable](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#variable-substitution),
+which reacts directly to Wayland keyboard events. A 100 ms asynchronous label
+timer catches a final switch if the previous label is still loading. Its command
+only prints the selected name; it does not query the compositor or generate images.
+Ansible measures the configured
+layout names and username once to fit a compact border and font; long usernames
+are shortened while preserving the layout variant. The badge fits the longest
+configured label, so switching layouts does not wait for a border-image reload.
 Image updates never send refresh signals. The launcher blocks SIGUSR2 in
 Hyprlock and its threads because that version's signal handler can deadlock
 while updating images.
@@ -108,8 +114,8 @@ PAM/keyring integration, with password dots appearing immediately on each keystr
 
 The bottom toolbar has a compact user/keyboard-layout pill, the password field,
 and clickable **Power off** and **Reboot** buttons. Layouts such as US Euro and
-US AltGr use short names; the pill's text and outline are measured together and
-resize when the layout changes. Caps Lock and battery status remain visible.
+US AltGr use short names; the pill's text and outline are measured together to
+fit all configured layouts. Caps Lock and battery status remain visible.
 Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
 other to **Cancel**. Confirm runs the selected action; Cancel restores both
 original buttons. Label changes appear on the next image check. The selected

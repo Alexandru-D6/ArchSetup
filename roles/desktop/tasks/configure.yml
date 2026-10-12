@@ -86,6 +86,26 @@
     mode: '0644'
     backup: true
 
+- name: Render desktop shell preferences
+  become: true
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.template:
+    src: preferences.json.j2
+    dest: "{{ desktop_root }}/preferences.json"
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
+    mode: '0644'
+    backup: true
+  notify: Refresh running ArchSetup shell
+
+- name: Fit the native lock-screen identity badge
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.command:
+    argv: ["{{ desktop_root }}/bin/lock-visuals", identity-config]
+  register: desktop_lock_identity
+  changed_when: desktop_lock_identity.stdout == 'changed'
+  when: not ansible_check_mode
+
 - name: Render desktop configuration
   become: true
   become_user: "{{ archsetup_desktop_user }}"
@@ -99,18 +119,6 @@
     validate: "{{ desktop_root + '/bin/validate-config %s' if item == 'hyprland.lua' else omit }}"
   loop: [hyprland.lua, hyprlock.conf, hypridle.conf, fuzzel.ini, kitty.conf, swaync.json, swaync.css]
   register: desktop_rendered_configuration
-
-- name: Render desktop shell preferences
-  become: true
-  become_user: "{{ archsetup_desktop_user }}"
-  ansible.builtin.template:
-    src: preferences.json.j2
-    dest: "{{ desktop_root }}/preferences.json"
-    owner: "{{ archsetup_desktop_user }}"
-    group: "{{ desktop_group }}"
-    mode: '0644'
-    backup: true
-  notify: Refresh running ArchSetup shell
 
 - name: Initialize user-owned appearance state
   ansible.builtin.copy:

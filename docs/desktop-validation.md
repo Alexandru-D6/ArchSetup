@@ -1,5 +1,48 @@
 # Desktop validation — 2026-10-10
 
+## Faster keyboard-layout label — 2026-10-13
+
+The one-second image timer restored lock stability but delayed the keyboard
+badge. It now uses Hyprlock's
+[native layout substitution](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#variable-substitution)
+in an asynchronous text label. Wayland keyboard events request an immediate
+update. A 100 ms native label timer catches the final layout when rapid switches
+arrive while the previous label is still loading. The command only prints the
+selected, quoted text; layout changes no longer invoke hyprctl or Pillow.
+SIGUSR2 remains blocked, and clock/power images retain their one-second timers.
+
+Ansible records the ordered layout/variant pairs in preferences and generates
+lock-identity.conf before installing the referencing lock template. It measures
+the username and every configured label to fit one compact native border, with
+10–13 px text and a 196 px width limit. Long usernames shorten before layout
+variants. The companion configuration lives outside the runtime theme cache;
+unchanged generation preserves its contents and timestamp. Fast locking does
+not perform font measurement.
+
+All 45 regressions pass, including layout/variant order, empty variant slots,
+bounded badge sizing, preserved variant names, markup/argument quoting, cached
+and uncached lock startup, updater ownership and the refresh-signal guard.
+Desktop, desktop-verify and site syntax checks pass.
+
+Eight settled native VM layout switches measured 41.45 ms median and 53.4 ms
+maximum visible feedback, including screenshot polling. Nine rapid switches
+25 ms apart left the correct final label. Twenty unsubmitted dummy keys measured
+41.05 ms median and 63.7 ms maximum feedback. No password was submitted.
+A fresh lock using the final companion configuration also passed eight switches
+and the rapid-switch check: 41.25 ms median and 137.1 ms maximum feedback.
+
+An uninterrupted five-minute native lock passed 68 clock-update checks, 25
+further dummy keystrokes, five layout updates and five alternating power
+confirmation/cancellation cycles. The same PID remained responsive after 100
+stray SIGUSR2 signals, which were blocked in every inspected locker thread.
+Maximum sampled typing feedback was 54.9 ms; maximum layout feedback during
+this run was 163.3 ms. Resident memory stayed within 8 KiB across the sampled
+281-second interval. Repeated Ansible apply: ok=46 changed=0 failed=0.
+
+Reapply and a fresh lock are required on LittleArchy; no workstation
+configuration was changed. This layout check did not repeat full S3 suspend;
+the earlier Virtio limitation below remains separate.
+
 ## Hyprlock refresh deadlock — 2026-10-12
 
 LittleArchy's journal records Hyprlock aborting at 19:13:30, with image/timer

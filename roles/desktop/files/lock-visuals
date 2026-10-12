@@ -2,12 +2,14 @@
 """Generated clocks, lock-screen controls and status; never handles passwords."""
 from datetime import datetime
 from functools import lru_cache
+from html import escape
 import json
 import math
 import os
 from pathlib import Path
 import pwd
 import select
+import shlex
 import signal
 import socket
 import struct
@@ -107,40 +109,95 @@ def lock_clock_image(now=None):
     return output
 
 
-def compact_layout(keymap):
-    lower = keymap.lower()
-    if lower.startswith('english (intl') and 'altgr' in lower:
-        return 'US · AltGr'
-    if lower.startswith('english (us'):
-        if 'euro' in lower:
-            return 'US · Euro'
-        if 'alt' in lower and ('intl' in lower or 'international' in lower):
-            return 'US · AltGr'
-        if 'intl' in lower or 'international' in lower:
-            return 'US · Intl'
-        for variant in ['Dvorak', 'Colemak', 'Workman']:
-            if variant.lower() in lower:
-                return 'US · ' + variant
-        return 'US'
-    return {'english (uk)': 'UK', 'spanish': 'ES', 'french': 'FR', 'german': 'DE'}.get(lower, keymap)
+def configured_layouts(preferences):
+    variants = preferences.get('keyboardVariants', '').split(',')
+    names = []
+    for index, layout in enumerate(preferences.get('keyboardLayouts', 'us').split(',')):
+        variant = variants[index].strip() if index < len(variants) else ''
+        suffix = {'euro': 'Euro', 'altgr-intl': 'AltGr', 'intl': 'Intl'}.get(variant, variant)
+        name = layout.strip().upper() or 'Keyboard'
+        names.append(name + (' · ' + suffix if suffix else ''))
+    return names
 
 
-def keyboard_layout():
+def identity_config(username=None, layouts=None):
+    """Fit all layout names once; Hyprlock selects them on native keyboard events."""
+    from PIL import ImageFont
+    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    username = username or pwd.getpwuid(os.getuid()).pw_name
+    layouts = layouts or configured_layouts(preferences)
+    scale, maximum = 3, 164  # 196 px toolbar limit, including 32 px of padding.
+    for font_size in range(13, 9, -1):
+        font = ImageFont.truetype(font_file(), font_size * scale)
+        if max(font.getlength(username + '  ·  ' + layout) / scale for layout in layouts) <= maximum:
+            break
+    names = []
+    for layout in layouts:
+        name = username
+        text = name + '  ·  ' + layout
+        # Preserve the layout variant when a long username needs shortening.
+        while font.getlength(text) / scale > maximum and len(name) > 1:
+            name = name[:-1]
+            text = name + '…  ·  ' + layout
+        if font.getlength(text) / scale > maximum:
+            while text and font.getlength(text + '…') / scale > maximum:
+                text = text[:-1]
+            text += '…'
+        names.append(text)
+    width = math.ceil(max(font.getlength(text) / scale for text in names)) + 32
+    # Pango sizes are in 1/1024 points at 96 dpi, matching the measured pixel size.
+    pango_size = font_size * 768
+    position = 45 - math.ceil(font_size * 1.3 / 2)
+    def markup(text):
+        text = escape(text.replace('\n', ' ').replace('\r', ' '), quote=False)
+        for char, entity in [(',', '&#44;'), ('[', '&#91;'), (']', '&#93;')]:
+            text = text.replace(char, entity)
+        return text
+    # Native layout events update immediately. A short asynchronous label timer
+    # also catches a final switch skipped while the previous text was loading.
+    # Quote each complete argument before Hyprlock substitutes it into printf.
+    arguments = [shlex.quote(f'<span size="{pango_size}">{markup(name)}</span>') for name in names]
+    text = 'cmd[update:100:1] printf %s $LAYOUT[' + ','.join(arguments) + ']'
+    text = text.replace('#', '##')  # Hyprlang's literal comment marker.
+    family = preferences.get('font', 'DejaVu Sans')
+    content = f'''# Native keyboard events, with a 100 ms asynchronous retry; no refresh signals.
+shape {{
+    monitor =
+    size = {width}, 50
+    color = rgba(1d293fff)
+    rounding = 25
+    border_size = 1
+    border_color = rgba(567099ff)
+    position = -270, 20
+    halign = center
+    valign = bottom
+    zindex = 1
+}}
+label {{
+    monitor =
+    text = {text}
+    color = rgba(f0eaffff)
+    font_size = 10
+    font_family = {family}
+    position = -270, {position}
+    halign = center
+    valign = bottom
+    zindex = 2
+}}
+'''
+    output = ROOT / 'lock-identity.conf'
+    if output.exists() and output.read_text() == content:
+        return 'unchanged'
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode='w', dir=output.parent, delete=False) as temporary:
+        path = Path(temporary.name)
+        temporary.write(content)
     try:
-        result = subprocess.run(['hyprctl', '-j', 'devices'], capture_output=True, text=True,
-                                timeout=2, check=True)
-        keyboards = json.loads(result.stdout).get('keyboards', [])
-        main = next((keyboard for keyboard in keyboards if keyboard.get('main')), {})
-        layouts = main.get('layout', '').split(',')
-        index = main.get('active_layout_index')
-        if isinstance(index, int) and 0 <= index < len(layouts) and layouts[index]:
-            variants = main.get('variant', '').split(',')
-            variant = variants[index] if index < len(variants) else ''
-            suffix = {'euro': 'Euro', 'altgr-intl': 'AltGr', 'intl': 'Intl'}.get(variant, variant)
-            return layouts[index].upper() + (' · ' + suffix if suffix else '')
-        return compact_layout(main.get('active_keymap') or 'Keyboard')
-    except (OSError, ValueError, subprocess.SubprocessError):
-        return 'Keyboard'
+        path.chmod(0o644)
+        os.replace(path, output)
+    finally:
+        path.unlink(missing_ok=True)
+    return 'changed'
 
 
 def pill_image(text, name, icon=None, max_width=None, fixed_width=None, directory=None):
@@ -190,16 +247,9 @@ def pill_image(text, name, icon=None, max_width=None, fixed_width=None, director
     return output
 
 
-def identity_image(username=None, layout=None):
-    username = username or pwd.getpwuid(os.getuid()).pw_name
-    layout = layout or keyboard_layout()
-    output = pill_image(username + '  ·  ' + layout, 'lock-identity.png', max_width=196)
-    return output
-
-
 def prepare():
     lock_clock_image()
-    identity_image()
+    identity_config()
     power_images()
 
 
@@ -292,35 +342,13 @@ def receive_power(control):
     return None
 
 
-def layout_events():
-    """Subscribe before reading the current layout so a switch cannot be missed."""
-    connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        path = Path(os.environ['XDG_RUNTIME_DIR']) / 'hypr' / os.environ['HYPRLAND_INSTANCE_SIGNATURE'] / '.socket2.sock'
-        connection.connect(str(path))
-        connection.setblocking(False)
-        return connection
-    except (KeyError, OSError):
-        connection.close()
-        return None
-
-
 def watch(parent):
     """Refresh images outside Hyprlock's input loop for this lock invocation only."""
     if parent == 1 or os.getppid() != parent:
         return
-    connection = layout_events()
     control = None
     control_path = None
     buttons = PowerControls()
-    buffer = b''
-    layout = None
-    def update_identity():
-        nonlocal layout
-        current_layout = keyboard_layout()
-        if current_layout != layout:
-            identity_image(layout=current_layout)
-            layout = current_layout
     def stop(*_):
         raise SystemExit(0)
     previous_handler = signal.signal(signal.SIGTERM, stop)
@@ -332,7 +360,6 @@ def watch(parent):
             control.bind(str(control_path))
             control_path.chmod(0o600)
             power_images()
-        update_identity()
         next_clock = time.monotonic()
         # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
         while os.getppid() == parent:
@@ -340,41 +367,18 @@ def watch(parent):
             if started >= next_clock:
                 lock_clock_image()
                 next_clock = started + 1
-                if connection is None:
-                    connection = layout_events()
-                    buffer = b''
-                    update_identity()
             timeout = max(0, next_clock - time.monotonic())
-            sockets = [item for item in (connection, control) if item is not None]
-            if not sockets:
+            if control is None:
                 time.sleep(timeout)
                 continue
-            ready = select.select(sockets, [], [], timeout)[0]
-            if control is not None and control in ready:
+            if select.select([control], [], [], timeout)[0]:
                 buttons.press(receive_power(control))
-            if connection is None or connection not in ready:
-                continue
-            try:
-                data = connection.recv(65536)
-            except OSError:
-                data = b''
-            if not data:
-                connection.close()
-                connection = None
-                continue
-            lines = (buffer + data).split(b'\n')
-            buffer = lines.pop()
-            # Coalesce a burst and query the main keyboard, ignoring other devices.
-            if any(line.startswith(b'activelayout>>') for line in lines):
-                update_identity()
     finally:
         signal.signal(signal.SIGTERM, previous_handler)
         if control is not None:
             control.close()
         if control_path is not None:
             control_path.unlink(missing_ok=True)
-        if connection is not None:
-            connection.close()
 
 
 def clock_image():
@@ -454,7 +458,7 @@ def capslock():
 
 if __name__ == '__main__':
     try:
-        output = {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity': identity_image,
+        output = {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity-config': identity_config,
                   # Ignore a legacy pidfd argument during a partial deployment.
                   # This updater only writes files; it never signals the locker.
                   'prepare': prepare, 'watch': lambda: watch(int(sys.argv[2])),

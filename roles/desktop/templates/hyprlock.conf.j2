@@ -76,20 +76,8 @@ label {
     valign = center
     zindex = 1
 }
-# Text and border share one measured image, so layout changes resize the pill.
-# Layout events update the file; Hyprlock checks it on its normal image timer.
-image {
-    monitor =
-    path = {{ desktop_root }}/theme/lock-identity.png
-    size = 50
-    rounding = 0
-    border_size = 0
-    reload_time = 1
-    position = -270, 20
-    halign = center
-    valign = bottom
-    zindex = 1
-}
+# A measured native label reacts to Wayland layout changes without image polling.
+source = {{ desktop_root }}/lock-identity.conf
 input-field {
     monitor =
     size = 320, 50

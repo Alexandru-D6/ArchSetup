@@ -517,36 +517,60 @@ else:
             self.assertNotEqual(before.crop((250, 210, 500, 585)).tobytes(),
                                 after.crop((250, 210, 500, 585)).tobytes())
 
-    def test_keyboard_layout_uses_main_keyboard_and_pill_tracks_text(self):
-        from PIL import Image
+    def test_configured_layouts_keep_variant_order_and_empty_slots(self):
         visuals = self.lock_visuals()
-        devices = {'keyboards': [
-            {'main': False, 'active_keymap': 'German'},
-            {'main': True, 'active_keymap': 'English (US, euro on 5)'},
-        ]}
-        response = subprocess.CompletedProcess([], 0, json.dumps(devices))
-        with patch.object(visuals.subprocess, 'run', return_value=response):
-            self.assertEqual(visuals.keyboard_layout(), 'US · Euro')
-        self.assertEqual(visuals.compact_layout('English (US, alt. intl.)'), 'US · AltGr')
-        self.assertEqual(visuals.compact_layout('English (intl., with AltGr dead keys)'), 'US · AltGr')
-        devices['keyboards'][1].update(layout='us,us', variant='euro,altgr-intl',
-                                       active_layout_index=1,
-                                       active_keymap='English (intl., with AltGr dead keys)')
-        response = subprocess.CompletedProcess([], 0, json.dumps(devices))
-        with patch.object(visuals.subprocess, 'run', return_value=response):
-            self.assertEqual(visuals.keyboard_layout(), 'US · AltGr')
-        visuals.identity_image('alex', 'US')
-        with Image.open(self.profile / 'theme/lock-identity.png') as image:
-            short_width = image.width
-        visuals.identity_image('alex', 'US · AltGr')
-        with Image.open(self.profile / 'theme/lock-identity.png') as image:
-            self.assertGreater(image.width, short_width)
-            self.assertLessEqual(image.width, 196 * 3)
-            self.assertEqual(image.height, 50 * 3)
-            self.assertEqual(image.getpixel((0, 0))[3], 0)
-        visuals.identity_image('a_very_long_desktop_username', 'A very long keyboard layout name')
-        with Image.open(self.profile / 'theme/lock-identity.png') as image:
-            self.assertLessEqual(image.width, 196 * 3)
+        self.assertEqual(visuals.configured_layouts({
+            'keyboardLayouts': 'us,us', 'keyboardVariants': 'euro,altgr-intl',
+        }), ['US · Euro', 'US · AltGr'])
+        self.assertEqual(visuals.configured_layouts({
+            'keyboardLayouts': 'es,us,de', 'keyboardVariants': ',intl',
+        }), ['ES', 'US · Intl', 'DE'])
+        self.assertEqual(visuals.configured_layouts({}), ['US'])
+
+    def test_native_layout_badge_fits_names_and_is_idempotent(self):
+        import math
+        import re
+        import shlex
+        from xml.etree import ElementTree
+        from PIL import ImageFont
+        visuals = self.lock_visuals()
+        self.assertEqual(visuals.identity_config('alex'), 'changed')
+        path = self.profile / 'lock-identity.conf'
+        content = path.read_text()
+        self.assertIn('cmd[update:100:1] printf %s $LAYOUT[', content)
+        self.assertIn('alex  ·  US · Euro', content)
+        self.assertIn('alex  ·  US · AltGr', content)
+        self.assertNotIn('hyprctl', content)
+        self.assertNotIn('reload_time', content)
+        original_mtime = path.stat().st_mtime_ns
+        self.assertEqual(visuals.identity_config('alex'), 'unchanged')
+        self.assertEqual(path.stat().st_mtime_ns, original_mtime)
+        visuals.identity_config('a_very_long_desktop_username', ['US · Euro', 'US · AltGr'])
+        content = path.read_text()
+        width = int(re.search(r'size = (\d+), 50', content)[1])
+        self.assertLessEqual(width, 196)
+        size = int(re.search(r'<span size="(\d+)">', content)[1]) / 768
+        self.assertGreaterEqual(size, 10)
+        self.assertLessEqual(size, 13)
+        font = ImageFont.truetype(visuals.font_file(), round(size * 3))
+        arguments = re.search(r'\$LAYOUT\[(.*?)\]', content)[1].split(',')
+        names = [ElementTree.fromstring(shlex.split(argument)[0]).text for argument in arguments]
+        for name, variant in zip(names, ['Euro', 'AltGr']):
+            self.assertTrue(name.endswith('US · ' + variant))
+            self.assertIn('…', name)
+            self.assertLessEqual(math.ceil(font.getlength(name) / 3) + 32, width)
+
+    def test_native_layout_badge_escapes_markup_and_mapping_delimiters(self):
+        import re
+        import shlex
+        from xml.etree import ElementTree
+        visuals = self.lock_visuals()
+        visuals.identity_config("a'lex", ['A&B', 'x,[y]<z>#'])
+        content = (self.profile / 'lock-identity.conf').read_text()
+        names = re.search(r'\$LAYOUT\[(.*?)\]', content)[1].split(',')
+        self.assertEqual(len(names), 2)
+        self.assertEqual([ElementTree.fromstring(shlex.split(name.replace('##', '#'))[0]).text
+                          for name in names], ["a'lex  ·  A&B", "a'lex  ·  x,[y]<z>#"])
 
     def test_lock_starts_without_image_preparation_and_uses_cached_idle_buttons(self):
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
@@ -596,8 +620,8 @@ else:
         self.assertIn('animation = inputFieldDots, 0', config)
         clock = config.split('path = ' + str(self.profile / 'theme/lock-clock.png'))[1].split('}')[0]
         self.assertIn('reload_time = 1', clock)
-        identity = config.split('path = ' + str(self.profile / 'theme/lock-identity.png'))[1].split('}')[0]
-        self.assertIn('reload_time = 1', identity)
+        self.assertIn(f'source = {self.profile}/lock-identity.conf', config)
+        self.assertNotIn('lock-identity.png', config)
         for action in ['poweroff', 'reboot']:
             self.assertIn(f'onclick = {self.profile}/bin/lock-visuals click-{action}', config)
             button = config.split('path = ' + str(self.profile / f'theme/lock-{action}.png'))[1].split('}')[0]
@@ -827,15 +851,17 @@ else:
         self.assertEqual(updater.returncode, 0, error.decode())
         self.assertFalse(endpoint.exists())
 
-    def test_background_lock_updates_clock_and_only_rewrites_changed_layouts(self):
-        devices = self.profile / 'devices.json'
-        devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'English (US)'}]}))
+    def test_background_lock_updates_clock_without_querying_keyboard(self):
+        probes = self.profile / 'keyboard-probes'
         hyprctl = self.profile / 'bin/hyprctl'
         hyprctl.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
-                           + f'print(Path({str(devices)!r}).read_text())\n')
+                           + f'Path({str(probes)!r}).touch()\n')
         hyprctl.chmod(0o755)
+        self.lock_visuals().identity_config('alex')
+        identity = self.profile / 'lock-identity.conf'
+        identity_mtime = identity.stat().st_mtime_ns
         environment = dict(os.environ, PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'],
-                           XDG_RUNTIME_DIR=self.directory.name, HYPRLAND_INSTANCE_SIGNATURE='missing-test-socket')
+                           XDG_RUNTIME_DIR=self.directory.name, HYPRLAND_INSTANCE_SIGNATURE='test-compositor')
         updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
                                    env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         def wait_until(condition):
@@ -846,79 +872,22 @@ else:
                 time.sleep(0.05)
         try:
             clock = self.profile / 'theme/lock-clock.png'
-            identity = self.profile / 'theme/lock-identity.png'
-            wait_until(lambda: identity.exists() and clock.exists())
-            identity_mtime = identity.stat().st_mtime_ns
+            wait_until(clock.exists)
             clock_mtime = clock.stat().st_mtime_ns
             before = clock.read_bytes()
             wait_until(lambda: clock.stat().st_mtime_ns != clock_mtime)
             self.assertNotEqual(clock.read_bytes(), before)
             self.assertEqual(identity.stat().st_mtime_ns, identity_mtime)
-            devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'German'}]}))
-            wait_until(lambda: identity.stat().st_mtime_ns != identity_mtime)
+            self.assertFalse(probes.exists(), 'Native layout labels must not query hyprctl')
         finally:
             updater.terminate()
             _, error = updater.communicate(timeout=3)
         self.assertFalse(error, error.decode())
-        # An updater whose launcher already exited must not adopt a new parent
-        # and keep redrawing. Pass an impossible owner to exercise that startup race.
         final_mtime = clock.stat().st_mtime_ns
         result = subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', '-1'],
                                 env=environment, capture_output=True, timeout=3)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
         self.assertEqual(clock.stat().st_mtime_ns, final_mtime)
-
-    def test_layout_events_refresh_badge_without_waiting_for_clock_tick(self):
-        import socket
-        devices = self.profile / 'devices.json'
-        devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'English (US)'}]}))
-        probes = self.profile / 'keyboard-probes'
-        hyprctl = self.profile / 'bin/hyprctl'
-        hyprctl.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
-                           + f'with Path({str(probes)!r}).open("a") as log: log.write("probe\\n")\n'
-                           + f'print(Path({str(devices)!r}).read_text())\n')
-        hyprctl.chmod(0o755)
-        socket_dir = self.profile / 'hypr/test-compositor'
-        socket_dir.mkdir(parents=True)
-        environment = dict(os.environ, PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'],
-                           XDG_RUNTIME_DIR=str(self.profile), HYPRLAND_INSTANCE_SIGNATURE='test-compositor')
-        with socket.socket(socket.AF_UNIX) as server:
-            server.bind(str(socket_dir / '.socket2.sock'))
-            server.listen(1)
-            server.settimeout(3)
-            updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
-                                       env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-            def wait_until(condition, timeout=3):
-                deadline = time.monotonic() + timeout
-                while not condition():
-                    self.assertIsNone(updater.poll(), 'Lock image updater stopped unexpectedly')
-                    self.assertLess(time.monotonic(), deadline, 'Layout event did not update the badge')
-                    time.sleep(0.01)
-            try:
-                with server.accept()[0] as peer:
-                    identity = self.profile / 'theme/lock-identity.png'
-                    clock = self.profile / 'theme/lock-clock.png'
-                    wait_until(lambda: identity.exists() and clock.exists())
-                    identity_mtime = identity.stat().st_mtime_ns
-                    identity_before = identity.read_bytes()
-                    clock_mtime = clock.stat().st_mtime_ns
-                    peer.sendall(b'activewindow>>example,title\n')
-                    wait_until(lambda: clock.stat().st_mtime_ns != clock_mtime)
-                    self.assertEqual(identity.stat().st_mtime_ns, identity_mtime)
-                    self.assertEqual(probes.read_text().count('probe'), 1)
-                    # Partial reads and unrelated keyboards must not corrupt the main layout.
-                    peer.sendall(b'activelayout>>secondary,German\n')
-                    wait_until(lambda: probes.read_text().count('probe') == 2)
-                    self.assertEqual(identity.stat().st_mtime_ns, identity_mtime)
-                    devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'Spanish'}]}))
-                    peer.sendall(b'activelay')
-                    peer.sendall(b'out>>main,Spanish\nactivelayout>>main,Spanish\n')
-                    wait_until(lambda: identity.stat().st_mtime_ns != identity_mtime, timeout=0.5)
-                    self.assertNotEqual(identity.read_bytes(), identity_before)
-            finally:
-                updater.terminate()
-                _, error = updater.communicate(timeout=3)
-            self.assertFalse(error, error.decode())
 
     def test_live_image_updates_never_signal_a_legacy_locker_descriptor(self):
         unexpected = self.profile / 'unexpected-lock-refresh'
@@ -927,15 +896,8 @@ else:
                 + 'print("ready", flush=True)\nwhile True: time.sleep(1)\n')
         private = self.profile / 'lock-session'
         private.mkdir(mode=0o700)
-        devices = self.profile / 'devices.json'
-        devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'English (US)'}]}))
-        hyprctl = self.profile / 'bin/hyprctl'
-        hyprctl.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
-                           + f'print(Path({str(devices)!r}).read_text())\n')
-        hyprctl.chmod(0o755)
         environment = dict(os.environ, ARCHSETUP_LOCK_DIR=str(private), XDG_RUNTIME_DIR=str(self.profile),
-                           HYPRLAND_INSTANCE_SIGNATURE='test-no-refresh-signal',
-                           PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'])
+                           HYPRLAND_INSTANCE_SIGNATURE='test-no-refresh-signal')
         with subprocess.Popen([sys.executable, '-c', code], stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE) as locker:
             self.assertEqual(locker.stdout.readline(), b'ready\n')
@@ -953,13 +915,10 @@ else:
                         self.assertLess(time.monotonic(), deadline, 'Image updater did not progress')
                         time.sleep(0.02)
                 clock = self.profile / 'theme/lock-clock.png'
-                identity = self.profile / 'theme/lock-identity.png'
                 button = private / 'lock-poweroff.png'
-                wait_until(lambda: clock.exists() and identity.exists() and button.exists())
-                before_clock, before_identity = clock.stat().st_mtime_ns, identity.read_bytes()
+                wait_until(lambda: clock.exists() and button.exists())
+                before_clock = clock.stat().st_mtime_ns
                 wait_until(lambda: clock.stat().st_mtime_ns != before_clock)
-                devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'Spanish'}]}))
-                wait_until(lambda: identity.read_bytes() != before_identity)
                 before_button = button.read_bytes()
                 for selected in ['poweroff', 'reboot']:
                     result = subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'),
