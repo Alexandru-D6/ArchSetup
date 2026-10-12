@@ -38,6 +38,7 @@
   ansible.builtin.set_fact:
     desktop_home: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][4] }}"
     desktop_group: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][2] }}"
+    desktop_runtime_dir: "/run/user/{{ ansible_facts.getent_passwd[archsetup_desktop_user][1] }}"
 
 - name: Require a shell-safe absolute account home
   ansible.builtin.assert:

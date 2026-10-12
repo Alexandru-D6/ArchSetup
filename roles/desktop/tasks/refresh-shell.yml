@@ -1,0 +1,33 @@
+---
+- name: Check whether the desktop user has a runtime directory
+  ansible.builtin.stat:
+    path: "{{ desktop_runtime_dir }}"
+  register: desktop_shell_runtime
+
+- name: Restart the running shell for the updated managed profile
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.command:
+    argv: [qs, -p, "{{ desktop_root }}/shell", kill, --any-display]
+  environment:
+    XDG_RUNTIME_DIR: "{{ desktop_runtime_dir }}"
+  register: desktop_shell_restart
+  when: desktop_shell_runtime.stat.isdir | default(false)
+  changed_when: desktop_shell_restart.rc == 0
+  # No instance is normal before first login, or when the desktop is closed.
+  failed_when: >-
+    desktop_shell_restart.rc != 0 and
+    ('No running instances for "' + desktop_root + '/shell/shell.qml"')
+    not in (desktop_shell_restart.stdout + desktop_shell_restart.stderr)
+
+- name: Wait for the session supervisor to bring the updated shell back
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.command:
+    argv: [qs, -p, "{{ desktop_root }}/shell", ipc, --any-display, call, desktop, status]
+  environment:
+    XDG_RUNTIME_DIR: "{{ desktop_runtime_dir }}"
+  register: desktop_shell_ready
+  when: desktop_shell_restart.rc | default(-1) == 0
+  changed_when: false
+  until: desktop_shell_ready.rc == 0
+  retries: 10
+  delay: 1

@@ -25,7 +25,16 @@
     group: "{{ desktop_group }}"
     mode: '0700'
 
-- name: Install original shell and helper sources
+- name: Install original desktop shell
+  ansible.builtin.copy:
+    src: shell/
+    dest: "{{ desktop_root }}/shell/"
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
+    mode: '0644'
+  notify: Refresh running ArchSetup shell
+
+- name: Install desktop helpers and shortcut map
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "{{ desktop_root }}/{{ item.dest }}"
@@ -33,7 +42,6 @@
     group: "{{ desktop_group }}"
     mode: "{{ item.mode }}"
   loop:
-    - {src: 'shell/', dest: 'shell/', mode: '0644'}
     - {src: desktop-action, dest: bin/desktop-action, mode: '0755'}
     - {src: desktop-record, dest: bin/desktop-record, mode: '0755'}
     - {src: lock-visuals, dest: bin/lock-visuals, mode: '0755'}
@@ -81,8 +89,20 @@
     mode: '0644'
     backup: true
     validate: "{{ desktop_root + '/bin/validate-config %s' if item == 'hyprland.lua' else omit }}"
-  loop: [hyprland.lua, hyprlock.conf, hypridle.conf, fuzzel.ini, kitty.conf, swaync.json, swaync.css, preferences.json]
+  loop: [hyprland.lua, hyprlock.conf, hypridle.conf, fuzzel.ini, kitty.conf, swaync.json, swaync.css]
   register: desktop_rendered_configuration
+
+- name: Render desktop shell preferences
+  become: true
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.template:
+    src: preferences.json.j2
+    dest: "{{ desktop_root }}/preferences.json"
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
+    mode: '0644'
+    backup: true
+  notify: Refresh running ArchSetup shell
 
 - name: Initialize user-owned appearance state
   ansible.builtin.copy:

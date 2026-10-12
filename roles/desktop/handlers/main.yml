@@ -1,0 +1,4 @@
+---
+- name: Refresh running ArchSetup shell
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/refresh-shell.yml"
+  when: not ansible_check_mode

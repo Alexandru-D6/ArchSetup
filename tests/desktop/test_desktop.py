@@ -193,6 +193,129 @@ class DesktopTests(unittest.TestCase):
                 self.assertLessEqual(timing, 140)
                 self.assertEqual('transition: none; animation: none;' in (self.profile / 'swaync.css').read_text(), reduced)
 
+    def shell_refresh_fixture(self, name, runtime_exists=True):
+        import getpass
+        directory = Path(self.directory.name) / name
+        role = directory / 'roles/refresh'
+        (role / 'tasks').mkdir(parents=True)
+        for folder in ['files/shell', 'templates', 'defaults', 'handlers']:
+            source = ROLE / folder
+            shutil.copytree(source, role / folder)
+        shutil.copy2(ROLE / 'tasks/refresh-shell.yml', role / 'tasks/refresh-shell.yml')
+        tasks = [task for task in yaml.safe_load((ROLE / 'tasks/configure.yml').read_text())
+                 if task['name'] in ['Install original desktop shell', 'Render desktop shell preferences']]
+        tasks.append({'name': 'Simulate a later validation failure',
+                      'ansible.builtin.assert': {'that': [False]},
+                      'when': 'refresh_test_fail | default(false) | bool'})
+        (role / 'tasks/main.yml').write_text(yaml.safe_dump(tasks))
+        profile = directory / 'profile'
+        profile.mkdir()
+        runtime = directory / 'runtime'
+        if runtime_exists:
+            runtime.mkdir()
+        fake_bin = directory / 'fake-bin'
+        fake_bin.mkdir()
+        events = directory / 'events.jsonl'
+        fake_qs = fake_bin / 'qs'
+        fake_qs.write_text(f'#!{sys.executable}\n' + '''import json, os, sys
+from pathlib import Path
+events = Path(os.environ['QS_TEST_EVENTS'])
+args = sys.argv[1:]
+with events.open('a') as stream:
+    stream.write(json.dumps(args) + '\\n')
+if os.environ.get('XDG_RUNTIME_DIR') != os.environ['QS_TEST_RUNTIME'] or '--any-display' not in args:
+    print('Wrong session selection', file=sys.stderr)
+    sys.exit(2)
+if 'kill' in args:
+    if os.environ['QS_TEST_MODE'] == 'none':
+        config = Path(args[args.index('-p') + 1]) / 'shell.qml'
+        print(f'No running instances for "{config}"', file=sys.stderr)
+        sys.exit(255)
+    if os.environ['QS_TEST_MODE'] == 'error':
+        print('IPC connection denied', file=sys.stderr)
+        sys.exit(3)
+elif 'ipc' in args:
+    if args.index('--any-display') > args.index('call'):
+        print('call: The following argument was not expected: --any-display', file=sys.stderr)
+        sys.exit(109)
+    calls = [json.loads(line) for line in events.read_text().splitlines()]
+    if sum('ipc' in call for call in calls) == 1:
+        print('Shell is starting', file=sys.stderr)
+        sys.exit(1)
+    print('{"page":"","barVisible":true}')
+else:
+    sys.exit(2)
+''')
+        fake_qs.chmod(0o755)
+        playbook = directory / 'refresh.yml'
+        playbook.write_text(yaml.safe_dump([{
+            'hosts': 'localhost', 'gather_facts': False, 'become': False,
+            'vars': {'ansible_become': False, 'archsetup_desktop_user': getpass.getuser(),
+                     'desktop_group': str(os.getgid()), 'desktop_root': str(profile),
+                     'desktop_runtime_dir': str(runtime)},
+            'roles': ['refresh'],
+        }]))
+        environment = dict(os.environ, PATH=str(fake_bin) + os.pathsep + os.environ['PATH'],
+                           ANSIBLE_HOME=str(directory), ANSIBLE_LOCAL_TEMP=str(directory / 'ansible-tmp'),
+                           ANSIBLE_NOCOLOR='1', QS_TEST_EVENTS=str(events),
+                           QS_TEST_RUNTIME=str(runtime), QS_TEST_MODE='active')
+        return directory, playbook, events, environment
+
+    def run_shell_refresh(self, fixture, *options):
+        executable = shutil.which('ansible-playbook') or str(Path(sys.executable).parent / 'ansible-playbook')
+        if not Path(executable).exists():
+            self.skipTest('ansible-playbook is required for shell refresh regression')
+        _, playbook, _, environment = fixture
+        return subprocess.run([executable, '-i', 'localhost,', '-c', 'local', str(playbook), *options],
+                              env=environment, capture_output=True, text=True, timeout=30)
+
+    def test_shell_refresh_runs_once_and_unchanged_apply_does_not_restart(self):
+        fixture = self.shell_refresh_fixture('active')
+        applied = self.run_shell_refresh(fixture)
+        self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
+        events = fixture[2].read_text()
+        calls = [json.loads(line) for line in events.splitlines()]
+        self.assertEqual(sum('kill' in call for call in calls), 1)
+        self.assertEqual(sum('ipc' in call for call in calls), 2)
+        repeated = self.run_shell_refresh(fixture)
+        self.assertEqual(repeated.returncode, 0, repeated.stdout + repeated.stderr)
+        self.assertIn('changed=0', repeated.stdout)
+        self.assertEqual(fixture[2].read_text(), events)
+
+    def test_shell_refresh_check_mode_does_not_restart(self):
+        fixture = self.shell_refresh_fixture('check')
+        preview = self.run_shell_refresh(fixture, '--check')
+        self.assertEqual(preview.returncode, 0, preview.stdout + preview.stderr)
+        self.assertFalse(fixture[2].exists())
+        self.assertFalse((fixture[0] / 'profile/preferences.json').exists())
+
+    def test_shell_refresh_without_running_desktop_succeeds(self):
+        for runtime_exists in [False, True]:
+            with self.subTest(runtime_exists=runtime_exists):
+                fixture = self.shell_refresh_fixture(f'idle-{runtime_exists}', runtime_exists)
+                fixture[3]['QS_TEST_MODE'] = 'none'
+                applied = self.run_shell_refresh(fixture)
+                self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
+                if runtime_exists:
+                    calls = [json.loads(line) for line in fixture[2].read_text().splitlines()]
+                    self.assertEqual(len(calls), 1)
+                    self.assertIn('kill', calls[0])
+                else:
+                    self.assertFalse(fixture[2].exists())
+
+    def test_shell_refresh_reports_unexpected_errors(self):
+        fixture = self.shell_refresh_fixture('error')
+        fixture[3]['QS_TEST_MODE'] = 'error'
+        applied = self.run_shell_refresh(fixture)
+        self.assertEqual(applied.returncode, 2, applied.stdout + applied.stderr)
+        self.assertIn('IPC connection denied', applied.stdout)
+
+    def test_shell_refresh_does_not_run_after_failed_deployment(self):
+        fixture = self.shell_refresh_fixture('failed-deployment')
+        applied = self.run_shell_refresh(fixture, '-e', 'refresh_test_fail=true')
+        self.assertEqual(applied.returncode, 2, applied.stdout + applied.stderr)
+        self.assertFalse(fixture[2].exists())
+
     def test_all_shortcuts_unique_and_layout_switch_reserved(self):
         bindings = json.loads((self.profile / 'shortcuts.json').read_text())
         def canonical(key):

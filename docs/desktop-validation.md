@@ -1,5 +1,38 @@
 # Desktop validation — 2026-10-10
 
+## Automatic shell refresh after apply — 2026-10-12
+
+Shell-source and preference changes now notify one Ansible handler after the
+apply succeeds. It selects the managed profile in the desktop user's runtime
+directory, restarts Quickshell through the existing session supervisor and waits
+for the desktop IPC endpoint to respond. Check mode and inactive desktops skip
+the restart; unexpected command/startup failures remain Ansible errors.
+
+All 28 regressions pass, including real Ansible notification coalescing, unchanged
+applies, previews, missing runtime directories, inactive profiles, delayed
+readiness and failure handling. Desktop, desktop-verify and site syntax checks
+pass. In the graphical VM, repairing shell/preference drift produced
+`ok=48 changed=3 failed=0`; the shell PID changed once, open terminal windows
+survived, and workspace 11 remained active. The repeated apply reported
+`ok=44 changed=0 failed=0` and retained the shell PID. Preview also retained it.
+A separate inactive-profile apply succeeded with `failed=0` and left the other
+active profile's process unchanged. These checks ran from SSH without a display
+environment; no workstation deployment was made.
+
+## Workspace ranges and running-shell refresh — 2026-10-12
+
+The installed LittleArchy shell file contained the workspace-range update and
+Hyprland reported workspace 11, but the running bar retained its old 1–10 layout.
+Running `~/.config/archsetup/bin/desktop-action restart-shell` loaded the update;
+the user confirmed the bar then displayed 11–20.
+
+In the graphical VM with Hyprland 0.56.2 and Quickshell 0.3.2, live IPC checks
+confirmed labels and highlights for workspaces 1, 2, 10, 11, 12, 20, 21 and 101,
+including returning to workspace 1. Relative `r+1` and `+1` switches from 10
+also selected and highlighted 11. A QEMU screenshot confirmed the rendered bar
+displayed 11–20 with 11 highlighted. Temporary diagnostic instrumentation was
+removed after validation.
+
 ## Shortcut-help startup repair — 2026-10-12
 
 The installed LittleArchy desktop reported `The popup failed to start` with

@@ -132,6 +132,17 @@ The taskbar groups workspaces and clock in the center, with the tray,
 audio, notifications and power controls on the right. Its left side is empty.
 The overview supports arrow navigation and Enter.
 
+After a successful apply changes shell files or preferences, Ansible refreshes
+the running managed Quickshell profile once and waits for it to respond again.
+The bar and panels briefly restart; application windows and the login session
+stay open. Unchanged applies, check mode, and users without a running shell do
+not restart it. The refresh works when applying from a terminal, TTY or SSH.
+An unexpected restart/startup error is reported by Ansible.
+
+The manual recovery command is
+`~/.config/archsetup/bin/desktop-action restart-shell`. Reloading Hyprland alone
+does not restart the shell.
+
 Press Super alone to open the launcher and again to close it; Super+D also toggles
 the launcher. Repeat the opening shortcut to dismiss other desktop panels and
 menus, including clipboard, emoji, calculator, wallpaper selection and shortcut
