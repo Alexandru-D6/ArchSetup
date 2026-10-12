@@ -110,6 +110,12 @@ resize when the layout changes. Caps Lock and battery status remain visible.
 Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
 other to **Cancel**. Confirm runs the selected action; Cancel restores both
 original buttons. Each new lock starts with the original labels.
+
+The profile uses [software cursor rendering](https://wiki.hypr.land/configuring/core/config-options/#cursor)
+by default to avoid hardware cursor wake issues after the display blanks while
+locked. Set `archsetup_desktop_software_cursor: false` to use Hyprland's automatic
+hardware cursor selection instead.
+
 No upstream AI modules or font files are bundled. The wallpaper's
 [source provenance](desktop-source.json) records the user-provided image.
 

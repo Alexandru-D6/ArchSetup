@@ -26,6 +26,8 @@ hl.config({
         shadow = { enabled = true, range = 20, render_power = 10, color = "rgba(00000020)" },
         dim_inactive = true, dim_strength = 0.05 },
     animations = { enabled = {{ (not (archsetup_desktop_reduced_motion | bool)) | to_json }} },
+    -- Render the pointer with the scene so display wake does not rely on a GPU cursor plane.
+    cursor = { no_hardware_cursors = {{ 1 if (archsetup_desktop_software_cursor | bool) else 2 }} },
     dwindle = { preserve_split = true },
     misc = { disable_hyprland_logo = true, disable_splash_rendering = true,
         on_focus_under_fullscreen = 2, exit_window_retains_fullscreen = false },

@@ -1,5 +1,31 @@
 # Desktop validation — 2026-10-10
 
+## Cursor visibility after display wake — 2026-10-12
+
+The user reports that the pointer stays invisible after the locked display wakes,
+including while moving the mouse. Hyprlock already has `hide_cursor = false`.
+The profile now defaults to [software cursor rendering](https://wiki.hypr.land/configuring/core/config-options/#cursor)
+(`cursor.no_hardware_cursors = 1`) to avoid relying on the GPU cursor plane
+across display-off/wake transitions. Setting
+`archsetup_desktop_software_cursor: false` selects Hyprland's automatic mode (`2`).
+Both generated modes pass native Hyprland configuration validation.
+
+All 42 regressions and the desktop, desktop-verify and site syntax checks pass.
+The Ansible-managed VM profile reloads without configuration errors and reports
+`hardwareCursorsInUse: false`. A temporary three-second idle listener exercised
+five real display-blank/wake cycles: three woke by keyboard and two by mouse.
+Screenshots verified the pointer after wake and subsequent motion; the same
+Hyprlock process and compositor lock remained active throughout. Power off
+changed to Confirm, Reboot changed to Cancel, and cancellation restored both
+buttons after the final wake. The temporary listener was removed afterward,
+leaving the normal supervised idle service running.
+Repeated Ansible apply: `ok=45 changed=0 failed=0`.
+
+The original disappearance did not reproduce on the VM's virtual GPU, so this
+is a validated rendering workaround pending confirmation on LittleArchy.
+No workstation deployment or password submission was made. Apply the desktop
+profile and run `hyprctl reload` to activate it in the existing session.
+
 ## Faster Super+L startup — 2026-10-12
 
 Lock requests no longer rebuild the desktop theme or run synchronous Pillow/font
