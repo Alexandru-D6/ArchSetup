@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 import yaml
@@ -551,15 +552,75 @@ else:
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
                        'XDG_RUNTIME_DIR': self.directory.name}
         with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
-             patch.object(self.actions, 'run') as run:
+             patch.object(self.actions, 'run') as run, patch.object(self.actions.subprocess, 'Popen') as spawn:
             self.actions.main('lock')
             self.assertEqual(run.call_args_list[-2].args, (str(self.profile / 'bin/lock-visuals'), 'prepare'))
             self.assertEqual(run.call_args_list[-1].args,
                              ('hyprlock', '-c', str(self.profile / 'hyprlock.conf')))
+            spawn.assert_called_once_with([str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            spawn.return_value.terminate.assert_called_once_with()
+            spawn.return_value.wait.assert_called_once_with(timeout=3)
         config = (self.profile / 'hyprlock.conf').read_text()
         self.assertIn('hide_cursor = false', config)
+        self.assertNotIn('reload_cmd =', config)
+        self.assertIn('animation = inputFieldDots, 0', config)
         for action in ['poweroff', 'reboot']:
             self.assertIn(f'onclick = {self.profile}/bin/desktop-action {action}', config)
+
+    def test_lock_stops_image_updater_if_hyprlock_fails(self):
+        environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
+                       'XDG_RUNTIME_DIR': self.directory.name}
+        def fail_hyprlock(*args):
+            if args[0] == 'hyprlock':
+                raise subprocess.CalledProcessError(1, args)
+        with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
+             patch.object(self.actions, 'run', side_effect=fail_hyprlock), \
+             patch.object(self.actions.subprocess, 'Popen') as spawn:
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.actions.main('lock')
+            spawn.return_value.terminate.assert_called_once_with()
+            spawn.return_value.wait.assert_called_once_with(timeout=3)
+
+    def test_background_lock_updates_clock_and_only_rewrites_changed_layouts(self):
+        devices = self.profile / 'devices.json'
+        devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'English (US)'}]}))
+        hyprctl = self.profile / 'bin/hyprctl'
+        hyprctl.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
+                           + f'print(Path({str(devices)!r}).read_text())\n')
+        hyprctl.chmod(0o755)
+        environment = dict(os.environ, PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'])
+        updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                   env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        def wait_until(condition):
+            deadline = time.monotonic() + 10
+            while not condition():
+                self.assertIsNone(updater.poll(), 'Lock image updater stopped unexpectedly')
+                self.assertLess(time.monotonic(), deadline, 'Lock assets did not update')
+                time.sleep(0.05)
+        try:
+            clock = self.profile / 'theme/lock-clock.png'
+            identity = self.profile / 'theme/lock-identity.png'
+            wait_until(identity.exists)
+            identity_mtime = identity.stat().st_mtime_ns
+            clock_mtime = clock.stat().st_mtime_ns
+            before = clock.read_bytes()
+            wait_until(lambda: clock.stat().st_mtime_ns != clock_mtime)
+            self.assertNotEqual(clock.read_bytes(), before)
+            self.assertEqual(identity.stat().st_mtime_ns, identity_mtime)
+            devices.write_text(json.dumps({'keyboards': [{'main': True, 'active_keymap': 'German'}]}))
+            wait_until(lambda: identity.stat().st_mtime_ns != identity_mtime)
+        finally:
+            updater.terminate()
+            _, error = updater.communicate(timeout=3)
+        self.assertFalse(error, error.decode())
+        # An updater whose launcher already exited must not adopt a new parent
+        # and keep redrawing. Pass an impossible owner to exercise that startup race.
+        final_mtime = clock.stat().st_mtime_ns
+        result = subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', '-1'],
+                                env=environment, capture_output=True, timeout=3)
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.assertEqual(clock.stat().st_mtime_ns, final_mtime)
 
     def test_theme_preserves_wallpaper_and_managed_preferences(self):
         managed = (self.profile / 'preferences.json').read_bytes()

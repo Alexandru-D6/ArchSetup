@@ -1,5 +1,32 @@
 # Desktop validation — 2026-10-10
 
+## Password input responsiveness — 2026-10-12
+
+The image `reload_cmd` hooks rebuilt the clock and keyboard badge synchronously
+once a second. Local measurements took 152 ms for the clock and 91 ms for the
+badge. Hyprlock's [image update implementation](https://github.com/hyprwm/hyprlock/blob/v0.9.6/src/renderer/widgets/Image.cpp)
+waits for those commands before processing more input. The launcher now owns a
+background updater; Hyprlock checks file timestamps and loads changed images
+asynchronously. Font lookups are cached, PNG encoding uses faster lossless
+compression, and the identity image is rewritten only when its layout changes.
+Password-dot animation is disabled for immediate feedback; the short fades and
+color effects remain enabled.
+
+All 33 regressions pass, covering live clock/layout file updates, unchanged
+identity images, cleanup after normal/failed locks and an already-exited updater
+owner. Desktop, desktop-verify and site syntax checks pass in the Arch VM. A
+20-keystroke QEMU trial measured visible dummy-input feedback at 76 ms median /
+331 ms maximum with the previous lock configuration, and 41 ms median / 42 ms
+maximum with the updated one. These include screenshot polling overhead and
+are VM measurements, not LittleArchy hardware measurements; no password was
+submitted. Screenshots confirmed the clock's second hand and the US Euro/AltGr
+badge still refresh. Closing the lock screen removed its background updater.
+Repeated Ansible apply reported `ok=45 changed=0 failed=0`.
+
+The changes are in the Ansible-managed helpers and template. Apply the desktop
+profile, then close and reopen the lock screen to load its updated configuration.
+No workstation deployment was made.
+
 ## Lock-screen wallpaper, reference clock and power controls — 2026-10-12
 
 The lock screen now deploys the user-provided 4K sunset image as its own asset;

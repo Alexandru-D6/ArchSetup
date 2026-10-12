@@ -91,8 +91,11 @@ in `state.json`; selecting the default background restores the generated gradien
 The lock screen uses the supplied sunset/anime wallpaper independently of the
 desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
 digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
-day/month badges. It updates once a second. Native Hyprlock retains the existing
-PAM/keyring integration and ordinary password dots.
+day/month badges. A background helper updates it once a second, caches font
+lookups and redraws the layout pill only when its text changes. Hyprlock loads
+the images asynchronously; password input never waits for image generation.
+The helper stops when the lock screen closes. Native Hyprlock retains the existing
+PAM/keyring integration, with password dots appearing immediately on each keystroke.
 
 The bottom toolbar has a compact user/keyboard-layout pill, the password field,
 and clickable **Power off** and **Reboot** buttons. Layouts such as US Euro and
@@ -107,7 +110,7 @@ including the LittleArchy profile. Window opening takes 120 ms, closing and fade
 80 ms, moving/resizing 100 ms, and workspace switching 140 ms. A sharp ease-out
 curve avoids bounce; windows scale from 98% and workspace slides travel only 12%
 of the screen. Shell surfaces use the compositor's 80–100 ms layer fades.
-Hyprlock uses 100 ms fades/input effects; SwayNC uses 120 ms transitions and
+Hyprlock uses 100 ms fades/color effects and instant password dots; SwayNC uses 120 ms transitions and
 80 ms hover effects. Set `archsetup_desktop_reduced_motion: true` to disable them.
 Compositor timing follows the [Hyprland animation configuration](https://wiki.hypr.land/Configuring/Advanced-and-Cool/Animations/).
 The lock setting follows the [Hyprlock animation configuration](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#animations);

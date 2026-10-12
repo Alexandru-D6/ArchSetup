@@ -8,12 +8,14 @@ auth {
 animations {
     enabled = {{ (not (archsetup_desktop_reduced_motion | bool)) | to_json }}
     bezier = archsetupSharp, 0.16, 1, 0.3, 1
-    # Hyprlock 0.9.6 requires whole deciseconds; every effect takes 100 ms.
+    # Hyprlock 0.9.6 requires whole deciseconds; fades/colors take 100 ms.
     animation = global, 1, 1, archsetupSharp
     animation = fadeIn, 1, 1, archsetupSharp
     animation = fadeOut, 1, 1, archsetupSharp
     animation = inputField, 1, 1, archsetupSharp
     animation = inputFieldColors, 1, 1, archsetupSharp
+    # Keystrokes need immediate visual feedback even with other animations on.
+    animation = inputFieldDots, 0
 }
 background {
     monitor =
@@ -42,8 +44,9 @@ image {
     size = 250
     rounding = 0
     border_size = 0
+    # The lock launcher updates this file in the background. Image reload_cmd
+    # runs synchronously in Hyprlock and would stall password input every tick.
     reload_time = 1
-    reload_cmd = {{ desktop_root }}/bin/lock-visuals lock-clock
     position = 0, 0
     halign = center
     valign = center
@@ -79,7 +82,6 @@ image {
     rounding = 0
     border_size = 0
     reload_time = 1
-    reload_cmd = {{ desktop_root }}/bin/lock-visuals identity
     position = -270, 20
     halign = center
     valign = bottom

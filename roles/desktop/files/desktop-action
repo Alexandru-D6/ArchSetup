@@ -288,7 +288,17 @@ def main(action):
             path = ROOT / 'state.json'
             refresh_theme(json.loads(path.read_text()) if path.exists() else {})
             run(str(ROOT / 'bin/lock-visuals'), 'prepare')
-            run('hyprlock', '-c', str(themed('hyprlock.conf')))
+            updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            try:
+                run('hyprlock', '-c', str(themed('hyprlock.conf')))
+            finally:
+                updater.terminate()
+                try:
+                    updater.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    updater.kill()
+                    updater.wait()
     elif action in ('overview', 'settings', 'session', 'tools', 'media'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):
