@@ -1,5 +1,28 @@
 # Desktop validation — 2026-10-10
 
+## Shared session and lock typography — 2026-10-13
+
+Ordinary text on both screens now uses `archsetup_desktop_control_font_size`,
+defaulting to 12 points (16 pixels at 96 dpi). Qt and native lock labels use
+points; generated button/layout text converts that size for the Pillow canvas.
+Password placeholder/failure markup fixes its size explicitly, because Hyprlock
+derives the default from input-field height. Names are shortened at the shared
+size instead of shrinking. Power off/Reboot buttons are 136/120 pixels wide with
+12-pixel gaps, including their Confirm/Cancel states. Day/month clock badges both
+use 28-pixel text; time digits retain their deliberate larger size.
+
+The rendered password field remains 320 x 50 pixels, with `halign = center`,
+`valign = bottom` and `position = 0, 20`: horizontally centered, 20 pixels above
+the bottom edge. The decorative clock is centered vertically and horizontally.
+
+All 49 Python regressions and 20 Qt checks pass, including label fitting,
+confirmation hit areas, small screens and rendering. Both desktop playbook syntax
+checks and whitespace checks pass. Rendered label/prompt sizes and button spacing
+were inspected, as were the session snapshot and generated lock buttons.
+Component qmllint passes; the shell retains its existing dynamic import/type
+warnings. The complete Wayland lock screen and workstation deployment were not
+exercised for this change.
+
 ## Settings position and BIOS / UEFI access — 2026-10-13
 
 Settings is now the bottom-left session tile. The bottom-right tile has a firmware

@@ -42,6 +42,11 @@ def font_file(style=''):
     return subprocess.check_output(['fc-match', '-f', '%{file}', family + style], text=True).strip()
 
 
+def control_font_size():
+    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    return int(preferences.get('controlFontSize', 12))
+
+
 def lock_clock_image(now=None):
     """Blue cookie dial with hollow hours, pink minutes and separate day/month badges."""
     from PIL import Image, ImageDraw, ImageFont
@@ -103,7 +108,7 @@ def lock_clock_image(now=None):
     draw.text(point(40, 50), str(now.day), font=ImageFont.truetype(bold, 28 * scale),
               fill='#f3d9ff', anchor='mm')
     ellipse(206, 214, 31, '#304578')
-    draw.text(point(206, 214), str(now.month), font=ImageFont.truetype(regular, 32 * scale),
+    draw.text(point(206, 214), str(now.month), font=ImageFont.truetype(regular, 28 * scale),
               fill='#dce3ff', anchor='mm')
     output = save_image(image, 'lock-clock.png')
     return output
@@ -127,10 +132,9 @@ def identity_config(username=None, layouts=None):
     username = username or pwd.getpwuid(os.getuid()).pw_name
     layouts = layouts or configured_layouts(preferences)
     scale, maximum = 3, 164  # 196 px toolbar limit, including 32 px of padding.
-    for font_size in range(13, 9, -1):
-        font = ImageFont.truetype(font_file(), font_size * scale)
-        if max(font.getlength(username + '  ·  ' + layout) / scale for layout in layouts) <= maximum:
-            break
+    font_points = control_font_size()
+    # Pango/Qt use points; the supersampled Pillow canvas uses pixels at 96 dpi.
+    font = ImageFont.truetype(font_file(), font_points * 4)
     names = []
     for layout in layouts:
         name = username
@@ -146,8 +150,8 @@ def identity_config(username=None, layouts=None):
         names.append(text)
     width = math.ceil(max(font.getlength(text) / scale for text in names)) + 32
     # Pango sizes are in 1/1024 points at 96 dpi, matching the measured pixel size.
-    pango_size = font_size * 768
-    position = 45 - math.ceil(font_size * 1.3 / 2)
+    pango_size = font_points * 1024
+    position = 45 - math.ceil(font_points * 4 / 3 * 1.3 / 2)
     def markup(text):
         text = escape(text.replace('\n', ' ').replace('\r', ' '), quote=False)
         for char, entity in [(',', '&#44;'), ('[', '&#91;'), (']', '&#93;')]:
@@ -177,7 +181,7 @@ label {{
     monitor =
     text = {text}
     color = rgba(f0eaffff)
-    font_size = 10
+    font_size = {font_points}
     font_family = {family}
     position = -270, {position}
     halign = center
@@ -207,15 +211,10 @@ def pill_image(text, name, icon=None, max_width=None, fixed_width=None, director
     if fixed_width is not None:
         max_width = fixed_width
     path = font_file()
-    font_size = 13
     icon_space = 28 if icon else 0
-    while True:
-        font = ImageFont.truetype(path, font_size * scale)
-        text_width = math.ceil(font.getlength(text) / scale)
-        width = text_width + 32 + icon_space
-        if max_width is None or width <= max_width or font_size <= 10:
-            break
-        font_size -= 1
+    font = ImageFont.truetype(path, control_font_size() * 4)
+    text_width = math.ceil(font.getlength(text) / scale)
+    width = text_width + 32 + icon_space
     if max_width and width > max_width:
         while text and math.ceil(font.getlength(text + '…') / scale) + 32 + icon_space > max_width:
             text = text[:-1]
@@ -263,7 +262,7 @@ def power_directory(required=False):
 
 
 def power_images(selected=None):
-    for action, label, width in [('poweroff', 'Power off', 116), ('reboot', 'Reboot', 104)]:
+    for action, label, width in [('poweroff', 'Power off', 136), ('reboot', 'Reboot', 120)]:
         icon = action
         if selected is not None:
             label, icon = ('Confirm', 'confirm') if selected == action else ('Cancel', 'cancel')

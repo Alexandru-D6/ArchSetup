@@ -6,6 +6,7 @@ import QtQuick.Layouts
 FocusScope {
     id: menu
     property string uiFont: "DejaVu Sans"
+    property int fontSize: 12
     property color textColor: "#e6e1e1"
     property bool light: false
     property bool reducedMotion: false
@@ -106,7 +107,7 @@ FocusScope {
                 text: "Session"
                 color: menu.textColor
                 font.family: menu.uiFont
-                font.pixelSize: 18
+                font.pointSize: menu.fontSize
                 font.weight: Font.Medium
                 Layout.alignment: Qt.AlignHCenter
             }
@@ -114,7 +115,7 @@ FocusScope {
                 text: "Arrow keys to navigate, Enter to select\nEsc or click the background to cancel"
                 color: menu.textColor
                 font.family: menu.uiFont
-                font.pixelSize: menu.tileSize < 60 ? 11 : 13
+                font.pointSize: menu.fontSize
                 horizontalAlignment: Text.AlignHCenter
                 Layout.alignment: Qt.AlignHCenter
             }
@@ -158,8 +159,12 @@ FocusScope {
                             color: tile.selected ? (menu.light ? "#ffffff" : "#123367") : menu.textColor
                         }
                     }
-                    ToolTip.visible: hovered && !enabled
-                    ToolTip.text: "BIOS / UEFI access is unavailable on this machine"
+                    ToolTip {
+                        visible: tile.hovered && !tile.enabled
+                        text: "BIOS / UEFI access is unavailable on this machine"
+                        font.family: menu.uiFont
+                        font.pointSize: menu.fontSize
+                    }
                 }
             }
         }
@@ -175,7 +180,7 @@ FocusScope {
                 text: menu.choices[menu.selectedIndex].label
                 color: "#3a303e"
                 font.family: menu.uiFont
-                font.pixelSize: 13
+                font.pointSize: menu.fontSize
             }
         }
     }

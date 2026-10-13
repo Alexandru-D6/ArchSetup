@@ -270,6 +270,7 @@ ShellRoot {
             anchors.fill: parent
             visible: root.page === "session"
             uiFont: root.uiFont
+            fontSize: root.preferences.controlFontSize || 12
             textColor: root.ink
             light: root.light
             reducedMotion: root.preferences.reducedMotion === true

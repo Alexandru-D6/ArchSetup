@@ -609,10 +609,9 @@ else:
         content = path.read_text()
         width = int(re.search(r'size = (\d+), 50', content)[1])
         self.assertLessEqual(width, 196)
-        size = int(re.search(r'<span size="(\d+)">', content)[1]) / 768
-        self.assertGreaterEqual(size, 10)
-        self.assertLessEqual(size, 13)
-        font = ImageFont.truetype(visuals.font_file(), round(size * 3))
+        size = int(re.search(r'<span size="(\d+)">', content)[1]) / 1024
+        self.assertEqual(size, json.loads((self.profile / 'preferences.json').read_text())['controlFontSize'])
+        font = ImageFont.truetype(visuals.font_file(), round(size * 4))
         arguments = re.search(r'\$LAYOUT\[(.*?)\]', content)[1].split(',')
         names = [ElementTree.fromstring(shlex.split(argument)[0]).text for argument in arguments]
         for name, variant in zip(names, ['Euro', 'AltGr']):
@@ -829,13 +828,13 @@ else:
         with patch.dict(os.environ, {'ARCHSETUP_LOCK_DIR': str(private)}):
             visuals.power_images()
             original = {}
-            for action, width in [('poweroff', 116), ('reboot', 104)]:
+            for action, width in [('poweroff', 136), ('reboot', 120)]:
                 with Image.open(private / f'lock-{action}.png') as image:
                     original[action] = image.tobytes()
                     self.assertEqual(image.size, (width * 3, 150))
             for selected in ['poweroff', 'reboot', None]:
                 visuals.power_images(selected)
-                for action, width in [('poweroff', 116), ('reboot', 104)]:
+                for action, width in [('poweroff', 136), ('reboot', 120)]:
                     with Image.open(private / f'lock-{action}.png') as image:
                         self.assertEqual(image.size, (width * 3, 150))
                         if selected is None:

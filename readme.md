@@ -177,6 +177,11 @@ The grid also offers Lock, Suspend, Log out, Task manager and Restart. Settings
 is in the bottom-left corner; the bottom-right BIOS / UEFI shortcut restarts into
 firmware settings when the machine supports it.
 
+The session and lock screens use the same 12-point size for ordinary text. The
+password field is at the bottom center, 20 pixels above the edge; the clock is
+in the middle of the screen. Adjust `archsetup_desktop_control_font_size` in your
+profile to change both screens' control text together.
+
 Check mouse feel, display resolution/refresh rate, audio and Bluetooth. Save your
 work before testing suspend. The QEMU test guest has a reproduced virtual GPU
 resume hang; physical GPU suspend/resume remains unverified. Automatic Brave

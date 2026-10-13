@@ -58,7 +58,7 @@ label {
     monitor =
     text = Locked
     color = rgba(f0eaffff)
-    font_size = 11
+    font_size = {{ archsetup_desktop_control_font_size | int }}
     font_family = {{ archsetup_desktop_font }}
     position = 0, -160
     halign = center
@@ -69,7 +69,7 @@ label {
     monitor =
     text = cmd[update:60000] date +"%A, %B %-d"
     color = rgba(f0eaffff)
-    font_size = 12
+    font_size = {{ archsetup_desktop_control_font_size | int }}
     font_family = {{ archsetup_desktop_font }}
     position = 0, -188
     halign = center
@@ -88,8 +88,9 @@ input-field {
     outer_color = rgba(567099ff)
     inner_color = rgba(1d293fff)
     font_color = rgba(f0eaffff)
-    placeholder_text = Enter password
-    fail_text = Authentication failed
+    # Hyprlock sizes input text from the field height; markup fixes its point size.
+    placeholder_text = <span size="{{ (archsetup_desktop_control_font_size | int) * 1024 }}">Enter password</span>
+    fail_text = <span size="{{ (archsetup_desktop_control_font_size | int) * 1024 }}">Authentication failed</span>
     font_family = {{ archsetup_desktop_font }}
     rounding = 25
     position = 0, 20
@@ -104,7 +105,7 @@ image {
     rounding = 0
     border_size = 0
     reload_time = 1
-    position = 230, 20
+    position = 240, 20
     halign = center
     valign = bottom
     zindex = 1
@@ -117,7 +118,7 @@ image {
     rounding = 0
     border_size = 0
     reload_time = 1
-    position = 346, 20
+    position = 380, 20
     halign = center
     valign = bottom
     zindex = 1
@@ -127,7 +128,7 @@ label {
     monitor =
     text = cmd[update:1000] {{ desktop_root }}/bin/lock-visuals capslock
     color = rgba(f0eaffff)
-    font_size = 10
+    font_size = {{ archsetup_desktop_control_font_size | int }}
     font_family = {{ archsetup_desktop_font }}
     position = 0, 82
     halign = center
@@ -138,7 +139,7 @@ label {
     monitor =
     text = cmd[update:5000] {{ desktop_root }}/bin/lock-visuals status
     color = rgba(f0eaffff)
-    font_size = 11
+    font_size = {{ archsetup_desktop_control_font_size | int }}
     font_family = {{ archsetup_desktop_font }}
     position = 24, -24
     halign = left

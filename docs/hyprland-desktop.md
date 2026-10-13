@@ -114,7 +114,7 @@ which reacts directly to Wayland keyboard events. A 100 ms asynchronous label
 timer catches a final switch if the previous label is still loading. Its command
 only prints the selected name; it does not query the compositor or generate images.
 Ansible measures the configured
-layout names and username once to fit a compact border and font; long usernames
+layout names and username once to fit a compact border at the shared text size; long usernames
 are shortened while preserving the layout variant. The badge fits the longest
 configured label, so switching layouts does not wait for a border-image reload.
 Image updates never send refresh signals. The launcher blocks SIGUSR2 in
@@ -127,6 +127,12 @@ The bottom toolbar has a compact user/keyboard-layout pill, the password field,
 and clickable **Power off** and **Reboot** buttons. Layouts such as US Euro and
 US AltGr use short names; the pill's text and outline are measured together to
 fit all configured layouts. Caps Lock and battery status remain visible.
+The password field is centered horizontally, 20 pixels above the bottom edge;
+the clock occupies the screen's center. Both the lock screen and session menu
+use `archsetup_desktop_control_font_size` for ordinary text (12 points by default,
+equivalent to 16 pixels at 96 dpi). Labels, status, layout names, password prompts
+and buttons share that size; long names are shortened instead of using a smaller
+font. Clock digits remain larger, and the day/month badges both use 28-pixel text.
 Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
 other to **Cancel**. Confirm runs the selected action; Cancel restores both
 original buttons. Label changes appear on the next image check. The selected

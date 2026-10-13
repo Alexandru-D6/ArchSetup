@@ -1,6 +1,20 @@
 # Resume checkpoint — 2026-10-13 (latest)
 
-Latest task: moved Settings to the session grid's bottom-left tile and replaced
+Latest task: normalized session/lock ordinary text to one shared 12-point size
+(`archsetup_desktop_control_font_size`). Native labels, identity, status, password
+prompts, buttons and session text use it. Names truncate instead of shrinking.
+Widened the lock power buttons to fit their text and keep 12-pixel gaps. The clock
+day/month badge text now matches at 28 pixels. The password field remains at the
+bottom center, 20 pixels above the edge; the decorative clock occupies the middle.
+
+Validation: all 49 Python regressions, 20 Qt checks and both desktop playbook
+syntax checks pass. Component lint and whitespace checks pass; the full shell
+retains its existing dynamic import/type warnings. Rendered font sizes, prompt
+markup and button spacing were verified. Session and button previews were
+visually inspected. No workstation deployment or complete Wayland lock test was
+performed. Reapply the desktop profile to activate the updated configuration.
+
+Previous task: moved Settings to the session grid's bottom-left tile and replaced
 the bottom-right tile with BIOS / UEFI access. Its label is Restart to BIOS / UEFI;
 the action runs `systemctl reboot --firmware-setup`. Logind's
 CanRebootToFirmwareSetup capability controls availability, and unsupported
