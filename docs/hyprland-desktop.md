@@ -92,12 +92,14 @@ validated Hyprland API series.
 
 ## Configuration and controls
 
-The default appearance follows the general **ii** style with an original gradient
-background, installed system typography and a 40-pixel top bar with grouped workspace/clock
-controls, muted Material surfaces, thin window borders, 5-pixel outer gaps and
-18-pixel window corners. A static scalloped clock sits on the desktop and updates
+The default **Rose** color theme follows the supplied reference with warm white
+surfaces, blush and peach-pink controls, raspberry accents and dark rose-brown text.
+It has an original pink gradient background, installed system typography and a
+40-pixel top bar with grouped workspace/clock controls, thin window borders,
+5-pixel outer gaps and 18-pixel window corners. A static scalloped clock sits on the desktop and updates
 once per minute. Existing user-selected wallpapers and light/dark choices remain
 in `state.json`; selecting the default background restores the generated gradient.
+The [session preview](images/desktop-session.png) shows the default Rose palette.
 
 The lock screen uses the supplied sunset/anime wallpaper independently of the
 desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
@@ -241,9 +243,14 @@ Keep-awake inhibits idle locking/blanking, but does not disable the before-suspe
 lock path.
 
 Put images in `~/Pictures/Wallpapers`, then use Wallpaper in quick settings.
-Light/dark and wallpaper choices are stored in user-owned `state.json` and survive
-Ansible reruns. Wallpaper colors generate a shared accent; light/dark palettes update the shell,
-Fuzzel, Kitty (new windows), notification center, window border and Hyprlock. Generated files live in
+Quick settings → **Color theme** selects **Rose** or the previous **Material**
+palette. Rose starts in light mode and includes a matching dark variant; the
+**Light / dark** control switches modes. Set `archsetup_desktop_theme: material`
+in inventory to change the managed default. Explicit theme, light/dark and wallpaper
+choices are stored in user-owned `state.json` and survive Ansible reruns.
+Rose keeps its pink accents with any wallpaper; Material derives an accent from
+the wallpaper. Palettes update the shell, session menu, Fuzzel, Kitty (new windows),
+notification center, window borders and lock-screen controls. Generated files live in
 `theme/`; they are rebuilt from managed base templates and user-owned state. Lua `overrides.lua` beside `hyprland.lua` is also user-owned and loaded last.
 Changing defaults should normally happen in inventory rather than managed files.
 

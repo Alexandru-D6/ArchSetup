@@ -30,6 +30,7 @@ def render(destination, overrides=None):
         shutil.copy2(ROLE / 'files' / filename, destination / 'bin' / filename)
         (destination / 'bin' / filename).chmod(0o755)
     shutil.copy2(ROLE / 'files/shortcuts.json', destination / 'shortcuts.json')
+    shutil.copy2(ROLE / 'files/themes.json', destination / 'themes.json')
     (destination / '.runtime-validation').mkdir(mode=0o700, exist_ok=True)
     (destination / 'state.json').write_text('{}\n')
     return destination

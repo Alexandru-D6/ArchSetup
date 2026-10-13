@@ -1,0 +1,68 @@
+{
+  "rose": {
+    "name": "Rose",
+    "defaultLight": true,
+    "wallpaperAccent": false,
+    "light": {
+      "surface": "#fff8f9",
+      "raised": "#ffe7eb",
+      "ink": "#3d2c32",
+      "outline": "#ae7083",
+      "accent": "#bd0056",
+      "onAccent": "#ffffff",
+      "muted": "#6f535e",
+      "primaryContainer": "#ffc5c3",
+      "clockText": "#a35c75",
+      "tertiary": "#985568",
+      "wallpaperTop": "#f3cbd5",
+      "wallpaperBottom": "#fff3ef"
+    },
+    "dark": {
+      "surface": "#21161c",
+      "raised": "#35242c",
+      "ink": "#f9e2e8",
+      "outline": "#a57d8b",
+      "accent": "#ffb1c8",
+      "onAccent": "#56122e",
+      "muted": "#d7b9c4",
+      "primaryContainer": "#653244",
+      "clockText": "#d091a8",
+      "tertiary": "#efb6ad",
+      "wallpaperTop": "#482936",
+      "wallpaperBottom": "#21161c"
+    }
+  },
+  "material": {
+    "name": "Material",
+    "defaultLight": false,
+    "wallpaperAccent": true,
+    "light": {
+      "surface": "#fff8fc",
+      "raised": "#ece6eb",
+      "ink": "#1d1b20",
+      "outline": "#cac4cf",
+      "accent": "#615d63",
+      "onAccent": "#ffffff",
+      "muted": "#49454f",
+      "primaryContainer": "#e7e0e7",
+      "clockText": "#9b939f",
+      "tertiary": "#6c565e",
+      "wallpaperTop": "#ebe8f2",
+      "wallpaperBottom": "#fcfaff"
+    },
+    "dark": {
+      "surface": "#141313",
+      "raised": "#1c1b1c",
+      "ink": "#e6e1e1",
+      "outline": "#49464a",
+      "accent": "#cbc4cb",
+      "onAccent": "#141313",
+      "muted": "#cbc5ca",
+      "primaryContainer": "#2d2a2f",
+      "clockText": "#8f8992",
+      "tertiary": "#d1c3c6",
+      "wallpaperTop": "#21232d",
+      "wallpaperBottom": "#111218"
+    }
+  }
+}

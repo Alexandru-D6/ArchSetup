@@ -1,5 +1,28 @@
 # Desktop validation — 2026-10-10
 
+## Rose color theme — 2026-10-14
+
+The supplied reference informed the new default Rose palette: warm white surfaces,
+blush and peach controls, raspberry highlights and rose-brown text. It defaults
+to light mode and includes a matching dark palette. Quick settings selects Rose
+or the previous Material palette, while the Light / dark control changes mode.
+Saved choices and personal wallpapers survive refreshes; Rose keeps its pink
+accent independently of wallpaper colors. The palette covers shell surfaces,
+session tiles, launcher/terminal selections, notifications, compositor borders
+and native lock-screen controls. The identity badge receives a generated themed
+copy; substitutions leave identity text and file paths intact.
+
+All 50 desktop regressions and 20 Qt checks pass, including theme persistence,
+mode toggling, personal wallpaper preservation and session interaction/rendering.
+Both desktop playbook syntax checks pass. A focused three-test rerun passes after
+the final substitution adjustment. Generated configuration checks and native
+compositor parsing pass for Rose light/dark. Measured ordinary text contrast is
+at least 4.56:1 in light mode and 5.55:1 in dark mode, with large clock text and
+control outlines above 3:1. Both session previews were visually inspected; the
+[default session preview](images/desktop-session.png) now shows Rose light mode.
+Component lint, shell formatting and whitespace checks pass. No workstation
+deployment or complete Wayland desktop session was performed.
+
 ## Text-only lock power buttons — 2026-10-14
 
 Removed the Power off/Reboot icon widgets and image generation. Native captions

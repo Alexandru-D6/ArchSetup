@@ -7,7 +7,7 @@ FocusScope {
     id: menu
     property string uiFont: "DejaVu Sans"
     property int fontSize: 12
-    property color textColor: "#e6e1e1"
+    property color textColor: light ? "#3d2c32" : "#f9e2e8"
     property bool light: false
     property bool reducedMotion: false
     property bool canFirmwareSetup: false
@@ -16,8 +16,11 @@ FocusScope {
     property point pointerPosition: Qt.point(-1, -1)
     readonly property string selectedAction: choices[selectedIndex].action
     readonly property real tileSize: Math.max(40, Math.min(96, (width - 84) / 4, (height - 160) / 2))
-    readonly property color tileColor: light ? "#dce5ff" : "#304779"
-    readonly property color selectionColor: light ? "#385995" : "#afc2ff"
+    property color tileColor: light ? "#ffc5c3" : "#653244"
+    property color selectionColor: light ? "#bd0056" : "#ffb1c8"
+    property color selectedTextColor: light ? "#ffffff" : "#56122e"
+    property color labelColor: light ? "#ffe7eb" : "#35242c"
+    property color labelTextColor: textColor
     readonly property var choices: [
         {action: "lock", label: "Lock", enabled: true},
         {action: "suspend", label: "Suspend", enabled: true},
@@ -156,7 +159,7 @@ FocusScope {
                             width: Math.min(36, menu.tileSize * 0.45)
                             height: width
                             name: tile.modelData.action
-                            color: tile.selected ? (menu.light ? "#ffffff" : "#123367") : menu.textColor
+                            color: tile.selected ? menu.selectedTextColor : menu.textColor
                         }
                     }
                     ToolTip {
@@ -173,12 +176,12 @@ FocusScope {
             implicitWidth: selectionLabel.implicitWidth + 28
             implicitHeight: 32
             radius: height / 2
-            color: menu.light ? "#e4d8e7" : "#ecdfee"
+            color: menu.labelColor
             Text {
                 id: selectionLabel
                 anchors.centerIn: parent
                 text: menu.choices[menu.selectedIndex].label
-                color: "#3a303e"
+                color: menu.labelTextColor
                 font.family: menu.uiFont
                 font.pointSize: menu.fontSize
             }

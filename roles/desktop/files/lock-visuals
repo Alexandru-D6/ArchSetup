@@ -168,10 +168,10 @@ def identity_config(username=None, layouts=None):
 shape {{
     monitor =
     size = {width}, 50
-    color = rgba(1d293fff)
+    color = rgba(292332ff)
     rounding = 25
     border_size = 1
-    border_color = rgba(567099ff)
+    border_color = rgba(45404fff)
     position = -270, 20
     halign = center
     valign = bottom
@@ -180,7 +180,7 @@ shape {{
 label {{
     monitor =
     text = {text}
-    color = rgba(f0eaffff)
+    color = rgba(eae0f5ff)
     font_size = {font_points}
     font_family = {family}
     position = -270, {position}

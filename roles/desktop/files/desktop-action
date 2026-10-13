@@ -63,9 +63,9 @@ def atomic_write(path, text):
         temporary.write(text)
     os.replace(temporary.name, path)
 
-def write_wallpaper(folder, state, light):
+def write_wallpaper(folder, state, palette):
     """Use a personal image, or draw an original gradient without bundled artwork."""
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageColor, ImageDraw
     wallpaper = Path(state['wallpaper']) if state.get('wallpaper') else None
     with tempfile.NamedTemporaryFile(dir=folder, suffix='.png', delete=False) as temporary:
         path = Path(temporary.name)
@@ -75,8 +75,8 @@ def write_wallpaper(folder, state, light):
         else:
             background = Image.new('RGB', (1280, 720))
             draw = ImageDraw.Draw(background)
-            top = (235, 232, 242) if light else (33, 35, 45)
-            bottom = (252, 250, 255) if light else (17, 18, 24)
+            top = ImageColor.getrgb(palette['wallpaperTop'])
+            bottom = ImageColor.getrgb(palette['wallpaperBottom'])
             for row in range(background.height):
                 fraction = row / (background.height - 1)
                 color = tuple(round(a + (b - a) * fraction) for a, b in zip(top, bottom))
@@ -86,14 +86,16 @@ def write_wallpaper(folder, state, light):
     finally:
         path.unlink(missing_ok=True)
 
-def refresh_theme(state):
-    light = state.get('light', False)
-    colors = {'191620': 'fff8fc' if light else '141313',
-              '292332': 'ece6eb' if light else '1c1b1c',
-              'eae0f5': '1d1b20' if light else 'e6e1e1',
-              '45404f': 'cac4cf' if light else '49464a',
-              'c4a7e7': '615d63' if light else 'cbc4cb'}
-    if state.get('wallpaper'):
+def appearance(state):
+    presets = json.loads((ROOT / 'themes.json').read_text())
+    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    name = state.get('theme', preferences.get('defaultTheme', 'rose'))
+    if name not in presets:
+        raise ValueError(f'Unknown color theme: {name}')
+    preset = presets[name]
+    light = state.get('light', preset['defaultLight']) is True
+    palette = dict(preset['light' if light else 'dark'], theme=name, name=preset['name'], light=light)
+    if preset['wallpaperAccent'] and state.get('wallpaper'):
         try:
             from PIL import Image
             with Image.open(state['wallpaper']) as image:
@@ -101,26 +103,39 @@ def refresh_theme(state):
                 r, g, b = image.convert('RGB').resize((1, 1)).getpixel((0, 0))
             hue, _, saturation = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
             rgb = colorsys.hls_to_rgb(hue, 0.40 if light else 0.77, min(0.65, max(0.3, saturation)))
-            colors['c4a7e7'] = ''.join(f'{round(channel * 255):02x}' for channel in rgb)
+            palette['accent'] = '#' + ''.join(f'{round(channel * 255):02x}' for channel in rgb)
         except (ImportError, OSError, ValueError):
             pass  # A missing wallpaper uses the fixed, readable fallback palette.
-    state['accent'] = '#' + colors['c4a7e7']
+    return palette
+
+def refresh_theme(state):
+    palette = appearance(state)
+    state['accent'] = palette['accent']
+    colors = {original: palette[token].removeprefix('#') for original, token in {
+        '191620': 'surface', '292332': 'raised', 'eae0f5': 'ink',
+        '45404f': 'outline', 'c4a7e7': 'accent', 'ffffff': 'onAccent'}.items()}
     folder = ROOT / 'theme'
     folder.mkdir(exist_ok=True)
-    palette = {'surface': '#' + colors['191620'], 'raised': '#' + colors['292332'],
-               'ink': '#' + colors['eae0f5'], 'outline': '#' + colors['45404f'],
-               'accent': state['accent'], 'muted': '#cbc5ca' if not light else '#49454f',
-               'primaryContainer': '#2d2a2f' if not light else '#e7e0e7',
-               'clockText': '#8f8992' if not light else '#9b939f',
-               'tertiary': '#d1c3c6' if not light else '#6c565e'}
     atomic_write(folder / 'palette.json', json.dumps(palette) + '\n')
     # Fixed local paths keep personal filenames out of config and shell commands.
-    write_wallpaper(folder, state, light)
-    for name in ['fuzzel.ini', 'swaync.css', 'hyprlock.conf', 'kitty.conf']:
-        content = (ROOT / name).read_text()
-        for original, replacement in colors.items(): content = content.replace(original, replacement)
+    write_wallpaper(folder, state, palette)
+    configurations = ['fuzzel.ini', 'swaync.css', 'hyprlock.conf', 'kitty.conf']
+    if (ROOT / 'lock-identity.conf').exists(): configurations.append('lock-identity.conf')
+    for name in configurations:
+        lines = (ROOT / name).read_text().splitlines(keepends=True)
+        for index, line in enumerate(lines):
+            # Native lock labels contain usernames/layouts. Color substitutions
+            # must leave their text and the configuration's file paths intact.
+            if name in ('hyprlock.conf', 'lock-identity.conf') and line.partition('=')[0].strip() not in (
+                    'color', 'border_color', 'outer_color', 'inner_color', 'font_color'):
+                continue
+            for original, replacement in colors.items(): line = line.replace(original, replacement)
+            lines[index] = line
+        content = ''.join(lines)
+        if name == 'hyprlock.conf' and 'lock-identity.conf' in configurations:
+            content = content.replace(str(ROOT / 'lock-identity.conf'), str(folder / 'lock-identity.conf'))
         atomic_write(folder / name, content)
-    atomic_write(folder / 'colors.lua', 'hl.config({general={col={active_border="rgba(' + colors['45404f'] + '77)",inactive_border="rgba(' + colors['292332'] + '33)"}}})\n')
+    atomic_write(folder / 'colors.lua', 'hl.config({general={col={active_border="rgba(' + colors['c4a7e7'] + 'bb)",inactive_border="rgba(' + colors['45404f'] + '55)"}}})\n')
     atomic_write(ROOT / 'state.json', json.dumps(state) + '\n')
 
 def close_popup(path):
@@ -384,11 +399,19 @@ def main(action):
         print(json.dumps(dict(volume=volume.removeprefix('Volume: ') or 'No audio', network=network or 'Disconnected', media=media,
                               canFirmwareSetup=firmware in ('s "yes"', 's "challenge"'),
                               brightness=any(Path('/sys/class/backlight').glob('*')))))
-    elif action in ('theme', 'wallpaper', 'wallpaper-random'):
+    elif action in ('theme', 'theme-select', 'wallpaper', 'wallpaper-random'):
         path = ROOT / 'state.json'
         state = json.loads(path.read_text()) if path.exists() else {}
         if action == 'theme':
-            state['light'] = not state.get('light', False)
+            state['light'] = not appearance(state)['light']
+        elif action == 'theme-select':
+            presets = json.loads((ROOT / 'themes.json').read_text())
+            selected = menu([preset['name'] for preset in presets.values()], 'Color theme')
+            if selected is None: return
+            name = next((name for name, preset in presets.items() if preset['name'] == selected), None)
+            if name is None: raise ValueError('Select an available color theme')
+            state['theme'] = name
+            state['light'] = presets[name]['defaultLight']
         else:
             folder = Path.home() / 'Pictures' / 'Wallpapers'
             files = sorted(str(p) for p in folder.glob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp'))

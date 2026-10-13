@@ -23,6 +23,7 @@
         - "{{ desktop_root }}/hyprlock.conf"
         - "{{ desktop_root }}/hypridle.conf"
         - "{{ desktop_root }}/kitty.conf"
+        - "{{ desktop_root }}/themes.json"
         - "{{ desktop_root }}/theme/kitty.conf"
         - "{{ desktop_root }}/shell/shell.qml"
         - /usr/share/wayland-sessions/archsetup.desktop

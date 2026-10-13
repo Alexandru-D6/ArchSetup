@@ -33,6 +33,7 @@ archsetup_desktop_input:
 archsetup_desktop_reduced_motion: false
 archsetup_desktop_software_cursor: true
 archsetup_desktop_font: DejaVu Sans
+archsetup_desktop_theme: rose
 # Shared point size for the session menu and lock-screen labels/controls.
 archsetup_desktop_control_font_size: 12
 archsetup_desktop_code_editor: codium.desktop

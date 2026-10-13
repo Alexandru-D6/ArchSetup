@@ -35,13 +35,14 @@ ShellRoot {
     property bool keyboardControl: false
     property var preferences: ({})
     property var userState: ({})
-    property bool light: userState.light === true
+    property bool light: typeof userState.light === "boolean" ? userState.light : palette.light !== false
     property var palette: ({})
     property string uiFont: preferences.font || "DejaVu Sans"
-    property color surface: palette.surface || (light ? "#fff8fc" : "#141313")
-    property color raised: palette.raised || (light ? "#ece6eb" : "#1c1b1c")
-    property color ink: palette.ink || (light ? "#1d1b20" : "#e6e1e1")
-    property color accent: palette.accent || (light ? "#615d63" : "#cbc4cb")
+    property color surface: palette.surface || (light ? "#fff8f9" : "#21161c")
+    property color raised: palette.raised || (light ? "#ffe7eb" : "#35242c")
+    property color ink: palette.ink || (light ? "#3d2c32" : "#f9e2e8")
+    property color accent: palette.accent || (light ? "#bd0056" : "#ffb1c8")
+    property color onAccent: palette.onAccent || (light ? "#ffffff" : "#56122e")
     property string wallpaper: profile + "/theme/wallpaper.png"
     property int wallpaperRevision: 0
     property int clockRevision: 0
@@ -144,7 +145,7 @@ ShellRoot {
             border.color: root.accent
         }
         contentItem: Text {
-            text: chip.text; color: chip.selected ? root.surface : root.ink
+            text: chip.text; color: chip.selected ? root.onAccent : root.ink
             font.family: root.uiFont; font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
@@ -273,6 +274,11 @@ ShellRoot {
             fontSize: root.preferences.controlFontSize || 12
             textColor: root.ink
             light: root.light
+            tileColor: root.palette.primaryContainer || root.raised
+            selectionColor: root.accent
+            selectedTextColor: root.onAccent
+            labelColor: root.raised
+            labelTextColor: root.ink
             reducedMotion: root.preferences.reducedMotion === true
             canFirmwareSetup: root.status.canFirmwareSetup === true
             onCancelled: root.page = ""
@@ -366,6 +372,7 @@ ShellRoot {
                                 Chip { text: "Do not disturb"; onClicked: root.action("dnd") }
                                 Chip { text: "Keep awake"; selected: root.inhibitIdle; onClicked: root.inhibitIdle = !root.inhibitIdle }
                                 Chip { text: "Light / dark"; onClicked: root.action("theme") }
+                                Chip { text: "Color theme · " + (root.palette.name || "Rose"); onClicked: { root.page = ""; root.action("theme-select"); } }
                                 Chip { text: "Calculator"; onClicked: { root.page = ""; root.action("calculator"); } }
                                 Chip { text: "Wallpaper"; onClicked: { root.page = ""; root.action("wallpaper"); } }
                                 Chip { text: "Previous"; onClicked: Quickshell.execDetached(["playerctl", "previous"]) }

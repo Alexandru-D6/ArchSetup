@@ -1000,12 +1000,27 @@ else:
 
     def test_theme_preserves_wallpaper_and_managed_preferences(self):
         managed = (self.profile / 'preferences.json').read_bytes()
-        (self.profile / 'state.json').write_text('{"wallpaper":"/tmp/picture.png"}')
+        (self.profile / 'state.json').write_text('{"wallpaper":"/tmp/picture.png","theme":"rose","light":false}')
         with patch.object(self.actions.subprocess, 'run'):
             self.actions.main('theme')
         state = json.loads((self.profile / 'state.json').read_text())
         self.assertTrue(state['light'])
         self.assertEqual(state['wallpaper'], '/tmp/picture.png')
+        self.assertEqual(state['theme'], 'rose')
+        # Selecting a preset persists it; refreshes and mode changes retain the
+        # wallpaper and the explicit choice even when the managed default differs.
+        with patch.object(self.actions, 'menu', return_value='Material'), patch.object(self.actions.subprocess, 'run'):
+            self.actions.main('theme-select')
+        self.actions.main('refresh-theme')
+        state = json.loads((self.profile / 'state.json').read_text())
+        self.assertEqual(state['theme'], 'material')
+        self.assertFalse(state['light'])
+        self.assertEqual(state['wallpaper'], '/tmp/picture.png')
+        with patch.object(self.actions.subprocess, 'run'):
+            self.actions.main('theme')
+        state = json.loads((self.profile / 'state.json').read_text())
+        self.assertEqual(state['theme'], 'material')
+        self.assertTrue(state['light'])
         self.assertEqual((self.profile / 'preferences.json').read_bytes(), managed)
 
     def test_desktop_background_and_font_are_independent_of_lock_wallpaper(self):

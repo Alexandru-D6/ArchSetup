@@ -6,7 +6,7 @@ Rectangle {
     id: fixture
     width: 1024
     height: 768
-    color: menu.light ? "#fff8fc" : "#141313"
+    color: menu.light ? "#fff8f9" : "#21161c"
 
     SessionMenu {
         id: menu
@@ -27,7 +27,7 @@ Rectangle {
             fixture.height = 768;
             menu.canFirmwareSetup = true;
             menu.light = false;
-            menu.textColor = "#e6e1e1";
+            menu.textColor = "#f9e2e8";
             menu.visible = true;
             menu.select("lock");
             mouseMove(menu, 1, 1);
@@ -156,7 +156,7 @@ Rectangle {
             const dark = grabImage(fixture);
             dark.save("/tmp/archsetup-session-dark.png");
             menu.light = true;
-            menu.textColor = "#1d1b20";
+            menu.textColor = "#3d2c32";
             waitForRendering(menu);
             const light = grabImage(fixture);
             verify(!light.equals(dark));

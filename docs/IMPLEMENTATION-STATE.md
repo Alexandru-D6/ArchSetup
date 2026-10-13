@@ -1,6 +1,24 @@
 # Resume checkpoint — 2026-10-14 (latest)
 
-Latest task: removed the lock-screen Power off/Reboot icons and their image
+Latest task: added the reference-inspired Rose color theme and made it the managed
+default. Its light palette uses warm white surfaces, blush/peach controls,
+raspberry accents and rose-brown text; a matching dark variant is available.
+Quick settings selects Rose or the previous Material palette. Explicit choices
+and personal wallpapers survive refreshes. Rose keeps its accent with any
+wallpaper. Session tiles and native lock controls now use the shared palette.
+Theme regeneration also responds to helper, preference and identity changes.
+
+Validation: all 50 desktop regressions, 20 Qt checks and both playbook syntax
+checks pass. Focused checks after the final color/substitution adjustment pass.
+Rendered themes and native compositor parsing pass in both Rose modes. Ordinary
+text contrast is at least 4.56:1 in light mode and 5.55:1 in dark mode; large clock
+text and control outlines meet 3:1. Lock color substitution preserves identity
+text, paths and one click handler per button. The refreshed session preview was
+visually inspected. No workstation deployment was performed; reapply the desktop
+profile. Selecting Rose in Quick settings restores its light mode when a prior
+mode choice is saved.
+
+Previous task: removed the lock-screen Power off/Reboot icons and their image
 generation. The buttons now show centered text, preserving immediate confirmation
 and one click handler per button.
 
