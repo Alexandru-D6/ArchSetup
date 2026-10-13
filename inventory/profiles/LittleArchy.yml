@@ -6,4 +6,4 @@ archsetup_desktop_quickshell_package: quickshell
 archsetup_desktop_manage_login: true
 archsetup_desktop_manage_network: false
 archsetup_desktop_monitors:
-  - {output: "", mode: preferred, position: auto, scale: auto}
+  - {output: "", mode: preferred, position: auto, scale: 1.0}
