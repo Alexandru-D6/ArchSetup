@@ -1,7 +1,7 @@
 # ArchSetup
 
 Ansible setup for an installed Arch Linux system: Hyprland, a Quickshell taskbar
-and window overview, Brave, notifications, shortcuts, themes, and Hyprlock.
+and window overview, Brave, VSCodium, notifications, shortcuts, themes, and Hyprlock.
 The default ii-inspired theme includes a top bar, rounded windows, system typography,
 and an original generated gradient background. Hyprlock uses a centered scalloped clock and
 a bottom password toolbar. Desktop animations are disabled by default. The custom desktop shell has no AI
@@ -83,7 +83,7 @@ user `alex` and already selects Brave, automatic monitors, and disabled animatio
 ```
 
 Review the diff before applying. Check mode predicts package installation; it does
-not download/build Brave or start services that have not been installed yet.
+not download/build Brave or VSCodium or start services that have not been installed yet.
 
 If preflight detects an existing **unmanaged** Greetd configuration or ArchSetup
 profile, review those files and add `archsetup_desktop_adopt: true` to your machine
@@ -112,6 +112,11 @@ regular user, with source checksum verification, then installed through pacman.
 No AUR helper or passwordless sudo is required. The first installation downloads
 the browser archive and needs temporary disk space. Existing Brave is retained;
 Firefox is not uninstalled.
+
+VSCodium is the default code editor for Super+C, the tools menu and editing shortcut
+configuration. Missing VSCodium uses the same reviewed, pinned AUR build workflow
+(`vscodium-bin`); existing installations are retained. Override
+`archsetup_desktop_code_editor` in your profile to select another installed editor.
 
 If package installation reports stale metadata or pending updates, run
 `./setup.sh upgrade --ask-become-pass`, then repeat the preview and installation.
@@ -147,6 +152,7 @@ preserves existing keyring contents.
 | --- | --- |
 | Super+D | Application launcher |
 | Super+W | Brave |
+| Super+C | VSCodium |
 | Super+Tab | Window overview; arrows select, Enter focuses |
 | Super+Comma | Quick settings, theme and wallpaper |
 | Super+N | Notification history |
@@ -182,9 +188,9 @@ desktop-apply → desktop-verify** instead; these still install desktop dependen
 Log out and back in to refresh all desktop components; reboot for changes to the
 boot login flow. Reapplying an unchanged installation should report `changed=0`.
 
-System upgrades are explicit (`./setup.sh upgrade --ask-become-pass`). Brave is an
-AUR package: maintain it through your AUR update workflow separately; desktop
-reapplication does not upgrade an existing browser. User wallpaper/theme choices
+System upgrades are explicit (`./setup.sh upgrade --ask-become-pass`). Brave and
+VSCodium are AUR packages: maintain them through your AUR update workflow separately;
+desktop reapplication does not upgrade existing installations. User wallpaper/theme choices
 and `overrides.lua` are retained. See the [desktop guide](docs/hyprland-desktop.md)
 for configuration details and current feature limits.
 

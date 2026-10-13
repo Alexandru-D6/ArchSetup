@@ -92,3 +92,24 @@
       archsetup_desktop_browser to an installed desktop entry. Automatic installation
       is supported for Brave when archsetup_desktop_install_brave=true.
   when: archsetup_desktop_require_browser | bool
+
+- name: Locate preferred code editor desktop entry
+  ansible.builtin.stat:
+    path: "{{ item }}/{{ archsetup_desktop_code_editor }}"
+  loop:
+    - /usr/share/applications
+    - /usr/local/share/applications
+    - "{{ desktop_home }}/.local/share/applications"
+  register: desktop_code_editor_entries
+
+- name: Require the requested code editor
+  ansible.builtin.assert:
+    that: >-
+      desktop_code_editor_entries.results | selectattr('stat.exists') | list | length > 0
+      or ((desktop_code_editor_install_allowed | default(false) | bool)
+      and (archsetup_desktop_install_vscodium | bool)
+      and archsetup_desktop_code_editor == 'codium.desktop')
+    fail_msg: >-
+      Install the selected code editor first, or set archsetup_desktop_code_editor
+      to an installed desktop entry. Automatic installation is supported for
+      VSCodium when archsetup_desktop_install_vscodium=true.

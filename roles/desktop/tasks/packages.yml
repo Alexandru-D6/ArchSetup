@@ -38,3 +38,10 @@
     - archsetup_desktop_browser == 'brave-browser.desktop'
     - archsetup_desktop_install_brave | bool
     - desktop_browser_entries.results | selectattr('stat.exists') | list | length == 0
+
+- name: Install the selected VSCodium editor when missing
+  ansible.builtin.import_tasks: vscodium.yml
+  when:
+    - archsetup_desktop_code_editor == 'codium.desktop'
+    - archsetup_desktop_install_vscodium | bool
+    - desktop_code_editor_entries.results | selectattr('stat.exists') | list | length == 0

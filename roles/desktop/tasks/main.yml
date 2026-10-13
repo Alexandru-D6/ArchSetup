@@ -6,6 +6,7 @@
       ansible.builtin.import_tasks: preflight.yml
       vars:
         desktop_browser_install_allowed: true
+        desktop_code_editor_install_allowed: true
     - name: Install desktop packages
       ansible.builtin.import_tasks: packages.yml
     - name: Deploy desktop configuration

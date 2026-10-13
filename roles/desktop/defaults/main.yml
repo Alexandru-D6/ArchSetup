@@ -33,7 +33,10 @@ archsetup_desktop_input:
 archsetup_desktop_reduced_motion: false
 archsetup_desktop_software_cursor: true
 archsetup_desktop_font: DejaVu Sans
-archsetup_desktop_code_editor: geany.desktop
+archsetup_desktop_code_editor: codium.desktop
+# Existing VSCodium is retained; missing VSCodium uses reviewed AUR packaging.
+archsetup_desktop_install_vscodium: true
+archsetup_desktop_vscodium_revision: d04471d2fba90dc9fc16d52be8e6f957061b5ab3
 archsetup_desktop_text_editor: org.xfce.mousepad.desktop
 archsetup_desktop_office: libreoffice-startcenter.desktop
 archsetup_desktop_ocr_language: eng
@@ -45,7 +48,6 @@ archsetup_desktop_packages:
   - hyprlock
   - hypridle
   - kitty
-  - geany
   - mousepad
   - libreoffice-fresh
   - btop

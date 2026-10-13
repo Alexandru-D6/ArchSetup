@@ -150,6 +150,38 @@ class DesktopTests(unittest.TestCase):
                                         capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0 if allowed else 2, result.stdout + result.stderr)
 
+    def test_code_editor_preflight_requires_installation_outside_provisioning(self):
+        executable = shutil.which('ansible-playbook') or str(Path(sys.executable).parent / 'ansible-playbook')
+        if not Path(executable).exists():
+            self.skipTest('ansible-playbook is required for code editor preflight regression')
+        tasks = yaml.safe_load((ROLE / 'tasks/preflight.yml').read_text())
+        editor_check = next(task for task in tasks if task['name'] == 'Require the requested code editor')
+        environment = dict(os.environ, ANSIBLE_HOME=self.directory.name,
+                           ANSIBLE_LOCAL_TEMP=str(Path(self.directory.name) / 'ansible-tmp'))
+        cases = [(False, True, True, 'codium.desktop', True),
+                 (False, False, True, 'codium.desktop', False),
+                 (False, True, False, 'codium.desktop', False),
+                 (False, True, True, 'geany.desktop', False),
+                 (True, False, False, 'codium.desktop', True),
+                 (True, False, False, 'geany.desktop', True)]
+        for installed, provisioning, automatic, editor, allowed in cases:
+            with self.subTest(installed=installed, provisioning=provisioning, automatic=automatic, editor=editor):
+                playbook = Path(self.directory.name) / 'editor-preflight.yml'
+                variables = {
+                    'desktop_code_editor_entries': {'results': [{'stat': {'exists': installed}}]},
+                    'archsetup_desktop_install_vscodium': automatic,
+                    'archsetup_desktop_code_editor': editor,
+                }
+                if provisioning:
+                    variables['desktop_code_editor_install_allowed'] = True
+                playbook.write_text(yaml.safe_dump([{
+                    'hosts': 'localhost', 'gather_facts': False, 'become': False,
+                    'vars': variables, 'tasks': [editor_check]}]))
+                result = subprocess.run([executable, '-i', 'localhost,', '-c', 'local',
+                                         '--check', str(playbook)], env=environment,
+                                        capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0 if allowed else 2, result.stdout + result.stderr)
+
     def test_fresh_check_skips_services_not_created_by_package_preview(self):
         executable = shutil.which('ansible-playbook')
         if executable is None:

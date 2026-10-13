@@ -1,0 +1,84 @@
+---
+- name: Validate the reviewed VSCodium build target
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.architecture in ['x86_64', 'aarch64']
+      - archsetup_desktop_vscodium_revision is match('^[0-9a-f]{40}$')
+
+- name: Ensure VSCodium build and runtime dependencies are installed
+  community.general.pacman:
+    name: [base-devel, git, fontconfig, libxtst, gtk3, python, cairo, alsa-lib, nss, gcc-libs, libnotify, libxss, glibc, bash]
+    state: present
+
+- name: Preview the missing VSCodium installation
+  ansible.builtin.debug:
+    msg: Will build and install vscodium-bin from AUR revision {{ archsetup_desktop_vscodium_revision }}.
+  changed_when: true
+  when: ansible_check_mode
+
+- name: Build and install the reviewed VSCodium package
+  when: not ansible_check_mode
+  block:
+    - name: Allocate an isolated VSCodium build directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: archsetup-vscodium-
+      register: desktop_vscodium_build
+
+    - name: Assign the VSCodium build directory to the regular desktop user
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ archsetup_desktop_user }}"
+        group: "{{ desktop_group }}"
+        mode: '0700'
+      loop:
+        - "{{ desktop_vscodium_build.path }}"
+        - "{{ desktop_vscodium_build.path }}/packages"
+
+    - name: Fetch pinned VSCodium packaging as the regular user
+      become_user: "{{ archsetup_desktop_user }}"
+      ansible.builtin.git:
+        repo: https://aur.archlinux.org/vscodium-bin.git
+        dest: "{{ desktop_vscodium_build.path }}/source"
+        version: "{{ archsetup_desktop_vscodium_revision }}"
+
+    - name: Build VSCodium and verify upstream source checksums without root
+      become_user: "{{ archsetup_desktop_user }}"
+      ansible.builtin.command:
+        argv: [makepkg, --noconfirm, --cleanbuild]
+        chdir: "{{ desktop_vscodium_build.path }}/source"
+      environment:
+        PKGDEST: "{{ desktop_vscodium_build.path }}/packages"
+      changed_when: true
+
+    - name: Locate the completed VSCodium package
+      ansible.builtin.find:
+        paths: "{{ desktop_vscodium_build.path }}/packages"
+        patterns: 'vscodium-bin-*.pkg.tar.*'
+        excludes: '*.sig'
+      register: desktop_vscodium_packages
+
+    - name: Require exactly one completed editor package
+      ansible.builtin.assert:
+        that: desktop_vscodium_packages.matched == 1
+
+    - name: Install VSCodium through pacman
+      community.general.pacman:
+        name: "{{ desktop_vscodium_packages.files[0].path }}"
+        state: present
+
+    - name: Confirm the installed code editor entry
+      ansible.builtin.stat:
+        path: /usr/share/applications/codium.desktop
+      register: desktop_vscodium_entry
+
+    - name: Require successful code editor registration
+      ansible.builtin.assert:
+        that: desktop_vscodium_entry.stat.exists
+  always:
+    - name: Remove temporary VSCodium build files
+      ansible.builtin.file:
+        path: "{{ desktop_vscodium_build.path }}"
+        state: absent
+      when: desktop_vscodium_build.path is defined

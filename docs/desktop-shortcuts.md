@@ -53,7 +53,7 @@ Quickshell configuration, not upstream code.
 | Super + equal | Calculator |
 | Super + T | Terminal |
 | Ctrl + Alt + T | Terminal |
-| Super + C | Code editor |
+| Super + C | Code editor (VSCodium by default) |
 | Super + X | Text editor |
 | Ctrl + Super + Shift + Alt + W | Office |
 | Ctrl + Super + V | Volume mixer |

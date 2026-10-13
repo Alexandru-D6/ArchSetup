@@ -29,6 +29,17 @@ Quickshell provider, your input settings and DP-2/HDMI-A-1 configuration.
 For a fresh machine, use the official `quickshell` package default instead of
 that host-specific provider override.
 
+The default code editor is VSCodium (`archsetup_desktop_code_editor=codium.desktop`).
+Super+C, the tools menu and the shortcut configuration editor use this selection.
+Missing VSCodium is installed from the reviewed AUR `vscodium-bin` revision
+`d04471d2fba90dc9fc16d52be8e6f957061b5ab3` (1.140.06880), using the same
+unprivileged makepkg and pacman workflow as Brave. Check mode previews installation;
+verification requires the selected editor to be installed. Existing VSCodium is
+retained, and updates use your AUR maintenance workflow. To use an existing editor,
+override `archsetup_desktop_code_editor` with its desktop entry. Set
+`archsetup_desktop_install_vscodium=false` to require manual VSCodium installation.
+See [VSCodium's Arch installation guide](https://vscodium.com/#install-on-arch-linux).
+
 ```bash
 ./setup.sh desktop-check -e @inventory/profiles/alex-desktop.yml --ask-become-pass
 ./setup.sh desktop-apply -e @inventory/profiles/alex-desktop.yml --ask-become-pass
