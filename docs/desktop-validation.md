@@ -1,5 +1,29 @@
 # Desktop validation — 2026-10-10
 
+## Session icon grid and shutdown selection — 2026-10-13
+
+The Power/session menu now renders a centered two-row icon grid over a dimmed
+full-screen background, following the supplied reference. The selected tile is
+circular and shows its label beneath the grid. Shutdown requests open this menu
+with Shut down selected; the actual poweroff command runs only after selection.
+Keyboard arrows/Tab navigate, Enter/Space select, and Escape/background clicks
+cancel. Hibernate is disabled unless logind reports `yes` or `challenge` support.
+
+The 48 Python regressions cover shutdown routing, confirmed execution and logind
+capability handling. The full run passed 47; the unrelated background-clock
+image-change timing check passed on a focused retry. All 20 Qt test checks pass,
+including keyboard/mouse interaction, cancellation, repeated activation,
+unsupported hibernation, a 320 x 240 viewport, vector rendering and light/dark
+snapshots. Opening under a stationary pointer keeps the requested action
+selected. The rendered component was visually inspected in both themes.
+`qmllint` passes for both new components; the complete shell retains only its
+existing dynamic `qs` import and PanelWindow warnings. Whitespace checks pass.
+
+Qt tests render the standalone component with the offscreen software backend.
+Workstation deployment, the full Wayland shell and actual system power actions
+were not exercised for this change. The lock-screen power controls keep their
+separate confirmation behavior.
+
 ## Window resizing — 2026-10-13
 
 Enabled border/gap dragging with a 10-pixel border grab area and retained

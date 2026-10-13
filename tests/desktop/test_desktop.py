@@ -509,15 +509,32 @@ else:
             self.actions.main('screenshot')
             run.assert_not_called()
 
-    def test_power_actions_run_directly_without_confirmation(self):
-        for action in ['poweroff', 'reboot', 'suspend', 'logout']:
+    def test_shutdown_request_opens_session_menu_without_powering_off(self):
+        with patch.object(self.actions, 'run') as run:
+            self.actions.main('poweroff')
+            run.assert_called_once_with('qs', '-p', str(self.profile / 'shell'),
+                                        'ipc', 'call', 'desktop', 'shutdown')
+
+    def test_selected_session_actions_execute_without_reopening_menu(self):
+        for action in ['poweroff-confirmed', 'reboot', 'suspend', 'hibernate', 'logout']:
             with self.subTest(action=action), patch.object(self.actions, 'menu') as menu, patch.object(self.actions, 'run') as run:
                 self.actions.main(action)
                 menu.assert_not_called()
                 if action == 'logout':
                     run.assert_called_once_with('hyprctl', 'dispatch', 'hl.dsp.exit()')
                 else:
-                    run.assert_called_once_with('systemctl', action)
+                    run.assert_called_once_with('systemctl', 'poweroff' if action == 'poweroff-confirmed' else action)
+
+    def test_hibernate_availability_uses_logind_capabilities(self):
+        import io
+        for capability, available in [('yes', True), ('challenge', True), ('no', False), ('na', False)]:
+            with self.subTest(capability=capability), patch.object(self.actions.subprocess, 'run') as probe:
+                probe.return_value.stdout = f's "{capability}"'
+                output = io.StringIO()
+                with patch.object(sys, 'stdout', output):
+                    self.actions.main('status')
+                self.assertEqual(json.loads(output.getvalue())['canHibernate'], available)
+                self.assertTrue(any(call.args[0][-1] == 'CanHibernate' for call in probe.call_args_list))
 
     def lock_visuals(self):
         loader = importlib.machinery.SourceFileLoader('lock_visuals', str(ROLE / 'files/lock-visuals'))

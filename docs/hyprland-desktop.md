@@ -217,8 +217,16 @@ Network, Bluetooth and audio-device buttons open their native configuration
 applications. Brightness controls are hidden without a backlight device.
 Screenshot actions copy PNG data to the clipboard. Clipboard history offers an
 explicit clear action. The emoji picker ships a small editable starter list.
-Power actions run immediately when selected. Keep-awake inhibits idle locking/blanking,
-but does not disable the before-suspend lock path.
+The Power button, Ctrl+Alt+Delete and Super+Shift+Escape open a full-screen session
+overlay with a centered two-row icon grid. It offers Lock, Suspend, Log out, Task
+manager, Hibernate, Shut down, Restart and Settings. The highlighted tile becomes
+a circle, with its label beneath the grid. Hover or arrow/Tab keys change the
+selection; click a tile or press Enter/Space to execute it. Escape and background
+clicks dismiss the overlay. Hibernate is disabled when logind reports it unavailable.
+The shutdown shortcut and `desktop-action poweroff` open this overlay with
+Shut down selected, and wait for selection before executing the shutdown.
+Keep-awake inhibits idle locking/blanking, but does not disable the before-suspend
+lock path.
 
 Put images in `~/Pictures/Wallpapers`, then use Wallpaper in quick settings.
 Light/dark and wallpaper choices are stored in user-owned `state.json` and survive
@@ -277,6 +285,8 @@ in process logs.
 
 ![Window overview](images/desktop-overview.png)
 
+![Session menu](images/desktop-session.png)
+
 ## Developer validation
 
 With Python, Jinja2, PyYAML and Hyprland available:
@@ -288,6 +298,8 @@ Hyprland --verify-config --config /tmp/archsetup-preview/hyprland.lua
 ansible-playbook playbooks/desktop.yml --syntax-check
 ansible-playbook playbooks/desktop-verify.yml --syntax-check
 ansible-playbook tests/desktop/disabled.yml --check
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=Basic \
+  /usr/lib/qt6/bin/qmltestrunner -input tests/desktop/qml -o -,txt
 ```
 
 Use the actual Qt tool `/usr/lib/qt6/bin/qmllint` on Arch. Quickshell supplies the

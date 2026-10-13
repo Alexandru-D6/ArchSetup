@@ -1,6 +1,23 @@
 # Resume checkpoint — 2026-10-13 (latest)
 
-Latest task: enabled resizing tiled and floating windows with border/gap dragging
+Latest task: replaced the desktop session list with the supplied reference's
+full-screen, centered two-row icon grid. The Power button and session shortcuts
+open it; the shutdown shortcut/helper preselects Shut down and waits for a
+selection before executing poweroff. Arrow/Tab navigation, Enter/Space, mouse
+selection and Escape/background cancellation work. The initial pointer position
+does not override the requested selection. Hibernate is disabled when logind
+reports it unavailable. Both themes use original vector icons.
+
+Validation: 48 Python regressions pass across the full run and one focused retry
+of the unrelated background-clock timing check. All 20 Qt checks pass, including
+actual key/mouse events, disabled actions, small screens and light/dark rendering.
+The two new components pass qmllint; the complete shell retains only its existing
+dynamic qs-import/PanelWindow warnings. Rendered previews were visually inspected.
+The standalone Qt component was tested offscreen; workstation deployment, the
+complete Wayland shell and actual power actions were not exercised. Reapply the
+desktop profile to activate the change; its handler refreshes the running shell.
+
+Previous task: enabled resizing tiled and floating windows with border/gap dragging
 and repeating Super+Alt+arrow shortcuts. Left/Right shrink/grow width; Up/Down
 shrink/grow height in 40-pixel steps. Super+right-drag remains available. The shared
 shortcut map, help reference, README and source count now cover 228 bindings.

@@ -170,8 +170,11 @@ including app launchers, local OCR/recording, window/workspace controls, shell
 toggles, zoom and VM shortcut passthrough. Super+Alt+F1 restores desktop shortcuts
 when passthrough is enabled.
 
-The Power menu's Shutdown, Reboot, Suspend and Logout actions run immediately
-when selected, without a second confirmation prompt.
+The Power button and session shortcuts open a centered icon grid. The shutdown
+shortcut opens it with **Shut down** selected; choose a tile or press Enter to act.
+Arrow keys or Tab move between actions, and Escape or a background click cancels.
+The grid also offers Lock, Suspend, Log out, Task manager, Restart and Settings;
+Hibernate is enabled when the machine supports it.
 
 Check mouse feel, display resolution/refresh rate, audio and Bluetooth. Save your
 work before testing suspend. The QEMU test guest has a reproduced virtual GPU

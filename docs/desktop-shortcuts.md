@@ -317,7 +317,11 @@ focused, including number-row/keypad aliases, relative moves and scratch.
 | --- | --- |
 | Ctrl + Alt + Delete | Session menu |
 | Super + Shift + L | Suspend |
-| Ctrl + Shift + Alt + Super + Delete | Shutdown |
+| Ctrl + Shift + Alt + Super + Delete | Session menu with Shut down selected |
+
+The session menu uses arrow keys or Tab to select an action and Enter/Space to
+execute it. Click an icon to choose it directly. Escape or a background click
+cancels without taking a power action.
 
 ## Virtual machines
 

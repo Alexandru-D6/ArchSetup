@@ -21,6 +21,7 @@ ShellRoot {
         interval: 50
         onTriggered: {
             if (root.page === "overview") windows.forceActiveFocus();
+            else if (root.page === "session") sessionMenu.forceActiveFocus();
             else if (root.page !== "") panelContent.forceActiveFocus();
         }
     }
@@ -47,7 +48,15 @@ ShellRoot {
     property string profile: Quickshell.shellDir + "/.."
     property var status: ({volume: "—", network: "—", brightness: false})
     function action(name) { Quickshell.execDetached([profile + "/bin/desktop-action", name]); }
-    function toggle(name) { page = page === name ? "" : name; }
+    function toggle(name) {
+        if (name === "session") sessionMenu.select("lock");
+        page = page === name ? "" : name;
+    }
+    function shutdown() {
+        sessionMenu.select("poweroff");
+        page = "session";
+        sessionMenu.forceActiveFocus();
+    }
     function workspace(number) { Hyprland.dispatch("hl.dsp.focus({workspace=" + number + "})"); }
     function workspaceStart(active, count) { return Math.floor((Math.max(1, active || 1) - 1) / count) * count + 1; }
     function control(name) {
@@ -108,10 +117,12 @@ ShellRoot {
         function control(name: string): void { root.control(name); }
         function key(key: string): void { root.typeKey(key); }
         function awake(active: bool): void { root.inhibitIdle = active; }
+        function shutdown(): void { root.shutdown(); }
         function status(): string {
             return JSON.stringify({page: root.page, windows: ToplevelManager.toplevels.values.length,
                 hyprlandWindows: Hyprland.toplevels.values.length, screens: Quickshell.screens.length,
                 overviewFocus: windows.activeFocus, selectedWindow: windows.currentIndex,
+                selectedSessionAction: sessionMenu.selectedAction,
                 barVisible: root.barVisible, barBottom: root.barBottom,
                 widgetsVisible: root.desktopClockVisible, keyboardVisible: root.keyboardVisible,
                 toolsDetached: root.toolsDetached, idleInhibited: root.inhibitIdle});
@@ -252,9 +263,26 @@ ShellRoot {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        color: "#99000000"
+        color: root.page === "session" ? Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.97) : "#99000000"
         MouseArea { anchors.fill: parent; onClicked: root.page = "" }
+        SessionMenu {
+            id: sessionMenu
+            anchors.fill: parent
+            visible: root.page === "session"
+            uiFont: root.uiFont
+            textColor: root.ink
+            light: root.light
+            reducedMotion: root.preferences.reducedMotion === true
+            canHibernate: root.status.canHibernate === true
+            onCancelled: root.page = ""
+            onActivated: action => {
+                root.page = "";
+                if (action === "settings") root.toggle("settings");
+                else root.action(action === "poweroff" ? "poweroff-confirmed" : action);
+            }
+        }
         Rectangle {
+            visible: root.page !== "session"
             width: Math.min(parent.width - 48, root.page === "overview" ? 1000 : 540)
             height: Math.min(parent.height - 80, root.page === "overview" ? 700 : 560)
             anchors.centerIn: parent; radius: 24; color: root.surface
@@ -274,7 +302,7 @@ ShellRoot {
                     Keys.onEscapePressed: root.page = ""
                     StackLayout {
                         anchors.fill: parent
-                        currentIndex: root.page === "overview" ? 0 : root.page === "settings" ? 1 : root.page === "tools" ? 3 : root.page === "media" ? 4 : 2
+                        currentIndex: root.page === "overview" ? 0 : root.page === "settings" ? 1 : root.page === "tools" ? 2 : 3
                         ColumnLayout {
                             RowLayout {
                                 id: overviewWorkspaces
@@ -346,14 +374,6 @@ ShellRoot {
                             }
                             Item { Layout.fillHeight: true }
                             Text { text: Qt.formatDateTime(clock.date, "dddd, d MMMM yyyy"); color: root.ink }
-                        }
-                        ColumnLayout {
-                            spacing: 10
-                            Repeater {
-                                model: ["lock", "suspend", "logout", "reboot", "poweroff"]
-                                Chip { required property string modelData; text: modelData === "poweroff" ? "Shutdown" : modelData.charAt(0).toUpperCase() + modelData.slice(1); Layout.fillWidth: true; onClicked: { root.page = ""; root.action(modelData); } }
-                            }
-                            Item { Layout.fillHeight: true }
                         }
                         ToolsContent { desktop: root }
                         ColumnLayout {

@@ -381,7 +381,10 @@ def main(action):
         volume = probe('wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@')
         network = probe('nmcli', '-t', '-f', 'STATE', 'general')
         media = probe('playerctl', 'metadata', '--format', '{{artist}} — {{title}}')
+        hibernate = probe('busctl', '--timeout=1', 'call', 'org.freedesktop.login1',
+                          '/org/freedesktop/login1', 'org.freedesktop.login1.Manager', 'CanHibernate')
         print(json.dumps(dict(volume=volume.removeprefix('Volume: ') or 'No audio', network=network or 'Disconnected', media=media,
+                              canHibernate=hibernate in ('s "yes"', 's "challenge"'),
                               brightness=any(Path('/sys/class/backlight').glob('*')))))
     elif action in ('theme', 'wallpaper', 'wallpaper-random'):
         path = ROOT / 'state.json'
@@ -403,11 +406,13 @@ def main(action):
     elif action == 'help':
         bindings = json.loads((ROOT / 'shortcuts.json').read_text())
         menu([f"{item['key']}  —  {item['description']}" for item in bindings], 'Shortcuts')
-    elif action in ('logout', 'reboot', 'poweroff', 'suspend'):
+    elif action == 'poweroff':
+        run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'shutdown')
+    elif action in ('logout', 'reboot', 'poweroff-confirmed', 'suspend', 'hibernate'):
         if action == 'logout': run('hyprctl', 'dispatch', 'hl.dsp.exit()')
         else:
             # Hypridle's sleep inhibitor locks before the system sleeps.
-            run('systemctl', action)
+            run('systemctl', 'poweroff' if action == 'poweroff-confirmed' else action)
     else:
         raise ValueError(f'Unknown action: {action}')
 
