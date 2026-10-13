@@ -219,10 +219,14 @@ Screenshot actions copy PNG data to the clipboard. Clipboard history offers an
 explicit clear action. The emoji picker ships a small editable starter list.
 The Power button, Ctrl+Alt+Delete and Super+Shift+Escape open a full-screen session
 overlay with a centered two-row icon grid. It offers Lock, Suspend, Log out, Task
-manager, Hibernate, Shut down, Restart and Settings. The highlighted tile becomes
+manager, Settings, Shut down, Restart and BIOS / UEFI. Settings is the bottom-left
+tile; BIOS / UEFI is the bottom-right tile and restarts into firmware settings.
+The highlighted tile becomes
 a circle, with its label beneath the grid. Hover or arrow/Tab keys change the
 selection; click a tile or press Enter/Space to execute it. Escape and background
-clicks dismiss the overlay. Hibernate is disabled when logind reports it unavailable.
+clicks dismiss the overlay. BIOS / UEFI is disabled when logind reports firmware
+setup unavailable. Its action uses `systemctl reboot --firmware-setup`, as documented
+in [systemd's command reference](https://github.com/systemd/systemd/blob/main/man/systemctl.xml).
 The shutdown shortcut and `desktop-action poweroff` open this overlay with
 Shut down selected, and wait for selection before executing the shutdown.
 Keep-awake inhibits idle locking/blanking, but does not disable the before-suspend

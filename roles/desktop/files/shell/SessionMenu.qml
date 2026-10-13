@@ -9,7 +9,7 @@ FocusScope {
     property color textColor: "#e6e1e1"
     property bool light: false
     property bool reducedMotion: false
-    property bool canHibernate: false
+    property bool canFirmwareSetup: false
     property int selectedIndex: 0
     property bool committed: false
     property point pointerPosition: Qt.point(-1, -1)
@@ -22,10 +22,10 @@ FocusScope {
         {action: "suspend", label: "Suspend", enabled: true},
         {action: "logout", label: "Log out", enabled: true},
         {action: "task-manager", label: "Task manager", enabled: true},
-        {action: "hibernate", label: "Hibernate", enabled: canHibernate},
+        {action: "settings", label: "Settings", enabled: true},
         {action: "poweroff", label: "Shut down", enabled: true},
         {action: "reboot", label: "Restart", enabled: true},
-        {action: "settings", label: "Settings", enabled: true}
+        {action: "firmware-setup", label: "Restart to BIOS / UEFI", enabled: canFirmwareSetup}
     ]
     signal activated(string action)
     signal cancelled()
@@ -68,7 +68,7 @@ FocusScope {
         }
         pointerPosition = position;
     }
-    onCanHibernateChanged: if (!canHibernate && selectedAction === "hibernate") selectedIndex = 0
+    onCanFirmwareSetupChanged: if (!canFirmwareSetup && selectedAction === "firmware-setup") selectedIndex = 0
     onVisibleChanged: if (visible) {
         committed = false;
         pointerPosition = Qt.point(-1, -1);
@@ -141,7 +141,7 @@ FocusScope {
                     focusPolicy: Qt.NoFocus
                     hoverEnabled: true
                     Accessible.name: modelData.label
-                    Accessible.description: modelData.action === "hibernate" && !enabled ? "Hibernation is unavailable on this machine" : ""
+                    Accessible.description: modelData.action === "firmware-setup" && !enabled ? "BIOS / UEFI access is unavailable on this machine" : ""
                     onClicked: menu.activate(index)
                     background: Rectangle {
                         color: tile.selected ? menu.selectionColor : menu.tileColor
@@ -159,7 +159,7 @@ FocusScope {
                         }
                     }
                     ToolTip.visible: hovered && !enabled
-                    ToolTip.text: "Hibernation is unavailable on this machine"
+                    ToolTip.text: "BIOS / UEFI access is unavailable on this machine"
                 }
             }
         }

@@ -173,8 +173,9 @@ when passthrough is enabled.
 The Power button and session shortcuts open a centered icon grid. The shutdown
 shortcut opens it with **Shut down** selected; choose a tile or press Enter to act.
 Arrow keys or Tab move between actions, and Escape or a background click cancels.
-The grid also offers Lock, Suspend, Log out, Task manager, Restart and Settings;
-Hibernate is enabled when the machine supports it.
+The grid also offers Lock, Suspend, Log out, Task manager and Restart. Settings
+is in the bottom-left corner; the bottom-right BIOS / UEFI shortcut restarts into
+firmware settings when the machine supports it.
 
 Check mouse feel, display resolution/refresh rate, audio and Bluetooth. Save your
 work before testing suspend. The QEMU test guest has a reproduced virtual GPU

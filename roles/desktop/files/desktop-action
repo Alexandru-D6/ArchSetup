@@ -381,10 +381,10 @@ def main(action):
         volume = probe('wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@')
         network = probe('nmcli', '-t', '-f', 'STATE', 'general')
         media = probe('playerctl', 'metadata', '--format', '{{artist}} — {{title}}')
-        hibernate = probe('busctl', '--timeout=1', 'call', 'org.freedesktop.login1',
-                          '/org/freedesktop/login1', 'org.freedesktop.login1.Manager', 'CanHibernate')
+        firmware = probe('busctl', '--timeout=1', 'call', 'org.freedesktop.login1',
+                         '/org/freedesktop/login1', 'org.freedesktop.login1.Manager', 'CanRebootToFirmwareSetup')
         print(json.dumps(dict(volume=volume.removeprefix('Volume: ') or 'No audio', network=network or 'Disconnected', media=media,
-                              canHibernate=hibernate in ('s "yes"', 's "challenge"'),
+                              canFirmwareSetup=firmware in ('s "yes"', 's "challenge"'),
                               brightness=any(Path('/sys/class/backlight').glob('*')))))
     elif action in ('theme', 'wallpaper', 'wallpaper-random'):
         path = ROOT / 'state.json'
@@ -408,6 +408,8 @@ def main(action):
         menu([f"{item['key']}  —  {item['description']}" for item in bindings], 'Shortcuts')
     elif action == 'poweroff':
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'shutdown')
+    elif action == 'firmware-setup':
+        run('systemctl', 'reboot', '--firmware-setup')
     elif action in ('logout', 'reboot', 'poweroff-confirmed', 'suspend', 'hibernate'):
         if action == 'logout': run('hyprctl', 'dispatch', 'hl.dsp.exit()')
         else:

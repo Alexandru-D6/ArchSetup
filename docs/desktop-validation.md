@@ -1,5 +1,20 @@
 # Desktop validation — 2026-10-10
 
+## Settings position and BIOS / UEFI access — 2026-10-13
+
+Settings is now the bottom-left session tile. The bottom-right tile has a firmware
+chip icon and the label Restart to BIOS / UEFI. It dispatches
+`systemctl reboot --firmware-setup`; logind's CanRebootToFirmwareSetup capability
+enables the tile only for `yes` or `challenge` results. Unsupported or disallowed
+firmware access is disabled and skipped by keyboard navigation.
+
+All 49 Python regressions and 20 Qt checks pass. Firmware reboot and its failure
+path are mocked; a failed request does not fall back to an ordinary reboot.
+Qt tests exercise the new positions, mouse/key activation, capability changes,
+cancellation and rendering in both themes. Component/test qmllint and whitespace
+checks pass, and the refreshed preview was visually inspected. No workstation
+deployment or actual firmware reboot was performed.
+
 ## Session icon grid and shutdown selection — 2026-10-13
 
 The Power/session menu now renders a centered two-row icon grid over a dimmed

@@ -25,7 +25,7 @@ Rectangle {
         function init() {
             fixture.width = 1024;
             fixture.height = 768;
-            menu.canHibernate = true;
+            menu.canFirmwareSetup = true;
             menu.light = false;
             menu.textColor = "#e6e1e1";
             menu.visible = true;
@@ -80,36 +80,42 @@ Rectangle {
             keyClick(Qt.Key_Up);
             compare(menu.selectedAction, "suspend");
             keyClick(Qt.Key_Left);
-            keyClick(Qt.Key_Left);
+            keyClick(Qt.Key_Down);
             compare(menu.selectedAction, "settings");
+            keyClick(Qt.Key_Right);
+            compare(menu.selectedAction, "poweroff");
+            keyClick(Qt.Key_Right);
+            compare(menu.selectedAction, "reboot");
+            keyClick(Qt.Key_Right);
+            compare(menu.selectedAction, "firmware-setup");
             keyClick(Qt.Key_Tab);
             compare(menu.selectedAction, "lock");
             keyClick(Qt.Key_Backtab);
-            compare(menu.selectedAction, "settings");
+            compare(menu.selectedAction, "firmware-setup");
             compare(activation.count, 0);
         }
-        function test_unavailable_hibernate_is_skipped() {
-            menu.canHibernate = false;
-            menu.select("hibernate");
+        function test_unavailable_firmware_setup_is_skipped() {
+            menu.canFirmwareSetup = false;
+            menu.select("firmware-setup");
             compare(menu.selectedAction, "lock");
-            keyClick(Qt.Key_Down);
-            compare(menu.selectedAction, "lock");
+            keyClick(Qt.Key_Left);
+            compare(menu.selectedAction, "reboot");
             menu.select("task-manager");
-            keyClick(Qt.Key_Right);
-            compare(menu.selectedAction, "poweroff");
-            const button = findChild(menu, "session-hibernate");
+            keyClick(Qt.Key_Down);
+            compare(menu.selectedAction, "task-manager");
+            const button = findChild(menu, "session-firmware-setup");
             compare(button.enabled, false);
             mouseClick(button, button.width / 2, button.height / 2);
             compare(activation.count, 0);
         }
-        function test_hibernate_becoming_unavailable_resets_selection() {
-            menu.select("hibernate");
-            menu.canHibernate = false;
+        function test_firmware_setup_becoming_unavailable_resets_selection() {
+            menu.select("firmware-setup");
+            menu.canFirmwareSetup = false;
             compare(menu.selectedAction, "lock");
             compare(activation.count, 0);
         }
         function test_each_tile_activates_data() {
-            return ["lock", "suspend", "logout", "task-manager", "hibernate", "poweroff", "reboot", "settings"]
+            return ["lock", "suspend", "logout", "task-manager", "settings", "poweroff", "reboot", "firmware-setup"]
                 .map(action => ({tag: action, action: action}));
         }
         function test_each_tile_activates(data) {

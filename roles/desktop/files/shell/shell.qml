@@ -273,7 +273,7 @@ ShellRoot {
             textColor: root.ink
             light: root.light
             reducedMotion: root.preferences.reducedMotion === true
-            canHibernate: root.status.canHibernate === true
+            canFirmwareSetup: root.status.canFirmwareSetup === true
             onCancelled: root.page = ""
             onActivated: action => {
                 root.page = "";

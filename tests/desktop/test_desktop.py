@@ -525,16 +525,27 @@ else:
                 else:
                     run.assert_called_once_with('systemctl', 'poweroff' if action == 'poweroff-confirmed' else action)
 
-    def test_hibernate_availability_uses_logind_capabilities(self):
+    def test_firmware_setup_only_requests_reboot_into_firmware(self):
+        failure = subprocess.CalledProcessError(1, ['systemctl', 'reboot', '--firmware-setup'])
+        for error in [None, failure]:
+            with self.subTest(error=error), patch.object(self.actions, 'run', side_effect=error) as run:
+                if error:
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        self.actions.main('firmware-setup')
+                else:
+                    self.actions.main('firmware-setup')
+                run.assert_called_once_with('systemctl', 'reboot', '--firmware-setup')
+
+    def test_firmware_setup_availability_uses_logind_capabilities(self):
         import io
-        for capability, available in [('yes', True), ('challenge', True), ('no', False), ('na', False)]:
+        for capability, available in [('yes', True), ('challenge', True), ('no', False), ('na', False), ('inhibited', False), ('', False)]:
             with self.subTest(capability=capability), patch.object(self.actions.subprocess, 'run') as probe:
                 probe.return_value.stdout = f's "{capability}"'
                 output = io.StringIO()
                 with patch.object(sys, 'stdout', output):
                     self.actions.main('status')
-                self.assertEqual(json.loads(output.getvalue())['canHibernate'], available)
-                self.assertTrue(any(call.args[0][-1] == 'CanHibernate' for call in probe.call_args_list))
+                self.assertEqual(json.loads(output.getvalue())['canFirmwareSetup'], available)
+                self.assertTrue(any(call.args[0][-1] == 'CanRebootToFirmwareSetup' for call in probe.call_args_list))
 
     def lock_visuals(self):
         loader = importlib.machinery.SourceFileLoader('lock_visuals', str(ROLE / 'files/lock-visuals'))

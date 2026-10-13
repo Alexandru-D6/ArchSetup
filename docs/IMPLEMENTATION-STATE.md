@@ -1,6 +1,19 @@
 # Resume checkpoint — 2026-10-13 (latest)
 
-Latest task: replaced the desktop session list with the supplied reference's
+Latest task: moved Settings to the session grid's bottom-left tile and replaced
+the bottom-right tile with BIOS / UEFI access. Its label is Restart to BIOS / UEFI;
+the action runs `systemctl reboot --firmware-setup`. Logind's
+CanRebootToFirmwareSetup capability controls availability, and unsupported
+firmware access is disabled. Updated the preview and session documentation.
+
+Validation: all 49 Python regressions and 20 Qt checks pass. The Qt suite covers
+the new tile positions, firmware selection and unavailable firmware access.
+The reboot command is mocked, including an error case that verifies no fallback
+to an ordinary reboot. Component/test qmllint and whitespace checks pass.
+The preview was visually inspected. Reapply the desktop profile to activate;
+workstation deployment and an actual firmware reboot were not performed.
+
+Previous task: replaced the desktop session list with the supplied reference's
 full-screen, centered two-row icon grid. The Power button and session shortcuts
 open it; the shutdown shortcut/helper preselects Shut down and waits for a
 selection before executing poweroff. Arrow/Tab navigation, Enter/Space, mouse
