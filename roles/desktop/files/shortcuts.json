@@ -176,6 +176,34 @@
     "category": "Windows"
   },
   {
+    "key": "SUPER + ALT + left",
+    "dispatcher": "hl.dsp.window.resize({x=-40,y=0,relative=true})",
+    "description": "Shrink window width",
+    "category": "Windows",
+    "repeating": true
+  },
+  {
+    "key": "SUPER + ALT + right",
+    "dispatcher": "hl.dsp.window.resize({x=40,y=0,relative=true})",
+    "description": "Grow window width",
+    "category": "Windows",
+    "repeating": true
+  },
+  {
+    "key": "SUPER + ALT + up",
+    "dispatcher": "hl.dsp.window.resize({x=0,y=-40,relative=true})",
+    "description": "Shrink window height",
+    "category": "Windows",
+    "repeating": true
+  },
+  {
+    "key": "SUPER + ALT + down",
+    "dispatcher": "hl.dsp.window.resize({x=0,y=40,relative=true})",
+    "description": "Grow window height",
+    "category": "Windows",
+    "repeating": true
+  },
+  {
     "key": "SUPER + 1",
     "dispatcher": "hl.dsp.focus({workspace=1})",
     "description": "Workspace 1",

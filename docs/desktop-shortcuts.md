@@ -32,6 +32,13 @@ packages before changing archsetup_desktop_ocr_language. Code/text/office apps u
 configurable desktop IDs, with Geany, Mousepad and LibreOffice defaults. The task
 manager runs btop in Kitty. No third-party assets are bundled with this map.
 
+Resize tiled or floating windows by dragging a border or the gap between tiles
+with the left mouse button, or by holding Super and dragging with the right mouse
+button inside a window. Super+Alt+Left/Right shrinks/grows the focused window's
+width; Super+Alt+Up/Down shrinks/grows its height. Each press adjusts by 40 pixels;
+hold the arrow key to keep resizing. Tiles adjust their shared splits, so
+neighbouring windows share the remaining space. A single tile fills its workspace.
+
 Window pin and exact-size controls apply to floating windows. VM passthrough
 (Super+Alt+F1) suspends normal desktop bindings until the same key is pressed again;
 this escape binding is universal within the compositor's submaps. The on-screen
@@ -156,6 +163,10 @@ Quickshell configuration, not upstream code.
 | Super + Shift + up | Move up |
 | Super + down | Focus down |
 | Super + Shift + down | Move down |
+| Super + Alt + left | Shrink window width |
+| Super + Alt + right | Grow window width |
+| Super + Alt + up | Shrink window height |
+| Super + Alt + down | Grow window height |
 | Super + mouse:272 | Drag window |
 | Super + mouse:273 | Resize window |
 | Alt + F4 | Close window |

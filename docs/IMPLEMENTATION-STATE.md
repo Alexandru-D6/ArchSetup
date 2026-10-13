@@ -1,6 +1,17 @@
-# Resume checkpoint — 2026-10-12 (latest)
+# Resume checkpoint — 2026-10-13 (latest)
 
-Latest task: emptied the left side of the taskbar. Removed the complete left row:
+Latest task: enabled resizing tiled and floating windows with border/gap dragging
+and repeating Super+Alt+arrow shortcuts. Left/Right shrink/grow width; Up/Down
+shrink/grow height in 40-pixel steps. Super+right-drag remains available. The shared
+shortcut map, help reference, README and source count now cover 228 bindings.
+
+Validation: all 46 existing tests pass with the approved socket access, including
+native Hyprland 0.56.2 configuration parsing and shortcut uniqueness. Desktop and
+desktop-verify syntax checks, resize reference/metadata checks and whitespace
+checks pass. No workstation deployment or interactive resize acceptance was
+performed. Reapply the desktop profile, then run `hyprctl reload` to activate.
+
+Previous task: emptied the left side of the taskbar. Removed the complete left row:
 Apps, View, the wide-screen Web/Files buttons and all running-window buttons and
 their close menus. Centered workspace/clock controls and right-side tray, audio,
 notification and power controls remain available. The overview is accessible by

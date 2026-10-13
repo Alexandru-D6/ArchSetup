@@ -199,6 +199,12 @@ state so the windows can share the desktop. Super+Alt+D still maximizes explicit
 and Super+F toggles fullscreen. A single tile uses the available desktop space;
 additional terminals split that space.
 
+Resize tiles by left-dragging their borders or shared gaps, or hold Super and
+right-drag inside a window. Super+Alt+Left/Right shrinks/grows the focused window's
+width, and Super+Alt+Up/Down shrinks/grows its height in 40-pixel steps. Hold the
+arrow key to repeat. These controls also resize floating windows. Tiled neighbours
+share the remaining space; a single tile continues to fill its workspace.
+
 Kitty uses the managed desktop theme from terminal shortcuts, the application
 launcher and ordinary `kitty` commands. `~/.config/kitty/kitty.conf` links to
 `~/.config/archsetup/theme/kitty.conf`, which is refreshed during installation and

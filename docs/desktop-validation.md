@@ -1,5 +1,18 @@
 # Desktop validation — 2026-10-10
 
+## Window resizing — 2026-10-13
+
+Enabled border/gap dragging with a 10-pixel border grab area and retained
+Super+right-drag resizing. Added repeating Super+Alt+arrow bindings for relative
+width/height changes of 40 pixels. The shared map now contains 228 bindings;
+the new entries appear in generated Hyprland configuration and shortcut help.
+
+All 46 existing tests pass, including the native Hyprland 0.56.2 parser and
+shortcut conflict checks. The full suite requires access outside the sandbox
+for Ansible RPC and the temporary popup sockets. Both desktop playbook syntax
+checks, resize reference/metadata checks and whitespace checks pass. Interactive
+mouse/key acceptance and workstation deployment were not performed.
+
 ## Faster keyboard-layout label — 2026-10-13
 
 The one-second image timer restored lock stability but delayed the keyboard
