@@ -124,8 +124,8 @@ The helper stops when the lock screen closes. Native Hyprlock retains the existi
 PAM/keyring integration, with password dots appearing immediately on each keystroke.
 
 The bottom toolbar has a compact user/keyboard-layout pill, the password field,
-and clickable **Power off** and **Reboot** buttons. Layouts such as US Euro and
-US AltGr use short names; the pill's text and outline are measured together to
+and clickable, text-only **Power off** and **Reboot** buttons. Layouts such as US
+Euro and US AltGr use short names; the pill's text and outline are measured together to
 fit all configured layouts. Caps Lock and battery status remain visible.
 The password field is centered horizontally, 20 pixels above the bottom edge;
 the clock occupies the screen's center. Both the lock screen and session menu
@@ -140,8 +140,7 @@ asynchronously, so captions no longer wait for the one-second image timer.
 Confirmation and cancellation are available immediately, with no timed click
 guard. Confirmed lock-screen actions call `systemctl poweroff` or `systemctl reboot`
 directly. Each new lock starts with the original labels. Only the button's native
-background shape handles clicks; overlapping text and static icons cannot send
-duplicate clicks. The icons are decorative and do not change during confirmation.
+background shape handles clicks; the centered text cannot send duplicate clicks.
 
 The profile uses [software cursor rendering](https://wiki.hypr.land/configuring/core/config-options/#cursor)
 by default to avoid hardware cursor wake issues after the display blanks while

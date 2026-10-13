@@ -822,22 +822,19 @@ else:
                 visuals.power_action('suspend')
             run.assert_not_called()
 
-    def test_power_labels_reset_without_repainting_icons(self):
+    def test_power_labels_change_and_reset_in_private_directory(self):
         visuals = self.lock_visuals()
         private = self.profile / 'power-images'
         private.mkdir(mode=0o700)
-        visuals.power_icons()
-        icons = {name: self.profile / f'theme/lock-{name}-icon.png' for name in ['poweroff', 'reboot']}
-        original_icons = {name: (path.read_bytes(), path.stat().st_mtime_ns) for name, path in icons.items()}
+        actions = ['poweroff', 'reboot']
         with patch.dict(os.environ, {'ARCHSETUP_LOCK_DIR': str(private)}):
             visuals.power_labels()
-            original = {name: (private / f'lock-{name}.label').read_text() for name in icons}
+            original = {name: (private / f'lock-{name}.label').read_text() for name in actions}
             for selected in ['poweroff', 'reboot', None]:
                 visuals.power_labels(selected)
-                for action, icon in icons.items():
+                for action in actions:
                     expected = original[action] if selected is None else ('Confirm\n' if selected == action else 'Cancel\n')
                     self.assertEqual((private / f'lock-{action}.label').read_text(), expected)
-                    self.assertEqual((icon.read_bytes(), icon.stat().st_mtime_ns), original_icons[action])
                     self.assertFalse((self.profile / f'theme/lock-{action}.label').exists())
 
     def test_power_control_messages_require_valid_button_and_same_user(self):

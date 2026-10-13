@@ -290,8 +290,8 @@ def main(action):
             # and confirmation labels cannot carry over to a later lock session.
             with tempfile.TemporaryDirectory(prefix='archsetup-lock-', dir=os.environ['XDG_RUNTIME_DIR']) as lock_dir:
                 environment = dict(os.environ, ARCHSETUP_LOCK_DIR=lock_dir)
-                # Default labels are ready before locking; decorative icons/clock
-                # are generated afterward without delaying password input.
+                # Default labels are ready before locking; the decorative clock
+                # is generated afterward without delaying password input.
                 for power, label in [('poweroff', 'Power off'), ('reboot', 'Reboot')]:
                     (Path(lock_dir) / f'lock-{power}.label').write_text(label + '\n')
                 configuration = themed('hyprlock.conf').read_text()

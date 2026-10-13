@@ -204,29 +204,9 @@ label {{
     return 'changed'
 
 
-def power_icons():
-    """Static decoration; native shapes and labels own the button hit areas/text."""
-    from PIL import Image, ImageDraw
-    scale = 3
-    for action in ('poweroff', 'reboot'):
-        image = Image.new('RGBA', (24 * scale, 24 * scale))
-        draw = ImageDraw.Draw(image)
-        def point(x, y):
-            return round(x * scale), round(y * scale)
-        ink = '#f0eaff'
-        if action == 'poweroff':
-            draw.arc([point(4, 7), point(20, 23)], -60, 240, fill=ink, width=2 * scale)
-            draw.line([point(12, 4), point(12, 14)], fill=ink, width=2 * scale)
-        else:
-            draw.arc([point(4, 7), point(20, 23)], -65, 240, fill=ink, width=2 * scale)
-            draw.polygon([point(4, 4), point(4, 13), point(12, 10)], fill=ink)
-        save_image(image, f'lock-{action}-icon.png')
-
-
 def prepare():
     lock_clock_image()
     identity_config()
-    power_icons()
     power_labels()
 
 
@@ -325,7 +305,6 @@ def watch(parent):
             control.bind(str(control_path))
             control_path.chmod(0o600)
             power_labels()
-            power_icons()
         next_clock = time.monotonic()
         # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
         while os.getppid() == parent:

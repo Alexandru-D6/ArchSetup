@@ -1,5 +1,15 @@
 # Desktop validation — 2026-10-10
 
+## Text-only lock power buttons — 2026-10-14
+
+Removed the Power off/Reboot icon widgets and image generation. Native captions
+are centered within their buttons; confirmation and cancellation remain immediate.
+
+All 50 desktop regressions pass. Rendered configuration checks confirm that only
+the clock image remains and each power button has a centered caption and one
+click handler. Whitespace checks pass. No workstation deployment was performed;
+reapply the desktop profile and start a new lock session to load the change.
+
 ## Lock-screen shutdown routing and immediate confirmation — 2026-10-13
 
 Lock-screen confirmation previously invoked `desktop-action poweroff`, which had

@@ -1,6 +1,15 @@
-# Resume checkpoint — 2026-10-13 (latest)
+# Resume checkpoint — 2026-10-14 (latest)
 
-Latest task: fixed lock-screen shutdown and removed the confirmation delay.
+Latest task: removed the lock-screen Power off/Reboot icons and their image
+generation. The buttons now show centered text, preserving immediate confirmation
+and one click handler per button.
+
+Validation: all 50 desktop regressions and whitespace checks pass. The rendered
+lock configuration contains only the clock image, centered power captions and
+one click handler per button. Reapply the desktop profile and start a new lock
+session to load the change; no workstation deployment was performed.
+
+Previous task: fixed lock-screen shutdown and removed the confirmation delay.
 Confirmed lock actions now call systemctl directly. The previous poweroff path
 opened the new session menu behind the lock screen. Replaced changing button
 images with native backgrounds and 100 ms asynchronous caption updates. The
