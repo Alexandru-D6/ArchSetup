@@ -1,6 +1,23 @@
 # Resume checkpoint — 2026-10-13 (latest)
 
-Latest task: normalized session/lock ordinary text to one shared 12-point size
+Latest task: fixed lock-screen shutdown and removed the confirmation delay.
+Confirmed lock actions now call systemctl directly. The previous poweroff path
+opened the new session menu behind the lock screen. Replaced changing button
+images with native backgrounds and 100 ms asynchronous caption updates. The
+second click is accepted immediately; no 1.5-second guard remains. Only the
+background handles clicks, avoiding duplicate callbacks from overlapping labels
+or icons. Private default captions exist before Hyprlock starts, while static
+icons/clock are generated afterward. SIGUSR2 remains blocked.
+
+Validation: all 50 regressions, both desktop playbook syntax checks and whitespace
+checks pass. Process/socket tests keep the real helpers while mocking only the
+final systemctl/Quickshell commands. Immediate confirmation reaches both poweroff
+and reboot within one second; cancellation, repeated execution, failure recovery
+and private-state cleanup pass. No full Wayland lock session or actual system
+power action was performed. Reapply the desktop profile and start a new lock
+session to load the updated widgets and controller.
+
+Previous task: normalized session/lock ordinary text to one shared 12-point size
 (`archsetup_desktop_control_font_size`). Native labels, identity, status, password
 prompts, buttons and session text use it. Names truncate instead of shrinking.
 Widened the lock power buttons to fit their text and keep 12-pixel gaps. The clock

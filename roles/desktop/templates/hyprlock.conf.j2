@@ -98,32 +98,45 @@ input-field {
     valign = bottom
     zindex = 1
 }
-image {
+{% for action, width, x, icon_x in [('poweroff', 136, 240, 196), ('reboot', 120, 380, 344)] %}
+# Only this shape is clickable: overlapping labels/icons must not send two clicks.
+shape {
     monitor =
-    path = {{ desktop_root }}/theme/lock-poweroff.png
-    size = 50
-    rounding = 0
-    border_size = 0
-    reload_time = 1
-    position = 240, 20
+    size = {{ width - 2 }}, 48
+    color = rgba(1d293fff)
+    rounding = 25
+    border_size = 1
+    border_color = rgba(567099ff)
+    position = {{ x }}, 20
     halign = center
     valign = bottom
     zindex = 1
-    onclick = {{ desktop_root }}/bin/lock-visuals click-poweroff
+    onclick = {{ desktop_root }}/bin/lock-visuals click-{{ action }}
 }
 image {
     monitor =
-    path = {{ desktop_root }}/theme/lock-reboot.png
-    size = 50
+    path = {{ desktop_root }}/theme/lock-{{ action }}-icon.png
+    size = 24
     rounding = 0
     border_size = 0
     reload_time = 1
-    position = 380, 20
+    position = {{ icon_x }}, 33
     halign = center
     valign = bottom
-    zindex = 1
-    onclick = {{ desktop_root }}/bin/lock-visuals click-reboot
+    zindex = 2
 }
+label {
+    monitor =
+    text = cmd[update:100:1] cat "{{ desktop_root }}/theme/lock-{{ action }}.label"
+    color = rgba(f0eaffff)
+    font_size = {{ archsetup_desktop_control_font_size | int }}
+    font_family = {{ archsetup_desktop_font }}
+    position = {{ x + 14 }}, {{ 45 - (((archsetup_desktop_control_font_size | int) * 4 / 3 * 1.3 / 2) | round(0, 'ceil') | int) }}
+    halign = center
+    valign = bottom
+    zindex = 2
+}
+{% endfor %}
 label {
     monitor =
     text = cmd[update:1000] {{ desktop_root }}/bin/lock-visuals capslock

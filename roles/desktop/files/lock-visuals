@@ -204,52 +204,30 @@ label {{
     return 'changed'
 
 
-def pill_image(text, name, icon=None, max_width=None, fixed_width=None, directory=None):
-    """Measure text and draw its background/border as one consistently sized widget."""
-    from PIL import Image, ImageDraw, ImageFont
-    scale, height = 3, 50
-    if fixed_width is not None:
-        max_width = fixed_width
-    path = font_file()
-    icon_space = 28 if icon else 0
-    font = ImageFont.truetype(path, control_font_size() * 4)
-    text_width = math.ceil(font.getlength(text) / scale)
-    width = text_width + 32 + icon_space
-    if max_width and width > max_width:
-        while text and math.ceil(font.getlength(text + '…') / scale) + 32 + icon_space > max_width:
-            text = text[:-1]
-        text += '…'
-        text_width = math.ceil(font.getlength(text) / scale)
-        width = text_width + 32 + icon_space
-    if fixed_width is not None:
-        width = fixed_width
-    image = Image.new('RGBA', (width * scale, height * scale))
-    draw = ImageDraw.Draw(image)
-    def point(x, y):
-        return round(x * scale), round(y * scale)
-    ink = '#f0eaff'
-    draw.rounded_rectangle([point(1, 1), point(width - 1, height - 1)],
-                           radius=24 * scale, fill='#1d293f', outline='#567099', width=scale)
-    if icon == 'poweroff':
-        draw.arc([point(16, 17), point(32, 33)], -60, 240, fill=ink, width=2 * scale)
-        draw.line([point(24, 14), point(24, 24)], fill=ink, width=2 * scale)
-    elif icon == 'reboot':
-        draw.arc([point(16, 17), point(32, 33)], -65, 240, fill=ink, width=2 * scale)
-        draw.polygon([point(16, 14), point(16, 23), point(24, 20)], fill=ink)
-    elif icon == 'confirm':
-        draw.line([point(17, 25), point(22, 30), point(32, 19)], fill=ink, width=2 * scale)
-    elif icon == 'cancel':
-        draw.line([point(18, 19), point(30, 31)], fill=ink, width=2 * scale)
-        draw.line([point(30, 19), point(18, 31)], fill=ink, width=2 * scale)
-    draw.text(point(16 + icon_space, height / 2), text, font=font, fill=ink, anchor='lm')
-    output = save_image(image, name, directory)
-    return output
+def power_icons():
+    """Static decoration; native shapes and labels own the button hit areas/text."""
+    from PIL import Image, ImageDraw
+    scale = 3
+    for action in ('poweroff', 'reboot'):
+        image = Image.new('RGBA', (24 * scale, 24 * scale))
+        draw = ImageDraw.Draw(image)
+        def point(x, y):
+            return round(x * scale), round(y * scale)
+        ink = '#f0eaff'
+        if action == 'poweroff':
+            draw.arc([point(4, 7), point(20, 23)], -60, 240, fill=ink, width=2 * scale)
+            draw.line([point(12, 4), point(12, 14)], fill=ink, width=2 * scale)
+        else:
+            draw.arc([point(4, 7), point(20, 23)], -65, 240, fill=ink, width=2 * scale)
+            draw.polygon([point(4, 4), point(4, 13), point(12, 10)], fill=ink)
+        save_image(image, f'lock-{action}-icon.png')
 
 
 def prepare():
     lock_clock_image()
     identity_config()
-    power_images()
+    power_icons()
+    power_labels()
 
 
 def power_directory(required=False):
@@ -261,38 +239,31 @@ def power_directory(required=False):
     return ROOT / 'theme'
 
 
-def power_images(selected=None):
-    for action, label, width in [('poweroff', 'Power off', 136), ('reboot', 'Reboot', 120)]:
-        icon = action
-        if selected is not None:
-            label, icon = ('Confirm', 'confirm') if selected == action else ('Cancel', 'cancel')
-        output = pill_image(label, f'lock-{action}.png', icon=icon, fixed_width=width,
-                            directory=power_directory())
-        if selected is None and output.parent != ROOT / 'theme':
-            # Only idle buttons enter the persistent cache. Confirmation state
-            # stays in the private directory for this lock invocation.
-            folder = ROOT / 'theme'
-            folder.mkdir(exist_ok=True)
-            with tempfile.NamedTemporaryFile(dir=folder, delete=False) as cached:
-                temporary = Path(cached.name)
-            try:
-                temporary.write_bytes(output.read_bytes())
-                os.replace(temporary, folder / output.name)
-            finally:
-                temporary.unlink(missing_ok=True)
+def power_labels(selected=None):
+    directory = power_directory()
+    directory.mkdir(parents=True, exist_ok=True)
+    for action, default in [('poweroff', 'Power off'), ('reboot', 'Reboot')]:
+        label = default if selected is None else ('Confirm' if action == selected else 'Cancel')
+        with tempfile.NamedTemporaryFile(mode='w', dir=directory, delete=False) as temporary:
+            temporary.write(label + '\n')
+            path = Path(temporary.name)
+        try:
+            os.replace(path, directory / f'lock-{action}.label')
+        finally:
+            path.unlink(missing_ok=True)
 
 
 def power_action(action):
-    subprocess.run([str(ROOT / 'bin/desktop-action'), action], check=True)
+    if action not in ('poweroff', 'reboot'):
+        raise ValueError('Invalid confirmed lock-screen power action')
+    subprocess.run(['systemctl', action], check=True)
 
 
 class PowerControls:
-    def __init__(self, paint=None, execute=None, clock=None):
-        self.paint = paint or power_images
+    def __init__(self, paint=None, execute=None):
+        self.paint = paint or power_labels
         self.execute = execute or power_action
-        self.clock = clock or time.monotonic
         self.selected = None
-        self.ready_at = 0
         self.executing = False
 
     def press(self, action):
@@ -301,16 +272,11 @@ class PowerControls:
         if self.selected is None:
             self.paint(action)
             self.selected = action
-            # Leave a full native image-refresh interval plus loading time before
-            # the same button can confirm. The other button can cancel at once.
-            self.ready_at = self.clock() + 1.5
             return True
         if action != self.selected:
             self.paint(None)
             self.selected = None
             return True
-        if self.clock() < self.ready_at:
-            return False
         self.executing = True
         try:
             self.execute(self.selected)
@@ -358,7 +324,8 @@ def watch(parent):
             control.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
             control.bind(str(control_path))
             control_path.chmod(0o600)
-            power_images()
+            power_labels()
+            power_icons()
         next_clock = time.monotonic()
         # Also stop if the launcher exits unexpectedly, rather than leaving a daemon.
         while os.getppid() == parent:

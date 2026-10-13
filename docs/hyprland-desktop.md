@@ -103,8 +103,8 @@ The lock screen uses the supplied sunset/anime wallpaper independently of the
 desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
 digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
 day/month badges. A background helper updates it once a second and caches font
-lookups. Hyprlock checks the clock and power-button files once per second using
-its native image timers and loads changed images
+lookups. Hyprlock checks the clock file once per second using
+its native image timer and loads changed images
 asynchronously; password input never waits for image generation.
 Super+L starts the locker using cached visuals, with fresh images generated
 afterward. Immediate rendering locks before waiting for wallpaper resources;
@@ -135,10 +135,13 @@ and buttons share that size; long names are shortened instead of using a smaller
 font. Clock digits remain larger, and the day/month badges both use 28-pixel text.
 Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
 other to **Cancel**. Confirm runs the selected action; Cancel restores both
-original buttons. Label changes appear on the next image check. The selected
-button ignores confirmation clicks for 1.5 seconds while its new label loads;
-the other button can cancel immediately. Each new lock starts with the original
-labels.
+original buttons. Native text labels read private state every 100 ms,
+asynchronously, so captions no longer wait for the one-second image timer.
+Confirmation and cancellation are available immediately, with no timed click
+guard. Confirmed lock-screen actions call `systemctl poweroff` or `systemctl reboot`
+directly. Each new lock starts with the original labels. Only the button's native
+background shape handles clicks; overlapping text and static icons cannot send
+duplicate clicks. The icons are decorative and do not change during confirmation.
 
 The profile uses [software cursor rendering](https://wiki.hypr.land/configuring/core/config-options/#cursor)
 by default to avoid hardware cursor wake issues after the display blanks while

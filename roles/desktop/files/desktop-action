@@ -286,20 +286,18 @@ def main(action):
             except BlockingIOError: return
             recorder = ROOT / 'bin/desktop-record'
             if recorder.exists(): run(str(recorder), 'record-stop')
-            # Each lock owns its button images and control socket. Pending clicks
+            # Each lock owns its button labels and control socket. Pending clicks
             # and confirmation labels cannot carry over to a later lock session.
             with tempfile.TemporaryDirectory(prefix='archsetup-lock-', dir=os.environ['XDG_RUNTIME_DIR']) as lock_dir:
                 environment = dict(os.environ, ARCHSETUP_LOCK_DIR=lock_dir)
-                # Copy ready default buttons when cached; image generation runs
-                # after Hyprlock starts, including on the first lock after install.
-                for power in ('poweroff', 'reboot'):
-                    cached = ROOT / f'theme/lock-{power}.png'
-                    if cached.is_file():
-                        shutil.copyfile(cached, Path(lock_dir) / cached.name)
+                # Default labels are ready before locking; decorative icons/clock
+                # are generated afterward without delaying password input.
+                for power, label in [('poweroff', 'Power off'), ('reboot', 'Reboot')]:
+                    (Path(lock_dir) / f'lock-{power}.label').write_text(label + '\n')
                 configuration = themed('hyprlock.conf').read_text()
                 for power in ('poweroff', 'reboot'):
-                    configuration = configuration.replace(str(ROOT / f'theme/lock-{power}.png'),
-                                                          str(Path(lock_dir) / f'lock-{power}.png'))
+                    configuration = configuration.replace(str(ROOT / f'theme/lock-{power}.label'),
+                                                          str(Path(lock_dir) / f'lock-{power}.label'))
                 config_path = Path(lock_dir) / 'hyprlock.conf'
                 config_path.write_text(configuration)
                 arguments = ['hyprlock', '-c', str(config_path)]

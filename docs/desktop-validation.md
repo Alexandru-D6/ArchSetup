@@ -1,5 +1,29 @@
 # Desktop validation — 2026-10-10
 
+## Lock-screen shutdown routing and immediate confirmation — 2026-10-13
+
+Lock-screen confirmation previously invoked `desktop-action poweroff`, which had
+been changed to open the session menu. That menu appeared behind Hyprlock instead
+of shutting down. Confirmed lock power actions now call `systemctl poweroff` or
+`systemctl reboot` directly, with an explicit action whitelist.
+
+Removed the 1.5-second confirmation guard. Button backgrounds/hit areas are
+native shapes, and captions are native 12-point labels reading private files
+on a 100 ms asynchronous timer. Default labels are written before Hyprlock starts;
+confirmation never waits for image generation or the one-second image timer.
+Static icons and the clock remain asynchronous decorations. Each button has
+exactly one clickable widget because Hyprlock dispatches clicks to all overlapping
+widgets. SIGUSR2 remains blocked, and no refresh signals are sent.
+
+All 50 regressions and both desktop playbook syntax checks pass. The process/socket
+tests keep the real helpers and stub only systemctl/Quickshell, verifying shutdown
+and reboot reach the power command rather than opening a session menu. Both
+confirmed commands are recorded within one second of an immediate second click;
+cancellation, duplicate execution, failure reset, credential validation and
+per-lock state cleanup pass. Native caption paths, fixed hit areas and one callback
+per button are verified. Whitespace checks pass. A complete Wayland lock session
+and actual host shutdown/reboot were not exercised for this change.
+
 ## Shared session and lock typography — 2026-10-13
 
 Ordinary text on both screens now uses `archsetup_desktop_control_font_size`,

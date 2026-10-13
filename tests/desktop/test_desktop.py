@@ -631,23 +631,18 @@ else:
         self.assertEqual([ElementTree.fromstring(shlex.split(name.replace('##', '#'))[0]).text
                           for name in names], ["a'lex  ·  A&B", "a'lex  ·  x,[y]<z>#"])
 
-    def test_lock_starts_without_image_preparation_and_uses_cached_idle_buttons(self):
+    def test_lock_starts_without_image_preparation_and_with_native_power_labels(self):
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
                        'XDG_RUNTIME_DIR': self.directory.name}
         locker, updater = Mock(pid=123), Mock()
         locker.wait.return_value = 0
         configurations = []
-        cache = self.profile / 'theme'
-        cache.mkdir()
-        for action in ['poweroff', 'reboot']:
-            (cache / f'lock-{action}.png').write_bytes(b'cached-default-' + action.encode())
         def launch(arguments, **kwargs):
             if arguments[0] == 'hyprlock':
                 configurations.append(Path(arguments[2]).read_text())
                 private = Path(kwargs['env']['ARCHSETUP_LOCK_DIR'])
-                for action in ['poweroff', 'reboot']:
-                    self.assertEqual((private / f'lock-{action}.png').read_bytes(),
-                                     (cache / f'lock-{action}.png').read_bytes())
+                for action, label in [('poweroff', 'Power off'), ('reboot', 'Reboot')]:
+                    self.assertEqual((private / f'lock-{action}.label').read_text(), label + '\n')
                 refresh.assert_not_called()
                 self.assertFalse(any(call.args[-1] == 'prepare' for call in run.call_args_list))
                 return locker
@@ -665,8 +660,8 @@ else:
             self.assertNotIn('pass_fds', spawn.call_args_list[1].kwargs)
             self.assertEqual(spawn.call_args_list[1].kwargs['env'], spawn.call_args_list[0].kwargs['env'])
             for action in ['poweroff', 'reboot']:
-                self.assertIn(str(private / f'lock-{action}.png'), configurations[0])
-                self.assertNotIn(str(self.profile / f'theme/lock-{action}.png'), configurations[0])
+                self.assertIn(str(private / f'lock-{action}.label'), configurations[0])
+                self.assertNotIn(str(self.profile / f'theme/lock-{action}.label'), configurations[0])
             self.assertIn('pam:module = archsetup-hyprlock', configurations[0])
             self.assertFalse(private.exists())
             locker.wait.assert_called_once_with()
@@ -681,10 +676,14 @@ else:
         self.assertIn('reload_time = 1', clock)
         self.assertIn(f'source = {self.profile}/lock-identity.conf', config)
         self.assertNotIn('lock-identity.png', config)
-        for action in ['poweroff', 'reboot']:
-            self.assertIn(f'onclick = {self.profile}/bin/lock-visuals click-{action}', config)
-            button = config.split('path = ' + str(self.profile / f'theme/lock-{action}.png'))[1].split('}')[0]
-            self.assertIn('reload_time = 1', button)
+        import re
+        for action, width in [('poweroff', 136), ('reboot', 120)]:
+            onclick = f'onclick = {self.profile}/bin/lock-visuals click-{action}'
+            self.assertEqual(config.count(onclick), 1, 'Overlapping widgets must send only one click')
+            button = next(block for block in re.findall(r'shape \{(.*?)\n\}', config, re.S) if onclick in block)
+            self.assertIn(f'size = {width - 2}, 48', button)
+            self.assertIn('border_size = 1', button)
+            self.assertIn(f'cmd[update:100:1] cat "{self.profile}/theme/lock-{action}.label"', config)
 
     def test_first_lock_starts_before_uncached_images_exist(self):
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-first-lock', 'XDG_RUNTIME_DIR': self.directory.name}
@@ -693,8 +692,8 @@ else:
         def launch(arguments, **kwargs):
             if arguments[0] == 'hyprlock':
                 private = Path(kwargs['env']['ARCHSETUP_LOCK_DIR'])
-                self.assertFalse((private / 'lock-poweroff.png').exists())
-                self.assertFalse((private / 'lock-reboot.png').exists())
+                self.assertEqual((private / 'lock-poweroff.label').read_text(), 'Power off\n')
+                self.assertEqual((private / 'lock-reboot.label').read_text(), 'Reboot\n')
                 self.assertFalse((self.profile / 'theme').exists())
                 self.assertIn('immediate_render = true', Path(arguments[2]).read_text())
                 return locker
@@ -780,23 +779,16 @@ else:
         visuals = self.lock_visuals()
         for selected, other in [('poweroff', 'reboot'), ('reboot', 'poweroff')]:
             with self.subTest(selected=selected):
-                paint, execute, clock = Mock(), Mock(), Mock(return_value=100)
-                buttons = visuals.PowerControls(paint=paint, execute=execute, clock=clock)
+                paint, execute = Mock(), Mock()
+                buttons = visuals.PowerControls(paint=paint, execute=execute)
                 self.assertTrue(buttons.press(selected))
                 paint.assert_called_once_with(selected)
-                execute.assert_not_called()
-                clock.return_value = 100.1
-                self.assertFalse(buttons.press(selected))
                 execute.assert_not_called()
                 self.assertTrue(buttons.press(other))
                 self.assertIsNone(buttons.selected)
                 self.assertEqual(paint.call_args.args, (None,))
                 execute.assert_not_called()
                 self.assertTrue(buttons.press(selected))
-                clock.return_value = 101
-                self.assertFalse(buttons.press(selected))
-                execute.assert_not_called()
-                clock.return_value = 102
                 buttons.press(selected)
                 execute.assert_called_once_with(selected)
                 buttons.press(selected)
@@ -807,11 +799,10 @@ else:
         import contextlib
         import io
         visuals = self.lock_visuals()
-        paint, clock = Mock(), Mock(return_value=0)
+        paint = Mock()
         execute = Mock(side_effect=subprocess.CalledProcessError(1, ['systemctl', 'reboot']))
-        buttons = visuals.PowerControls(paint=paint, execute=execute, clock=clock)
+        buttons = visuals.PowerControls(paint=paint, execute=execute)
         buttons.press('reboot')
-        clock.return_value = 2
         with contextlib.redirect_stderr(io.StringIO()):
             self.assertTrue(buttons.press('reboot'))
         execute.assert_called_once_with('reboot')
@@ -820,29 +811,34 @@ else:
         self.assertTrue(buttons.press('poweroff'))
         self.assertEqual(paint.call_args.args, ('poweroff',))
 
-    def test_power_labels_keep_button_hit_areas_and_reset_images(self):
-        from PIL import Image
+    def test_confirmed_lock_power_actions_call_systemctl(self):
+        visuals = self.lock_visuals()
+        for action in ['poweroff', 'reboot']:
+            with self.subTest(action=action), patch.object(visuals.subprocess, 'run') as run:
+                visuals.power_action(action)
+                run.assert_called_once_with(['systemctl', action], check=True)
+        with patch.object(visuals.subprocess, 'run') as run:
+            with self.assertRaises(ValueError):
+                visuals.power_action('suspend')
+            run.assert_not_called()
+
+    def test_power_labels_reset_without_repainting_icons(self):
         visuals = self.lock_visuals()
         private = self.profile / 'power-images'
         private.mkdir(mode=0o700)
+        visuals.power_icons()
+        icons = {name: self.profile / f'theme/lock-{name}-icon.png' for name in ['poweroff', 'reboot']}
+        original_icons = {name: (path.read_bytes(), path.stat().st_mtime_ns) for name, path in icons.items()}
         with patch.dict(os.environ, {'ARCHSETUP_LOCK_DIR': str(private)}):
-            visuals.power_images()
-            original = {}
-            for action, width in [('poweroff', 136), ('reboot', 120)]:
-                with Image.open(private / f'lock-{action}.png') as image:
-                    original[action] = image.tobytes()
-                    self.assertEqual(image.size, (width * 3, 150))
+            visuals.power_labels()
+            original = {name: (private / f'lock-{name}.label').read_text() for name in icons}
             for selected in ['poweroff', 'reboot', None]:
-                visuals.power_images(selected)
-                for action, width in [('poweroff', 136), ('reboot', 120)]:
-                    with Image.open(private / f'lock-{action}.png') as image:
-                        self.assertEqual(image.size, (width * 3, 150))
-                        if selected is None:
-                            self.assertEqual(image.tobytes(), original[action])
-                        else:
-                            self.assertNotEqual(image.tobytes(), original[action])
-                    with Image.open(self.profile / f'theme/lock-{action}.png') as cached:
-                        self.assertEqual(cached.tobytes(), original[action])
+                visuals.power_labels(selected)
+                for action, icon in icons.items():
+                    expected = original[action] if selected is None else ('Confirm\n' if selected == action else 'Cancel\n')
+                    self.assertEqual((private / f'lock-{action}.label').read_text(), expected)
+                    self.assertEqual((icon.read_bytes(), icon.stat().st_mtime_ns), original_icons[action])
+                    self.assertFalse((self.profile / f'theme/lock-{action}.label').exists())
 
     def test_power_control_messages_require_valid_button_and_same_user(self):
         import socket
@@ -860,55 +856,63 @@ else:
                 self.assertEqual(visuals.receive_power(control), expected)
 
     def test_live_lock_power_controller_confirms_cancels_and_cleans_up(self):
-        private = self.profile / 'lock-session'
-        private.mkdir(mode=0o700)
-        log = self.profile / 'power-actions'
-        action = self.profile / 'bin/desktop-action'
-        action.write_text('#!/usr/bin/env python3\nimport sys\nfrom pathlib import Path\n'
-                          + f'with Path({str(log)!r}).open("a") as output: output.write(sys.argv[1] + "\\n")\n')
-        hyprctl = self.profile / 'bin/hyprctl'
-        hyprctl.write_text('#!/bin/sh\nprintf \'{"keyboards":[]}\\n\'\n')
-        hyprctl.chmod(0o755)
-        environment = dict(os.environ, ARCHSETUP_LOCK_DIR=str(private), XDG_RUNTIME_DIR=str(self.profile),
-                           HYPRLAND_INSTANCE_SIGNATURE='test-controls',
-                           PATH=str(hyprctl.parent) + os.pathsep + os.environ['PATH'])
-        updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
-                                   env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        def wait_until(condition):
-            deadline = time.monotonic() + 3
-            while not condition():
-                self.assertIsNone(updater.poll(), 'Power controller stopped unexpectedly')
-                self.assertLess(time.monotonic(), deadline, 'Power controls did not update')
-                time.sleep(0.01)
-        def click(name):
-            result = subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'), f'click-{name}'],
-                                    env=environment, capture_output=True, timeout=3)
-            self.assertEqual(result.returncode, 0, result.stderr.decode())
-        try:
-            endpoint = private / 'control.sock'
-            wait_until(lambda: endpoint.exists() and all((private / f'lock-{name}.png').exists()
-                                                        for name in ['poweroff', 'reboot']))
-            originals = {name: (private / f'lock-{name}.png').read_bytes() for name in ['poweroff', 'reboot']}
-            self.assertEqual(endpoint.stat().st_mode & 0o777, 0o600)
-            click('poweroff')
-            wait_until(lambda: all((private / f'lock-{name}.png').read_bytes() != originals[name] for name in originals))
-            self.assertFalse(log.exists())
-            click('reboot')
-            wait_until(lambda: all((private / f'lock-{name}.png').read_bytes() == originals[name] for name in originals))
-            self.assertFalse(log.exists())
-            click('reboot')
-            wait_until(lambda: (private / 'lock-reboot.png').read_bytes() != originals['reboot'])
-            time.sleep(1.6)
-            click('reboot')
-            wait_until(log.exists)
-            self.assertEqual(log.read_text(), 'reboot\n')
-            click('reboot')
-            self.assertEqual(log.read_text(), 'reboot\n')
-        finally:
-            updater.terminate()
-            _, error = updater.communicate(timeout=3)
-        self.assertEqual(updater.returncode, 0, error.decode())
-        self.assertFalse(endpoint.exists())
+        # Keep the real desktop helper so an accidental session-menu request is
+        # observable. Stub only the final system commands; never reboot the host.
+        for selected, other in [('poweroff', 'reboot'), ('reboot', 'poweroff')]:
+            with self.subTest(selected=selected):
+                private = self.profile / ('lock-session-' + selected)
+                private.mkdir(mode=0o700)
+                log = self.profile / ('power-actions-' + selected)
+                systemctl = self.profile / 'bin/systemctl'
+                systemctl.write_text('#!/usr/bin/env python3\nimport sys\nfrom pathlib import Path\n'
+                                     + f'with Path({str(log)!r}).open("a") as output: output.write(" ".join(sys.argv[1:]) + "\\n")\n')
+                systemctl.chmod(0o755)
+                qs = self.profile / 'bin/qs'
+                qs.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
+                              + f'Path({str(log)!r}).write_text("unexpected session menu\\n")\n')
+                qs.chmod(0o755)
+                environment = dict(os.environ, ARCHSETUP_LOCK_DIR=str(private), XDG_RUNTIME_DIR=str(self.profile),
+                                   HYPRLAND_INSTANCE_SIGNATURE='test-controls',
+                                   PATH=os.pathsep.join([str(systemctl.parent), str(Path(sys.executable).parent),
+                                                        os.environ['PATH']]))
+                updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                           env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                def wait_until(condition):
+                    deadline = time.monotonic() + 3
+                    while not condition():
+                        self.assertIsNone(updater.poll(), 'Power controller stopped unexpectedly')
+                        self.assertLess(time.monotonic(), deadline, 'Power controls did not update')
+                        time.sleep(0.01)
+                def click(name):
+                    result = subprocess.run([sys.executable, str(self.profile / 'bin/lock-visuals'), f'click-{name}'],
+                                            env=environment, capture_output=True, timeout=3)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode())
+                try:
+                    endpoint = private / 'control.sock'
+                    labels = {name: private / f'lock-{name}.label' for name in ['poweroff', 'reboot']}
+                    wait_until(lambda: endpoint.exists() and all(path.exists() for path in labels.values()))
+                    originals = {name: path.read_text() for name, path in labels.items()}
+                    self.assertEqual(endpoint.stat().st_mode & 0o777, 0o600)
+                    click(selected)
+                    wait_until(lambda: labels[selected].read_text() == 'Confirm\n' and labels[other].read_text() == 'Cancel\n')
+                    self.assertFalse(log.exists())
+                    click(other)
+                    wait_until(lambda: all(path.read_text() == originals[name] for name, path in labels.items()))
+                    self.assertFalse(log.exists())
+                    click(selected)
+                    wait_until(lambda: labels[selected].read_text() == 'Confirm\n')
+                    started = time.monotonic()
+                    click(selected)
+                    wait_until(log.exists)
+                    self.assertLess(time.monotonic() - started, 1, 'Confirmation still waits a full second')
+                    self.assertEqual(log.read_text(), selected + '\n')
+                    click(selected)
+                    self.assertEqual(log.read_text(), selected + '\n')
+                finally:
+                    updater.terminate()
+                    _, error = updater.communicate(timeout=3)
+                self.assertEqual(updater.returncode, 0, error.decode())
+                self.assertFalse(endpoint.exists())
 
     def test_background_lock_updates_clock_without_querying_keyboard(self):
         probes = self.profile / 'keyboard-probes'
@@ -974,7 +978,7 @@ else:
                         self.assertLess(time.monotonic(), deadline, 'Image updater did not progress')
                         time.sleep(0.02)
                 clock = self.profile / 'theme/lock-clock.png'
-                button = private / 'lock-poweroff.png'
+                button = private / 'lock-poweroff.label'
                 wait_until(lambda: clock.exists() and button.exists())
                 before_clock = clock.stat().st_mtime_ns
                 wait_until(lambda: clock.stat().st_mtime_ns != before_clock)
