@@ -160,7 +160,7 @@ preserves existing keyring contents.
 | Super+N | Notification history |
 | Super+L | Lock the screen |
 | Super+Shift+S | Select a region and copy its screenshot |
-| Super+/ | All shortcuts |
+| Super+/ | Searchable shortcut window |
 | Super + right mouse drag | Resize a tiled or floating window |
 | Super+Alt+Left / Right | Shrink / grow window width |
 | Super+Alt+Up / Down | Shrink / grow window height |
@@ -172,6 +172,12 @@ See the [complete shortcut reference](docs/desktop-shortcuts.md) for all 228 bin
 including app launchers, local OCR/recording, window/workspace controls, shell
 toggles, zoom and VM shortcut passthrough. Super+Alt+F1 restores desktop shortcuts
 when passthrough is enabled.
+
+The shortcut window groups bindings by category and shows each combination as
+keycap labels. Type in its search field to hide nonmatching shortcuts and empty
+categories. Clear restores the list; Escape or Super+/ closes the window.
+See the [window preview](docs/images/desktop-shortcuts.png) and
+[search preview](docs/images/desktop-shortcuts-search.png).
 
 The Power button and session shortcuts open a centered icon grid. The shutdown
 shortcut opens it with **Shut down** selected; choose a tile or press Enter to act.

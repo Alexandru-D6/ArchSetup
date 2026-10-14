@@ -1,5 +1,31 @@
 # Desktop validation — 2026-10-10
 
+## Searchable shortcut window — 2026-10-14
+
+Super+/ and the shortcut-help aliases now toggle a centered Quickshell window
+inspired by the supplied cheatsheet reference. Category columns, keycap labels,
+the current palette and a vertical scrollbar replace the launcher list. There
+is no periodic-table page. Search receives focus on opening and filters keys,
+descriptions, action names and categories as you type; unmatched rows and empty
+categories are removed. Clear restores the list, Ctrl+F focuses search, and
+Escape, Close, backdrop clicks or the opening shortcut dismiss it. Reopening
+resets the query. All 228 managed bindings remain available.
+
+All 60 desktop regressions pass across the full run and focused verification.
+Qt checks cover typed input, case/spacing, key combinations, displayed key names,
+multiple terms, empty results, clearing, focus, dismissal, reopening, small
+screens, scrolling and the production map. An isolated Quickshell fixture uses
+the production data loader and window, verifying live map updates, invalid data,
+malformed JSON and recovery while preserving the active query. Native compositor
+parsing, shortcut uniqueness, component/test lint and whitespace checks pass.
+The [full window](images/desktop-shortcuts.png) and
+[filtered window](images/desktop-shortcuts-search.png) were visually inspected
+in light mode, along with a dark-mode rendering.
+
+UI rendering uses the offscreen software backend. A complete Wayland desktop
+session and workstation deployment were not performed. Reapply the desktop
+profile to install the components and refresh the running shell.
+
 ## Clock reloads and fixed lock pills — 2026-10-14
 
 The animated clock retains its current frame until the next asynchronous image

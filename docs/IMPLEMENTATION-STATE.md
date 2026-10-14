@@ -1,6 +1,25 @@
 # Resume checkpoint — 2026-10-14 (latest)
 
-Latest task: added the reference-inspired Rose color theme and made it the managed
+Latest task: replaced the launcher-style shortcut list with an original,
+reference-inspired Quickshell window. Super+/ and its help aliases toggle the
+centered window, with category columns, keycap labels and the desktop palette.
+There is no periodic table. Live search removes unmatched shortcuts and empty
+categories, supports keys/actions/categories and multiple terms, and opens with
+keyboard focus. Clear/Ctrl+A+Backspace restores the list; Ctrl+F focuses search.
+Escape, Close, backdrop clicks and the opening shortcut dismiss it. Reopening
+shows all 228 bindings. The shared map is watched for changes; invalid data clears
+stale results and a corrected file restores them. The reference commit is recorded
+in docs/desktop-source.json.
+
+Validation: all 60 desktop regressions pass across full and focused runs, including
+Qt input/filtering/layout/rendering checks and an isolated Quickshell live-file
+fixture using the production components. Native compositor parsing, shortcut
+uniqueness, component/test lint and whitespace checks pass. Full/filtered light
+previews and a dark rendering were visually inspected. No workstation deployment
+or complete Wayland shell session was performed; reapply the desktop profile to
+install the new components and refresh the shell.
+
+Previous task: added the reference-inspired Rose color theme and made it the managed
 default. Its light palette uses warm white surfaces, blush/peach controls,
 raspberry accents and rose-brown text; a matching dark variant is available.
 Quick settings selects Rose or the previous Material palette. Explicit choices

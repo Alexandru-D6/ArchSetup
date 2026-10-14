@@ -362,7 +362,7 @@ def main(action):
                         except subprocess.TimeoutExpired:
                             updater.kill()
                             updater.wait()
-    elif action in ('overview', 'settings', 'session', 'tools', 'media'):
+    elif action in ('overview', 'settings', 'session', 'tools', 'media', 'help'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):
         shell_toggle(action)
@@ -441,9 +441,6 @@ def main(action):
         refresh_theme(state)
         subprocess.run(['swaync-client', '-rs'], check=False)
         subprocess.run(['hyprctl', 'reload'], check=False)
-    elif action == 'help':
-        bindings = json.loads((ROOT / 'shortcuts.json').read_text())
-        menu([f"{item['key']}  —  {item['description']}" for item in bindings], 'Shortcuts')
     elif action == 'poweroff':
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'shutdown')
     elif action == 'firmware-setup':

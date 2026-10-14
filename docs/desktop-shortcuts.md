@@ -12,9 +12,18 @@ keyboard-layout switching.
 
 Super alone toggles the launcher on release: press it again to close the launcher.
 Super+D uses the same toggle. Repeating clipboard, emoji, calculator, wallpaper
-picker or shortcut-help keys dismisses that menu; choosing a different menu
-replaces the current one. Overview, settings, utilities, media and the on-screen
+picker keys dismisses that menu; choosing a different launcher menu replaces the
+current one. Overview, settings, utilities, media, shortcut help and the on-screen
 keyboard also toggle with their opening shortcuts.
+
+Super+/ opens a centered shortcut window with category headings and keycap labels.
+Its search field receives keyboard focus immediately. Search matches keys, action
+descriptions and categories without regard to case; multiple words must all match.
+Only matching shortcut rows and their categories remain in the window. Clear or
+Ctrl+A followed by Backspace restores the list; Ctrl+F returns focus to search.
+Escape, Close, a click outside the window or Super+/ dismisses it. Reopening shows
+the complete list. The window reads the same managed map as the compositor and
+refreshes when that file changes.
 
 Utilities replace the upstream AI
 sidebar. Ctrl+Super+P cycles top/bottom placement of the existing bar; it does not

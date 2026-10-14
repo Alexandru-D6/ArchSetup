@@ -22,6 +22,7 @@ ShellRoot {
         onTriggered: {
             if (root.page === "overview") windows.forceActiveFocus();
             else if (root.page === "session") sessionMenu.forceActiveFocus();
+            else if (root.page === "help") shortcutHelp.focusSearch();
             else if (root.page !== "") panelContent.forceActiveFocus();
         }
     }
@@ -75,6 +76,10 @@ ShellRoot {
         const mods = [keyboardShift ? "SHIFT" : "", keyboardControl ? "CTRL" : ""].filter(Boolean).join(" + ");
         Hyprland.dispatch("hl.dsp.send_shortcut({mods=" + JSON.stringify(mods) + ",key=" + JSON.stringify(key) + "})");
         keyboardShift = false;
+    }
+    ShortcutSource {
+        id: shortcutSource
+        path: root.profile + "/shortcuts.json"
     }
     FileView {
         path: root.profile + "/preferences.json"
@@ -266,6 +271,19 @@ ShellRoot {
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
         color: root.page === "session" ? Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.97) : "#99000000"
         MouseArea { anchors.fill: parent; onClicked: root.page = "" }
+        ShortcutHelp {
+            id: shortcutHelp
+            anchors.fill: parent
+            visible: root.page === "help"
+            bindings: shortcutSource.bindings
+            loadError: shortcutSource.loadError
+            uiFont: root.uiFont
+            surface: root.surface
+            raised: root.raised
+            textColor: root.ink
+            accent: root.accent
+            onCancelled: root.page = ""
+        }
         SessionMenu {
             id: sessionMenu
             anchors.fill: parent
@@ -289,7 +307,7 @@ ShellRoot {
             }
         }
         Rectangle {
-            visible: root.page !== "session"
+            visible: root.page !== "session" && root.page !== "help"
             width: Math.min(parent.width - 48, root.page === "overview" ? 1000 : 540)
             height: Math.min(parent.height - 80, root.page === "overview" ? 700 : 560)
             anchors.centerIn: parent; radius: 24; color: root.surface

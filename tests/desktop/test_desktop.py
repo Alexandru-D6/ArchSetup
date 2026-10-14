@@ -515,6 +515,13 @@ else:
             run.assert_called_once_with('qs', '-p', str(self.profile / 'shell'),
                                         'ipc', 'call', 'desktop', 'shutdown')
 
+    def test_shortcut_help_uses_shell_overlay(self):
+        with patch.object(self.actions, 'run') as run, patch.object(self.actions, 'menu') as menu:
+            self.actions.main('help')
+            run.assert_called_once_with('qs', '-p', str(self.profile / 'shell'),
+                                        'ipc', 'call', 'desktop', 'toggle', 'help')
+            menu.assert_not_called()
+
     def test_selected_session_actions_execute_without_reopening_menu(self):
         for action in ['poweroff-confirmed', 'reboot', 'suspend', 'hibernate', 'logout']:
             with self.subTest(action=action), patch.object(self.actions, 'menu') as menu, patch.object(self.actions, 'run') as run:
@@ -563,7 +570,8 @@ else:
         executable = Path('/usr/lib/qt6/bin/qmltestrunner')
         if not executable.is_file(): self.skipTest('Qt 6 qmltestrunner is required')
         environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
-                           QT_QUICK_CONTROLS_STYLE='Basic', XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'))
+                           QT_QUICK_CONTROLS_STYLE='Basic', QML_XHR_ALLOW_FILE_READ='1',
+                           XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'))
         result = subprocess.run([executable, '-input', str(Path(__file__).parent / 'qml'), '-o', '-,txt'],
                                 env=environment, capture_output=True, text=True, timeout=45)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -657,6 +665,25 @@ else:
         self.assertIn('Configuration Loaded', output)
         self.assertNotIn('Failed to load configuration', output)
         self.assertFalse((private / 'authenticated').exists())
+
+    def test_shortcut_help_loads_and_watches_map_in_quickshell(self):
+        executable = shutil.which('qs')
+        if executable is None: self.skipTest('Quickshell is required')
+        fixture = self.profile / 'shortcut-validation'
+        shutil.copytree(Path(__file__).parent / 'shortcuts', fixture)
+        for component in ['ShortcutHelp.qml', 'ShortcutSource.qml']:
+            shutil.copy2(self.profile / 'shell' / component, fixture / component)
+        environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
+                           XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'),
+                           XDG_CACHE_HOME=str(self.profile / 'cache'), XDG_STATE_HOME=str(self.profile / 'qs-state'))
+        environment.pop('WAYLAND_DISPLAY', None)
+        result = subprocess.run([executable, '-p', str(fixture), '--no-color'], env=environment,
+                                capture_output=True, text=True, timeout=8)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn('ARCHSETUP_SHORTCUT_FIXTURES_PASSED', output)
+        for error in ['Failed to load configuration', 'TypeError', 'ReferenceError']:
+            self.assertNotIn(error, output)
 
     def test_animated_lock_authenticates_before_normal_exit_and_cleans_up(self):
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'animated-lock', 'XDG_RUNTIME_DIR': self.directory.name}
