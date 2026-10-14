@@ -19,12 +19,14 @@ FocusScope {
     Rectangle { anchors.fill: parent; color: "#26071120" }
     MouseArea { anchors.fill: parent; onClicked: controls.focusPassword() }
     Image {
+        objectName: "lock-clock"
         anchors.centerIn: parent
         width: Math.min(250, screen.width * 0.4, screen.height * 0.45)
         height: width * 260 / 250
         source: screen.profile ? "file://" + screen.profile + "/theme/lock-clock.png?revision=" + screen.clockRevision : ""
         cache: false
         asynchronous: true
+        retainWhileLoading: true
     }
     Text {
         id: lockedLabel

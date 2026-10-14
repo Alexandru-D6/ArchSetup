@@ -105,8 +105,9 @@ The lock screen uses the supplied sunset/anime wallpaper independently of the
 desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
 digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
 day/month badges. A background helper updates it once a second and caches font
-lookups. Quickshell reloads that image asynchronously once per second;
-password input never waits for image generation.
+lookups. Quickshell reloads that image asynchronously once per second and keeps
+the current frame visible until its replacement is ready. Password input never
+waits for image generation.
 Super+L starts the locker using cached visuals, with fresh images generated
 afterward. The configured background color covers the screen while wallpaper
 resources load. The independent Quickshell process uses
@@ -134,10 +135,13 @@ and clickable, text-only **Power off** and **Reboot** buttons. Layouts such as U
 Euro and US AltGr use short names. Password feedback uses randomly selected circles,
 diamonds, triangles, hexagons, clovers and stars. Shapes depend only on the number
 of characters and fresh randomness; existing shapes stay stable while editing.
-The identity, password and power pills fit their current content, with 16 pixels
-of horizontal padding and at least 10 pixels vertically. Long passwords scroll
-within the field; the toolbar wraps on narrow screens. Caps Lock and battery
-status remain visible. The toolbar is centered, 20 pixels above the bottom edge;
+The identity pill fits its current content. The password pill stays at 15% of
+each screen's width; press Enter to submit, with no separate submit button.
+Power off and Reboot stay 136 and 120 pixels wide, including their Confirm/Cancel
+states. The pills keep 16 pixels of horizontal padding and at least 10 pixels
+vertically. Long passwords scroll within the field; the toolbar wraps on narrow
+screens. Caps Lock and battery status remain visible. The toolbar is centered,
+20 pixels above the bottom edge;
 the clock occupies the screen's center. Both the lock screen and session menu
 use `archsetup_desktop_control_font_size` for ordinary text (12 points by default,
 equivalent to 16 pixels at 96 dpi). Labels, status, layout names, password prompts

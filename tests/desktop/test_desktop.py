@@ -568,6 +568,49 @@ else:
                                 env=environment, capture_output=True, text=True, timeout=45)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_animated_lock_clock_keeps_last_frame_visible_during_reload(self):
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        from io import BytesIO
+        import threading
+        from PIL import Image
+        executable = Path('/usr/lib/qt6/bin/qmltestrunner')
+        if not executable.is_file(): self.skipTest('Qt 6 qmltestrunner is required')
+        frames = {}
+        for index, color in enumerate(['red', 'lime', 'blue']):
+            output = BytesIO()
+            Image.new('RGBA', (750, 780), color).save(output, format='PNG')
+            frames[f'/frame-{index}.png'] = output.getvalue()
+
+        class ClockFrames(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path != '/frame-0.png': time.sleep(0.5)
+                self.send_response(200)
+                self.send_header('Content-Type', 'image/png')
+                self.end_headers()
+                try: self.wfile.write(frames[self.path])
+                except BrokenPipeError: pass  # Qt may exit early after a failed assertion.
+
+            def log_message(self, *args): pass
+
+        with ThreadingHTTPServer(('127.0.0.1', 0), ClockFrames) as server:
+            worker = threading.Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                fixture = self.profile / 'clock-validation'
+                fixture.mkdir()
+                source = (Path(__file__).parent / 'clock/tst_lockscreen.qml').read_text()
+                source = source.replace('"../../../roles/desktop/files/lock"', '"../lock"')
+                source = source.replace('http://127.0.0.1:0', f'http://127.0.0.1:{server.server_port}')
+                (fixture / 'tst_lockscreen.qml').write_text(source)
+                environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
+                                   QT_QUICK_CONTROLS_STYLE='Basic', XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'))
+                result = subprocess.run([executable, '-input', str(fixture), '-o', '-,txt'],
+                                        env=environment, capture_output=True, text=True, timeout=15)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            finally:
+                server.shutdown()
+                worker.join(timeout=5)
+
     def test_quickshell_pam_with_isolated_policies_and_dummy_response(self):
         executable = shutil.which('qs')
         if executable is None: self.skipTest('Quickshell is required')

@@ -18,9 +18,8 @@ FocusScope {
     property color surface: "#292332"
     property color ink: "#eae0f5"
     property color outline: "#45404f"
-    property color accent: "#b2c5ff"
-    property color accentText: "#18254b"
     readonly property real maximumPillWidth: Math.max(1, width - 32)
+    readonly property real pillHeight: Math.max(50, Math.ceil(labelMetrics.height) + 20)
     implicitHeight: toolbar.height + (notice.visible ? notice.implicitHeight + 12 : 0)
     signal submitted(string response)
     signal powerPressed(string action)
@@ -37,6 +36,11 @@ FocusScope {
     Component.onCompleted: focusPassword()
     onBusyChanged: if (!busy) focusPassword()
 
+    FontMetrics {
+        id: labelMetrics
+        font.family: controls.uiFont
+        font.pointSize: controls.fontSize
+    }
     Text {
         id: notice
         anchors.horizontalCenter: parent.horizontalCenter
@@ -109,8 +113,8 @@ FocusScope {
         Rectangle {
             id: password
             objectName: "lock-password-pill"
-            width: Math.min(480, controls.maximumPillWidth, Math.max(180, (input.length ? mask.implicitWidth : placeholder.implicitWidth) + 80))
-            height: Math.max(50, placeholder.implicitHeight + 20)
+            width: Math.min(controls.maximumPillWidth, controls.width * 0.15)
+            height: controls.pillHeight
             radius: height / 2
             color: controls.surface
             border.color: controls.outline
@@ -119,8 +123,8 @@ FocusScope {
                 id: inputArea
                 anchors.left: parent.left
                 anchors.leftMargin: 16
-                anchors.right: submitButton.left
-                anchors.rightMargin: 12
+                anchors.right: parent.right
+                anchors.rightMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
                 height: Math.max(mask.height, placeholder.implicitHeight)
                 clip: true
@@ -174,34 +178,14 @@ FocusScope {
                     color: controls.ink
                 }
             }
-            Button {
-                id: submitButton
-                objectName: "lock-submit"
-                anchors.right: parent.right
-                anchors.rightMargin: 8
-                anchors.verticalCenter: parent.verticalCenter
-                width: 32
-                height: 32
-                enabled: !controls.busy
-                focusPolicy: Qt.NoFocus
-                Accessible.name: "Unlock"
-                onClicked: controls.submit()
-                background: Rectangle { radius: height / 2; color: controls.accent }
-                contentItem: Text {
-                    text: "→"
-                    color: controls.accentText
-                    font.pixelSize: 24
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-            }
         }
         component PowerButton: Button {
             id: button
             property string powerAction: ""
+            property real pillWidth: 136
             width: Math.min(controls.maximumPillWidth, implicitWidth)
-            implicitWidth: contentItem.implicitWidth + 32
-            implicitHeight: Math.max(50, contentItem.implicitHeight + 20)
+            implicitWidth: pillWidth
+            implicitHeight: controls.pillHeight
             leftPadding: 16
             rightPadding: 16
             topPadding: 10
@@ -227,6 +211,6 @@ FocusScope {
             }
         }
         PowerButton { id: poweroff; objectName: "lock-poweroff"; powerAction: "poweroff"; text: controls.poweroffLabel }
-        PowerButton { id: reboot; objectName: "lock-reboot"; powerAction: "reboot"; text: controls.rebootLabel }
+        PowerButton { id: reboot; objectName: "lock-reboot"; powerAction: "reboot"; pillWidth: 120; text: controls.rebootLabel }
     }
 }

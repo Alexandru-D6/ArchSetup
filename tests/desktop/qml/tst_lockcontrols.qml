@@ -68,8 +68,9 @@ Rectangle {
             compare(mask().count, 0);
             controls.busy = true;
             keyClick(Qt.Key_Return);
-            mouseClick(findChild(controls, "lock-submit"));
+            controls.submit();
             compare(submission.count, 1);
+            compare(findChild(controls, "lock-submit"), null);
             controls.busy = false;
             tryCompare(input(), "activeFocus", true);
         }
@@ -93,29 +94,70 @@ Rectangle {
             compare(label.progress, 1);
             compare(label.currentText, "US");
         }
-        function test_pills_resize_with_text_and_font_and_keep_padding() {
+        function test_identity_fits_layout_and_font_and_keeps_padding() {
             const identity = findChild(controls, "lock-identity");
-            const button = findChild(controls, "lock-reboot");
             const initialIdentity = identity.width;
             controls.layout = "A longer keyboard layout";
             tryVerify(() => identity.width > initialIdentity);
-            const initialButton = button.width;
-            controls.rebootLabel = "Confirm restart";
-            tryVerify(() => button.width > initialButton);
-            const caption = findChild(button, "lock-power-caption");
-            verify(button.width >= caption.implicitWidth + 32);
-            const beforeFont = button.width;
+            const beforeFont = identity.width;
             controls.fontSize = 20;
-            tryVerify(() => button.width > beforeFont);
-            verify(button.height >= caption.implicitHeight + 20);
+            tryVerify(() => identity.width > beforeFont);
+            const button = findChild(controls, "lock-reboot");
+            const caption = findChild(button, "lock-power-caption");
+            verify(button.height >= caption.implicitHeight + 20,
+                   "Pill height " + button.height + " lacks padding for text height " + caption.implicitHeight);
+        }
+        function test_password_width_is_fifteen_percent_and_stays_fixed_data() {
+            return [
+                { tag: "narrow", width: 320 },
+                { tag: "standard", width: 1024 },
+                { tag: "full-hd", width: 1920 },
+                { tag: "ultra-hd", width: 3840 }
+            ];
+        }
+        function test_password_width_is_fifteen_percent_and_stays_fixed(data) {
+            fixture.width = data.width;
             const password = findChild(controls, "lock-password-pill");
-            controls.prompt = "Enter your authentication response";
             waitForRendering(controls);
-            const promptWidth = password.width;
-            controls.prompt = "Password";
-            tryVerify(() => password.width < promptWidth);
-            input().text = "01234567890123456789";
-            tryVerify(() => password.width >= mask().implicitWidth + 80);
+            const height = password.height;
+            for (const prompt of ["Password", "Enter your authentication response"]) {
+                controls.prompt = prompt;
+                waitForRendering(controls);
+                compare(password.width, data.width * 0.15);
+                compare(password.height, height);
+            }
+            input().text = "0123456789".repeat(10);
+            waitForRendering(controls);
+            compare(password.width, data.width * 0.15);
+            compare(password.height, height);
+            verify(mask().x < 0);
+            verify(mask().parent.clip);
+            compare(mask().parent.width, password.width - 32);
+            controls.clearPassword();
+            controls.busy = true;
+            waitForRendering(controls);
+            compare(password.width, data.width * 0.15);
+            compare(password.height, height);
+        }
+        function test_power_pills_keep_size_and_position_during_confirmation() {
+            const poweroff = findChild(controls, "lock-poweroff");
+            const reboot = findChild(controls, "lock-reboot");
+            const positions = [poweroff.x, poweroff.y, reboot.x, reboot.y];
+            const height = poweroff.height;
+            for (const labels of [["Confirm", "Cancel"], ["Cancel", "Confirm"], ["Power off", "Reboot"]]) {
+                controls.poweroffLabel = labels[0];
+                controls.rebootLabel = labels[1];
+                waitForRendering(controls);
+                compare(poweroff.width, 136);
+                compare(reboot.width, 120);
+                compare(poweroff.height, height);
+                compare(reboot.height, height);
+                compare([poweroff.x, poweroff.y, reboot.x, reboot.y], positions);
+                for (const button of [poweroff, reboot]) {
+                    const caption = findChild(button, "lock-power-caption");
+                    verify(button.width >= caption.implicitWidth + 32);
+                }
+            }
         }
         function test_confirmation_clicks_keep_password_focus() {
             const button = findChild(controls, "lock-poweroff");

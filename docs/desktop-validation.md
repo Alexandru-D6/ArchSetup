@@ -1,5 +1,26 @@
 # Desktop validation — 2026-10-10
 
+## Clock reloads and fixed lock pills — 2026-10-14
+
+The animated clock retains its current frame until the next asynchronous image
+load completes. The password pill stays at 15% of each screen's width regardless
+of prompt, password length or authentication progress. Power off/Reboot remain
+136/120 pixels wide through Confirm/Cancel states, with stable heights and
+positions. Removed the password submit button; keyboard Enter still submits.
+
+All 58 desktop regressions pass. The clock rendering fixture delays replacement
+images, samples the displayed frame during loading, checks the new frame after
+completion and verifies typing remains responsive. Disabling frame retention
+reproduces a missing clock frame that the fixture detects. Control checks cover
+320/1024/1920/3840-pixel widths, long passwords, confirmation/cancellation,
+padding and keyboard submission. Component/test lint and whitespace checks pass;
+the refreshed [control preview](images/desktop-lock-controls.png) was visually
+inspected.
+
+Rendering checks use the offscreen software backend. A full Wayland lock/unlock
+cycle and workstation deployment were not performed. Reapply the desktop profile
+and start a new lock session to load the changes.
+
 ## Password shapes, scrolling layouts and fitted lock pills — 2026-10-14
 
 The animated lock screen uses an independent Quickshell Wayland session lock,

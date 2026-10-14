@@ -114,8 +114,6 @@ ShellRoot {
                 controls.surface: root.palette.raised || "#292332"
                 controls.ink: root.palette.ink || "#eae0f5"
                 controls.outline: root.palette.outline || "#45404f"
-                controls.accent: root.palette.accent || "#b2c5ff"
-                controls.accentText: root.palette.onAccent || "#18254b"
                 controls.busy: auth.busy
                 controls.message: auth.message
                 controls.prompt: auth.prompt
