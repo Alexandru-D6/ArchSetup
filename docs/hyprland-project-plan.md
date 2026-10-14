@@ -5,6 +5,11 @@ See [validation results](desktop-validation.md); suspend/resume remains unresolv
 limitations](hyprland-desktop.md). The optional Ansible role and original Quickshell
 shell now exist; the full acceptance backlog below remains the target.
 
+The [configuration window architecture](desktop-settings-plan.md) defines the next
+settings milestone: a persistent centered window with category navigation and a
+search bar above the category list to find individual settings, starting with General
+for timezone/UTC offset, date format, clock placement and keyboard layouts.
+
 Implementation decision: the upstream audit found AI dependencies distributed
 across shared UI/services. The deployed shell is an independent implementation
 using upstream as a visual reference, not a patched upstream copy. This replaces
