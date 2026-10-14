@@ -5,9 +5,10 @@ This list covers the supported non-AI shortcuts from the reference desktop, with
 physical-key/keypad aliases. Existing ArchSetup shortcuts remain compatible.
 
 Super+D stays the launcher; maximize uses Super+Alt+D. Super+Equal stays the
-calculator; zoom-in uses Ctrl+Super+Equal. Super+Shift+S stays "move to scratch";
-screen snip is Ctrl+Super+Shift+S (Print also selects a region). Super+Space remains
-reserved for keyboard-layout switching.
+calculator; zoom-in uses Ctrl+Super+Equal. Super+Shift+S selects a region and copies
+the screenshot to the clipboard; Ctrl+Super+Shift+S and Print also select a region.
+Super+Alt+S moves a window to scratch. Super+Space remains reserved for
+keyboard-layout switching.
 
 Super alone toggles the launcher on release: press it again to close the launcher.
 Super+D uses the same toggle. Repeating clipboard, emoji, calculator, wallpaper
@@ -107,6 +108,7 @@ Quickshell configuration, not upstream code.
 | Super + Print | Focused-monitor screenshot |
 | Ctrl + Print | Save and copy focused-monitor screenshot |
 | Ctrl + Shift + Print | Save and copy screen snip |
+| Super + Shift + S | Screen snip |
 | Ctrl + Super + Shift + S | Screen snip |
 | Super + Shift + X | Read screen text into clipboard |
 | Super + Shift + R | Start / stop region recording |
@@ -190,7 +192,6 @@ focused, including number-row/keypad aliases, relative moves and scratch.
 | Shortcut | Action |
 | --- | --- |
 | Super + S | Scratch workspace |
-| Super + Shift + S | Move to scratch and follow |
 | Super + 1 | Workspace 1 |
 | Super + Shift + 1 | Move to workspace 1 and follow |
 | Super + 2 | Workspace 2 |

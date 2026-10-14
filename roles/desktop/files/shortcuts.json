@@ -122,12 +122,6 @@
     "category": "Workspaces"
   },
   {
-    "key": "SUPER + SHIFT + S",
-    "dispatcher": "hl.dsp.window.move({workspace=\"special:scratch\",follow=true})",
-    "description": "Move to scratch and follow",
-    "category": "Workspaces"
-  },
-  {
     "key": "SUPER + left",
     "dispatcher": "hl.dsp.focus({direction=\"left\"})",
     "description": "Focus left",
@@ -591,6 +585,12 @@
     "description": "Save and copy screen snip",
     "category": "Utilities",
     "action": "screenshot-region-save"
+  },
+  {
+    "key": "SUPER + SHIFT + S",
+    "description": "Screen snip",
+    "category": "Utilities",
+    "action": "screenshot"
   },
   {
     "key": "CTRL + SUPER + SHIFT + S",

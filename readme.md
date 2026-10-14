@@ -159,6 +159,7 @@ preserves existing keyring contents.
 | Super+Comma | Quick settings, theme and wallpaper |
 | Super+N | Notification history |
 | Super+L | Lock the screen |
+| Super+Shift+S | Select a region and copy its screenshot |
 | Super+/ | All shortcuts |
 | Super + right mouse drag | Resize a tiled or floating window |
 | Super+Alt+Left / Right | Shrink / grow window width |
