@@ -26,6 +26,7 @@
         - "{{ desktop_root }}/themes.json"
         - "{{ desktop_root }}/theme/kitty.conf"
         - "{{ desktop_root }}/shell/shell.qml"
+        - "{{ desktop_root }}/lock/shell.qml"
         - /usr/share/wayland-sessions/archsetup.desktop
         - /usr/local/bin/archsetup-session
         - /etc/pam.d/archsetup-hyprlock

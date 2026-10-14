@@ -1,5 +1,32 @@
 # Desktop validation — 2026-10-10
 
+## Password shapes, scrolling layouts and fitted lock pills — 2026-10-14
+
+The animated lock screen uses an independent Quickshell Wayland session lock,
+with the existing PAM/keyring policy and native Hyprlock as its failure fallback.
+Each newly entered character receives a random geometric shape; editing retains
+existing shapes. Keyboard events scroll the previous label upward and its
+replacement into view over 180 ms. Reduced motion switches immediately.
+Identity, password and power pills measure their content, keeping 16-pixel
+horizontal and at least 10-pixel vertical padding. Narrow screens wrap the toolbar;
+long labels elide and long passwords scroll inside their field. Confirmation
+captions resize their buttons and retain the existing power-control behavior.
+
+All 57 desktop regressions pass, including 29 Qt checks for rendering, editing,
+submission, layout switching, typography, padding and small screens. Quickshell
+loads the production configuration offscreen. Isolated PAM fixtures cover prompt
+responses, acceptance/rejection, required failures, missing users/policies,
+duplicate submissions and response cleanup; responses never appear in logs.
+Launcher tests cover authenticated exit, crash/early-exit fallback, a missing
+Quickshell runtime, updater cleanup and the native refresh-signal mask.
+Component lint and whitespace checks pass. The
+[rendered control preview](images/desktop-lock-controls.png) was visually inspected.
+Both desktop playbook syntax checks pass.
+
+Rendering and PAM checks use the offscreen backend and synthetic policies.
+A complete Wayland lock/unlock cycle and workstation deployment were not performed.
+Reapply the desktop profile and start a new lock session to load the controls.
+
 ## Rose color theme — 2026-10-14
 
 The supplied reference informed the new default Rose palette: warm white surfaces,

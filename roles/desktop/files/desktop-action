@@ -315,16 +315,24 @@ def main(action):
                                                           str(Path(lock_dir) / f'lock-{power}.label'))
                 config_path = Path(lock_dir) / 'hyprlock.conf'
                 config_path.write_text(configuration)
-                arguments = ['hyprlock', '-c', str(config_path)]
-                # Hyprlock 0.9.6 runs unsafe timer callbacks in its SIGUSR2
-                # handler. Native image timers replace that refresh path. Block
-                # the signal before exec so every locker thread inherits the
-                # mask, including during startup and cleanup; restore our mask.
-                previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR2})
+                native_arguments = ['hyprlock', '-c', str(config_path)]
+                def native_locker():
+                    # Every Hyprlock thread must inherit this mask: its 0.9.6
+                    # SIGUSR2 handler runs unsafe callbacks. Use image timers.
+                    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR2})
+                    try:
+                        return subprocess.Popen(native_arguments, env=environment)
+                    finally:
+                        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+                animated = (ROOT / 'lock/shell.qml').is_file()
+                arguments = ['qs', '-p', str(ROOT / 'lock')] if animated else native_arguments
                 try:
-                    locker = subprocess.Popen(arguments, env=environment)
-                finally:
-                    signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+                    locker = subprocess.Popen(arguments, env=environment) if animated else native_locker()
+                except OSError:
+                    if not animated: raise
+                    animated = False
+                    arguments = native_arguments
+                    locker = native_locker()
                 updater = None
                 try:
                     try:
@@ -335,6 +343,15 @@ def main(action):
                         # Visual-helper failures must leave the password screen running.
                         print(f'Lock image updater unavailable: {error}', file=sys.stderr)
                     result = locker.wait()
+                    # A normal Quickshell exit alone does not prove an unlock.
+                    # Only successful PAM authentication writes this private
+                    # marker. A failed/crashed UI falls back to native Hyprlock;
+                    # the session-lock protocol keeps the compositor covered.
+                    if animated and (result or not (Path(lock_dir) / 'authenticated').exists()):
+                        print('Animated lock exited before unlocking; starting Hyprlock', file=sys.stderr)
+                        arguments = native_arguments
+                        locker = native_locker()
+                        result = locker.wait()
                     if result:
                         raise subprocess.CalledProcessError(result, arguments)
                 finally:

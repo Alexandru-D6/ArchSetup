@@ -3,7 +3,7 @@
 ArchSetup provides an opt-in desktop role and an independent Material-inspired
 Quickshell configuration. It uses native Hyprland 0.56 Lua, a top taskbar,
 window previews, quick settings, notification history, Fuzzel, clipboard history,
-screenshots, Greetd and Hyprlock. No upstream AI source or provider integration is
+screenshots, Greetd, an animated Quickshell lock screen and a Hyprlock fallback. No upstream AI source or provider integration is
 included. The source reference is recorded in `desktop-source.json`.
 
 See [validation results and remaining hardware checks](desktop-validation.md).
@@ -49,11 +49,11 @@ See [VSCodium's Arch installation guide](https://vscodium.com/#install-on-arch-l
 An existing unmanaged Greetd configuration or profile requires explicit adoption:
 add `-e archsetup_desktop_adopt=true` to the reviewed check/apply invocation.
 This creates backups. By default, Greetd starts the selected user's desktop once
-at boot using Hyprland's `--locked-cmd` startup lock. Hyprlock is the first password
+at boot using Hyprland's `--locked-cmd` startup lock. The lock screen is the first password
 screen; the user must have a working account password. Greetd's login screen is
 the fallback after logout or session failure. Set
 `archsetup_desktop_autologin_locked=false` to require Greetd authentication at boot.
-Hyprlock uses `/etc/pam.d/archsetup-hyprlock`, which retains the existing Hyprlock
+Both lockers use `/etc/pam.d/archsetup-hyprlock`, which retains the existing Hyprlock
 authentication policy and unlocks GNOME Keyring during password authentication.
 The optional keyring hook starts its daemon if necessary; no password is saved
 by ArchSetup. This follows [GNOME's PAM implementation](https://github.com/GNOME/gnome-keyring/blob/main/pam/gkr-pam-module.c).
@@ -105,31 +105,39 @@ The lock screen uses the supplied sunset/anime wallpaper independently of the
 desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
 digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
 day/month badges. A background helper updates it once a second and caches font
-lookups. Hyprlock checks the clock file once per second using
-its native image timer and loads changed images
-asynchronously; password input never waits for image generation.
+lookups. Quickshell reloads that image asynchronously once per second;
+password input never waits for image generation.
 Super+L starts the locker using cached visuals, with fresh images generated
-afterward. Immediate rendering locks before waiting for wallpaper resources;
-the configured background color covers the screen while they load.
-The keyboard name uses Hyprlock's [native layout variable](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#variable-substitution),
-which reacts directly to Wayland keyboard events. A 100 ms asynchronous label
-timer catches a final switch if the previous label is still loading. Its command
-only prints the selected name; it does not query the compositor or generate images.
-Ansible measures the configured
-layout names and username once to fit a compact border at the shared text size; long usernames
-are shortened while preserving the layout variant. The badge fits the longest
-configured label, so switching layouts does not wait for a border-image reload.
-Image updates never send refresh signals. The launcher blocks SIGUSR2 in
-Hyprlock and its threads because that version's signal handler can deadlock
-while updating images.
-The helper stops when the lock screen closes. Native Hyprlock retains the existing
-PAM/keyring integration, with password dots appearing immediately on each keystroke.
+afterward. The configured background color covers the screen while wallpaper
+resources load. The independent Quickshell process uses
+[Wayland session-lock surfaces](https://quickshell.org/docs/v0.2.1/types/Quickshell.Wayland/WlSessionLock/)
+on every monitor. A crash leaves the compositor locked; the launcher starts native
+Hyprlock if the animated UI exits before a successful unlock. Authentication uses
+[Quickshell's PAM context](https://quickshell.org/docs/v0.2.1/types/Quickshell.Services.Pam/PamContext/)
+with the same PAM/keyring policy. Passwords are cleared on submission and completion;
+no passwords are written to the visual helper, files, command arguments or logs.
+The helper and private control state are removed when the lock closes.
+
+The keyboard badge receives Hyprland layout events directly. An initial keyboard
+query and XKB mapping provide the short US Euro/AltGr names; switching never polls
+the compositor or regenerates an image. The old label scrolls up and its replacement
+scrolls in over 180 ms. Rapid switches finish on the latest layout; reduced motion
+replaces the label immediately. The badge measures both labels during the scroll,
+then fits the current one. Long usernames/layout names are elided at the shared
+font size when they exceed the available screen width.
+Image updates never send refresh signals. The Hyprlock fallback keeps its native
+layout labels and image timer, with SIGUSR2 blocked in all its threads to avoid
+that version's unsafe refresh handler.
 
 The bottom toolbar has a compact user/keyboard-layout pill, the password field,
 and clickable, text-only **Power off** and **Reboot** buttons. Layouts such as US
-Euro and US AltGr use short names; the pill's text and outline are measured together to
-fit all configured layouts. Caps Lock and battery status remain visible.
-The password field is centered horizontally, 20 pixels above the bottom edge;
+Euro and US AltGr use short names. Password feedback uses randomly selected circles,
+diamonds, triangles, hexagons, clovers and stars. Shapes depend only on the number
+of characters and fresh randomness; existing shapes stay stable while editing.
+The identity, password and power pills fit their current content, with 16 pixels
+of horizontal padding and at least 10 pixels vertically. Long passwords scroll
+within the field; the toolbar wraps on narrow screens. Caps Lock and battery
+status remain visible. The toolbar is centered, 20 pixels above the bottom edge;
 the clock occupies the screen's center. Both the lock screen and session menu
 use `archsetup_desktop_control_font_size` for ordinary text (12 points by default,
 equivalent to 16 pixels at 96 dpi). Labels, status, layout names, password prompts
@@ -137,12 +145,12 @@ and buttons share that size; long names are shortened instead of using a smaller
 font. Clock digits remain larger, and the day/month badges both use 28-pixel text.
 Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
 other to **Cancel**. Confirm runs the selected action; Cancel restores both
-original buttons. Native text labels read private state every 100 ms,
-asynchronously, so captions no longer wait for the one-second image timer.
+original buttons. File-change notifications update captions immediately;
+the Hyprlock fallback reads those same private labels every 100 ms asynchronously.
 Confirmation and cancellation are available immediately, with no timed click
 guard. Confirmed lock-screen actions call `systemctl poweroff` or `systemctl reboot`
-directly. Each new lock starts with the original labels. Only the button's native
-background shape handles clicks; the centered text cannot send duplicate clicks.
+directly. Each new lock starts with the original labels. Each button has one click
+handler, so its caption cannot send a duplicate click.
 
 The profile uses [software cursor rendering](https://wiki.hypr.land/configuring/core/config-options/#cursor)
 by default to avoid hardware cursor wake issues after the display blanks while
@@ -157,10 +165,11 @@ including the LittleArchy profile. Window opening takes 120 ms, closing and fade
 80 ms, moving/resizing 100 ms, and workspace switching 140 ms. A sharp ease-out
 curve avoids bounce; windows scale from 98% and workspace slides travel only 12%
 of the screen. Shell surfaces use the compositor's 80–100 ms layer fades.
-Hyprlock uses 100 ms fades/color effects and instant password dots; SwayNC uses 120 ms transitions and
+The lock layout label scrolls for 180 ms with immediate password feedback;
+the Hyprlock fallback uses 100 ms fades/color effects. SwayNC uses 120 ms transitions and
 80 ms hover effects. Set `archsetup_desktop_reduced_motion: true` to disable them.
 Compositor timing follows the [Hyprland animation configuration](https://wiki.hypr.land/Configuring/Advanced-and-Cool/Animations/).
-The lock setting follows the [Hyprlock animation configuration](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#animations);
+Fallback lock timing follows the [Hyprlock animation configuration](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#animations);
 notification timing follows the [SwayNC schema](https://github.com/ErikReider/SwayNotificationCenter/blob/main/src/configSchema.json).
 
 `~/.config/archsetup` contains the managed profile. The existing `~/.config/hypr`
@@ -300,7 +309,9 @@ in process logs.
 
 ![Default desktop](images/desktop-preview.png)
 
-![Hyprlock](images/desktop-lock.png)
+![Animated lock controls (dark preview)](images/desktop-lock-controls.png)
+
+![Hyprlock fallback](images/desktop-lock.png)
 
 ![Window overview](images/desktop-overview.png)
 

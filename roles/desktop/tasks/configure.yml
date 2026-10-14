@@ -15,7 +15,7 @@
     owner: "{{ archsetup_desktop_user }}"
     group: "{{ desktop_group }}"
     mode: '0755'
-  loop: ['', shell, bin, assets]
+  loop: ['', shell, lock, bin, assets]
 
 - name: Install the requested lock-screen wallpaper
   ansible.builtin.copy:
@@ -41,6 +41,14 @@
     group: "{{ desktop_group }}"
     mode: '0644'
   notify: Refresh running ArchSetup shell
+
+- name: Install animated Wayland lock screen
+  ansible.builtin.copy:
+    src: lock/
+    dest: "{{ desktop_root }}/lock/"
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
+    mode: '0644'
 
 - name: Install desktop helpers and shortcut map
   ansible.builtin.copy:

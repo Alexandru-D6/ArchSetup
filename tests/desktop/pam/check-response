@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""Validate only a public dummy response in an isolated PAM fixture."""
+import sys
+
+response = sys.stdin.buffer.read().rstrip(b'\0')
+accepted = response == b'dummy response' and 'reject' not in sys.argv[1:]
+raise SystemExit(0 if accepted else 1)

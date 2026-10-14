@@ -24,6 +24,7 @@ def render(destination, overrides=None):
     for template in (ROLE / 'templates').glob('*.j2'):
         (destination / template.stem).write_text(env.get_template(template.name).render(defaults))
     shutil.copytree(ROLE / 'files/shell', destination / 'shell', dirs_exist_ok=True)
+    shutil.copytree(ROLE / 'files/lock', destination / 'lock', dirs_exist_ok=True)
     shutil.copytree(ROLE / 'files/assets', destination / 'assets', dirs_exist_ok=True)
     (destination / 'bin').mkdir(exist_ok=True)
     for filename in ['desktop-action', 'desktop-record', 'session-services', 'validate-config', 'lock-visuals']:

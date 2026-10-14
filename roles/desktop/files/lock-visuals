@@ -125,6 +125,52 @@ def configured_layouts(preferences):
     return names
 
 
+def keyboard_info():
+    """Map XKB's event names to compact labels, querying the active keyboard once."""
+    import ctypes
+    import ctypes.util
+    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    compact = configured_layouts(preferences)
+    layouts = {}
+    library = ctypes.CDLL(ctypes.util.find_library('xkbcommon'))
+    class Names(ctypes.Structure):
+        _fields_ = [(name, ctypes.c_char_p) for name in ('rules', 'model', 'layout', 'variant', 'options')]
+    library.xkb_context_new.argtypes = [ctypes.c_int]
+    library.xkb_context_new.restype = ctypes.c_void_p
+    library.xkb_context_unref.argtypes = [ctypes.c_void_p]
+    library.xkb_keymap_new_from_names.argtypes = [ctypes.c_void_p, ctypes.POINTER(Names), ctypes.c_int]
+    library.xkb_keymap_new_from_names.restype = ctypes.c_void_p
+    library.xkb_keymap_unref.argtypes = [ctypes.c_void_p]
+    library.xkb_keymap_num_layouts.argtypes = [ctypes.c_void_p]
+    library.xkb_keymap_num_layouts.restype = ctypes.c_uint32
+    library.xkb_keymap_layout_get_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+    library.xkb_keymap_layout_get_name.restype = ctypes.c_char_p
+    context = library.xkb_context_new(0)
+    if context:
+        try:
+            names = Names(None, None, preferences.get('keyboardLayouts', 'us').encode(),
+                          preferences.get('keyboardVariants', '').encode(), None)
+            keymap = library.xkb_keymap_new_from_names(context, ctypes.byref(names), 0)
+            if keymap:
+                try:
+                    for index in range(min(len(compact), library.xkb_keymap_num_layouts(keymap))):
+                        name = library.xkb_keymap_layout_get_name(keymap, index)
+                        if name: layouts[name.decode()] = compact[index]
+                finally:
+                    library.xkb_keymap_unref(keymap)
+        finally:
+            library.xkb_context_unref(context)
+    keyboard = {}
+    try:
+        devices = json.loads(subprocess.check_output(['hyprctl', '-j', 'devices'], text=True, timeout=2))
+        keyboard = next((item for item in devices.get('keyboards', []) if item.get('main')), {})
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    return json.dumps({'username': pwd.getpwuid(os.getuid()).pw_name, 'layouts': layouts,
+                       'active': keyboard.get('active_keymap', next(iter(layouts), compact[0])),
+                       'capsLock': bool(keyboard.get('capsLock', False))})
+
+
 def identity_config(username=None, layouts=None):
     """Fit all layout names once; Hyprlock selects them on native keyboard events."""
     from PIL import ImageFont
@@ -404,6 +450,7 @@ def capslock():
 if __name__ == '__main__':
     try:
         output = {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity-config': identity_config,
+                  'keyboard-info': keyboard_info,
                   # Ignore a legacy pidfd argument during a partial deployment.
                   # This updater only writes files; it never signals the locker.
                   'prepare': prepare, 'watch': lambda: watch(int(sys.argv[2])),

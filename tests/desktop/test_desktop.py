@@ -555,6 +555,125 @@ else:
         visuals.ROOT = self.profile
         return visuals
 
+    def native_lock_only(self):
+        # Exercise the compatibility path independently of the animated UI.
+        (self.profile / 'lock/shell.qml').unlink()
+
+    def test_qml_session_and_lock_controls(self):
+        executable = Path('/usr/lib/qt6/bin/qmltestrunner')
+        if not executable.is_file(): self.skipTest('Qt 6 qmltestrunner is required')
+        environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
+                           QT_QUICK_CONTROLS_STYLE='Basic', XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'))
+        result = subprocess.run([executable, '-input', str(Path(__file__).parent / 'qml'), '-o', '-,txt'],
+                                env=environment, capture_output=True, text=True, timeout=45)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_quickshell_pam_with_isolated_policies_and_dummy_response(self):
+        executable = shutil.which('qs')
+        if executable is None: self.skipTest('Quickshell is required')
+        fixture = self.profile / 'pam-validation'
+        shutil.copytree(Path(__file__).parent / 'pam', fixture)
+        shutil.copy2(ROLE / 'files/lock/LockAuth.qml', fixture / 'LockAuth.qml')
+        checker = fixture / 'check-response'
+        checker.chmod(0o755)
+        for policy, arguments in [('prompt-accept', ''), ('prompt-deny', ' reject')]:
+            (fixture / policy).write_text(f'auth required pam_exec.so expose_authtok quiet {checker}{arguments}\n')
+        environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
+                           XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'),
+                           XDG_CACHE_HOME=str(self.profile / 'cache'), XDG_STATE_HOME=str(self.profile / 'qs-state'))
+        environment.pop('WAYLAND_DISPLAY', None)
+        result = subprocess.run([executable, '-p', str(fixture), '--no-color'],
+                                env=environment, capture_output=True, text=True, timeout=15)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn('ARCHSETUP_PAM_FIXTURES_PASSED', output)
+        self.assertNotIn('dummy response', output)
+
+    def test_animated_lock_configuration_loads_in_quickshell(self):
+        executable = shutil.which('qs')
+        if executable is None: self.skipTest('Quickshell is required')
+        private = self.profile / 'lock-session'
+        private.mkdir(mode=0o700)
+        for power, label in [('poweroff', 'Power off'), ('reboot', 'Reboot')]:
+            (private / f'lock-{power}.label').write_text(label + '\n')
+        environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
+                           XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'),
+                           XDG_CACHE_HOME=str(self.profile / 'cache'), XDG_STATE_HOME=str(self.profile / 'qs-state'),
+                           ARCHSETUP_LOCK_DIR=str(private), WAYLAND_DISPLAY='not-a-real-display',
+                           HYPRLAND_INSTANCE_SIGNATURE='archsetup-lock-configuration-check')
+        # The offscreen backend cannot lock a compositor. It still loads the
+        # production config and detects imports/property errors without touching
+        # a real desktop or invoking authentication.
+        with subprocess.Popen([executable, '-p', str(self.profile / 'lock'), '--no-color'], env=environment,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as process:
+            try:
+                output = process.communicate(timeout=2)[0]
+            except subprocess.TimeoutExpired:
+                process.terminate()
+                output = process.communicate(timeout=5)[0]
+        self.assertIn('Configuration Loaded', output)
+        self.assertNotIn('Failed to load configuration', output)
+        self.assertFalse((private / 'authenticated').exists())
+
+    def test_animated_lock_authenticates_before_normal_exit_and_cleans_up(self):
+        environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'animated-lock', 'XDG_RUNTIME_DIR': self.directory.name}
+        locker, updater = Mock(pid=123), Mock()
+        locker.wait.return_value = 0
+        def launch(arguments, **kwargs):
+            if arguments[0] == 'qs':
+                private = Path(kwargs['env']['ARCHSETUP_LOCK_DIR'])
+                self.assertEqual(arguments, ['qs', '-p', str(self.profile / 'lock')])
+                self.assertEqual((private / 'lock-poweroff.label').read_text(), 'Power off\n')
+                self.assertFalse((self.profile / 'theme/lock-clock.png').exists())
+                (private / 'authenticated').write_text('authenticated\n')
+                return locker
+            self.assertEqual(arguments[1], 'watch')
+            return updater
+        with patch.dict(os.environ, environment), patch.object(self.actions, 'run'), \
+             patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn:
+            self.actions.main('lock')
+        self.assertEqual(spawn.call_count, 2)
+        locker.wait.assert_called_once_with()
+        updater.terminate.assert_called_once_with()
+        updater.wait.assert_called_once_with(timeout=3)
+        self.assertFalse(Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR']).exists())
+
+    def test_animated_lock_without_success_marker_falls_back_even_on_zero_exit(self):
+        for result in [0, 1, -11]:
+            with self.subTest(result=result):
+                environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'failed-animated-lock', 'XDG_RUNTIME_DIR': self.directory.name}
+                animated, updater, native = Mock(pid=123), Mock(), Mock(pid=124)
+                animated.wait.return_value = result
+                native.wait.return_value = 0
+                with patch.dict(os.environ, environment), patch.object(self.actions, 'run'), \
+                     patch.object(self.actions.subprocess, 'Popen', side_effect=[animated, updater, native]) as spawn:
+                    self.actions.main('lock')
+                self.assertEqual([call.args[0][0] for call in spawn.call_args_list], ['qs', str(self.profile / 'bin/lock-visuals'), 'hyprlock'])
+                native.wait.assert_called_once_with()
+                updater.terminate.assert_called_once_with()
+                self.assertFalse(Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR']).exists())
+
+    def test_missing_animated_lock_runtime_uses_native_locker(self):
+        environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'missing-qs', 'XDG_RUNTIME_DIR': self.directory.name}
+        native, updater = Mock(pid=123), Mock()
+        native.wait.return_value = 0
+        with patch.dict(os.environ, environment), patch.object(self.actions, 'run'), \
+             patch.object(self.actions.subprocess, 'Popen', side_effect=[OSError('missing qs'), native, updater]) as spawn:
+            self.actions.main('lock')
+        self.assertEqual(spawn.call_args_list[1].args[0][0], 'hyprlock')
+        native.wait.assert_called_once_with()
+        updater.terminate.assert_called_once_with()
+
+    def test_keyboard_identity_maps_real_xkb_names_and_queries_only_once(self):
+        visuals = self.lock_visuals()
+        devices = {'keyboards': [{'main': True, 'active_keymap': 'English (intl., with AltGr dead keys)', 'capsLock': True}]}
+        with patch.object(visuals.subprocess, 'check_output', return_value=json.dumps(devices)) as query:
+            info = json.loads(visuals.keyboard_info())
+        self.assertEqual(set(info['layouts'].values()), {'US · Euro', 'US · AltGr'})
+        self.assertEqual(info['layouts'][info['active']], 'US · AltGr')
+        self.assertTrue(info['capsLock'])
+        query.assert_called_once_with(['hyprctl', '-j', 'devices'], text=True, timeout=2)
+
     def test_lock_clock_updates_its_time_day_and_month(self):
         from datetime import datetime
         from PIL import Image
@@ -632,6 +751,7 @@ else:
                           for name in names], ["a'lex  ·  A&B", "a'lex  ·  x,[y]<z>#"])
 
     def test_lock_starts_without_image_preparation_and_with_native_power_labels(self):
+        self.native_lock_only()
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
                        'XDG_RUNTIME_DIR': self.directory.name}
         locker, updater = Mock(pid=123), Mock()
@@ -686,6 +806,7 @@ else:
             self.assertIn(f'cmd[update:100:1] cat "{self.profile}/theme/lock-{action}.label"', config)
 
     def test_first_lock_starts_before_uncached_images_exist(self):
+        self.native_lock_only()
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-first-lock', 'XDG_RUNTIME_DIR': self.directory.name}
         locker, updater = Mock(pid=123), Mock()
         locker.wait.return_value = 0
@@ -704,6 +825,7 @@ else:
             run.assert_called_once_with(str(self.profile / 'bin/desktop-record'), 'record-stop')
 
     def test_lock_stops_image_updater_if_hyprlock_fails(self):
+        self.native_lock_only()
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
                        'XDG_RUNTIME_DIR': self.directory.name}
         locker, updater = Mock(pid=123), Mock()
@@ -717,6 +839,7 @@ else:
             updater.wait.assert_called_once_with(timeout=3)
 
     def test_image_updater_startup_failure_still_waits_for_hyprlock(self):
+        self.native_lock_only()
         import contextlib
         import io
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
@@ -734,6 +857,7 @@ else:
         self.assertIn('Lock image updater unavailable', errors.getvalue())
 
     def test_locker_inherits_refresh_signal_block_and_parent_mask_is_restored(self):
+        self.native_lock_only()
         import signal
         ready = self.profile / 'locker-signal-mask'
         locker = self.profile / 'bin/hyprlock'
@@ -760,6 +884,7 @@ else:
             signal.pthread_sigmask(signal.SIG_SETMASK, original)
 
     def test_failed_locker_start_restores_parent_signal_mask(self):
+        self.native_lock_only()
         import signal
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-failed-lock',
                        'XDG_RUNTIME_DIR': self.directory.name}

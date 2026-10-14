@@ -1,0 +1,2 @@
+auth required pam_deny.so
+auth sufficient pam_permit.so
