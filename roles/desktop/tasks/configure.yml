@@ -96,6 +96,18 @@
     mode: '0644'
     backup: true
 
+- name: Configure VSCodium to use GNOME Keyring
+  ansible.builtin.lineinfile:
+    path: "{{ desktop_home }}/.config/codium-flags.conf"
+    regexp: '^\s*--password-store(?:[= \t]+\S+)?\s*$'
+    line: --password-store=gnome-libsecret
+    create: true
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ desktop_group }}"
+    mode: '0644'
+    backup: true
+  when: archsetup_desktop_code_editor == 'codium.desktop'
+
 - name: Render desktop shell preferences
   become: true
   become_user: "{{ archsetup_desktop_user }}"

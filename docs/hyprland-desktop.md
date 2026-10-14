@@ -40,6 +40,14 @@ override `archsetup_desktop_code_editor` with its desktop entry. Set
 `archsetup_desktop_install_vscodium=false` to require manual VSCodium installation.
 See [VSCodium's Arch installation guide](https://vscodium.com/#install-on-arch-linux).
 
+When VSCodium is selected, the role sets `--password-store=gnome-libsecret` in
+`~/.config/codium-flags.conf`, which the Arch `vscodium-bin` launcher reads.
+This explicitly selects GNOME Keyring on Hyprland for encrypted GitHub credentials,
+following [VS Code's keyring guidance](https://code.visualstudio.com/docs/configure/settings-sync#_configure-a-keyring-backend).
+GNOME Keyring and `libsecret` are desktop dependencies. Other launcher flag lines
+and `~/.vscode-oss/argv.json` are preserved; changed flag files receive timestamped
+backups. Fully quit and reopen VSCodium after applying the setting.
+
 ```bash
 ./setup.sh desktop-check -e @inventory/profiles/alex-desktop.yml --ask-become-pass
 ./setup.sh desktop-apply -e @inventory/profiles/alex-desktop.yml --ask-become-pass
@@ -283,6 +291,7 @@ Managed paths:
   `state.json` and `overrides.lua` which remain user-owned.
 - `~/.config/kitty/kitty.conf`: link to the generated managed Kitty theme; the
   previous configuration is retained as `kitty.conf.pre-archsetup`.
+- The password-store flag in `~/.config/codium-flags.conf` when VSCodium is selected.
 - HTTP, HTTPS and HTML keys in `~/.config/mimeapps.list`; other entries are kept.
 - `/usr/local/bin/archsetup-session` and
   `/usr/share/wayland-sessions/archsetup.desktop`.
@@ -304,8 +313,9 @@ Lua candidates are parsed before replacing the managed compositor file; invalid
 candidates leave the existing file intact.
 
 `desktop-verify` is read-only and checks package presence, required files,
-compositor parsing and login-manager enablement. It does not authenticate on your
-behalf or prove suspend/resume behavior. Session processes are launched once per
+the selected VSCodium keyring backend, compositor parsing and login-manager
+enablement. It does not authenticate on your behalf or prove suspend/resume
+behavior. Session processes are launched once per
 Hyprland instance and cleaned up when the compositor exits. Child services restart after failure with a short delay; errors remain visible
 in process logs.
 

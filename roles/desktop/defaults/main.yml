@@ -68,6 +68,7 @@ archsetup_desktop_packages:
   - network-manager-applet
   - polkit-gnome
   - gnome-keyring
+  - libsecret
   - xdg-desktop-portal-hyprland
   - xdg-desktop-portal-gtk
   - xdg-utils
