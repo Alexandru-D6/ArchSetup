@@ -1,6 +1,23 @@
 # Resume checkpoint — 2026-10-14 (latest)
 
-Latest task: replaced the launcher-style shortcut list with an original,
+Latest task: removed recording cleanup from the lock startup dependency and made
+lock-screen power actions optional. The locker starts first; recording cleanup
+runs in a separate worker with a two-second timeout; errors cannot abort startup
+or fallback launch. The new `archsetup_desktop_lock_require_auth_for_power` defaults
+to true, hides Power off/Reboot on both lock screens and rejects their helper
+requests. Users unlock and use the desktop session menu. Explicitly setting false
+restores the confirmation buttons. Invalid or missing preferences require unlock;
+pending confirmations are cancelled if the policy becomes restrictive. The
+Configuration window plan includes the policy under General and in settings search.
+
+Validation: all 66 desktop regressions pass. New process tests reproduce the pending region-selection race,
+recorder errors and timeouts, both power policies, direct helper/socket requests,
+confirmation cancellation and hidden QML buttons without breaking password input.
+Component/test lint, both desktop playbook syntax checks and whitespace checks
+pass. No workstation deployment or full Wayland lock cycle was performed; reapply
+the desktop profile and start a new lock session.
+
+Previous task: replaced the launcher-style shortcut list with an original,
 reference-inspired Quickshell window. Super+/ and its help aliases toggle the
 centered window, with category columns, keycap labels and the desktop palette.
 There is no periodic table. Live search removes unmatched shortcuts and empty

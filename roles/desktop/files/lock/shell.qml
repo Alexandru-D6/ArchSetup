@@ -111,6 +111,7 @@ ShellRoot {
                 controls.uiFont: root.preferences.font || "DejaVu Sans"
                 controls.fontSize: root.preferences.controlFontSize || 12
                 controls.reducedMotion: root.preferences.reducedMotion || false
+                controls.powerActionsEnabled: root.preferences.lockPowerRequiresAuth === false
                 controls.surface: root.palette.raised || "#292332"
                 controls.ink: root.palette.ink || "#eae0f5"
                 controls.outline: root.palette.outline || "#45404f"
@@ -123,7 +124,10 @@ ShellRoot {
                 Connections {
                     target: screen.controls
                     function onSubmitted(response) { root.authenticate(response); }
-                    function onPowerPressed(action) { Quickshell.execDetached([root.profile + "/bin/lock-visuals", "click-" + action]); }
+                    function onPowerPressed(action) {
+                        if (root.preferences.lockPowerRequiresAuth === false)
+                            Quickshell.execDetached([root.profile + "/bin/lock-visuals", "click-" + action]);
+                    }
                     function onCapsLockToggled() { root.capsLock = !root.capsLock; }
                 }
                 Connections {

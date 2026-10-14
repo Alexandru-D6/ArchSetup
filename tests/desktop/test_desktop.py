@@ -27,6 +27,12 @@ class DesktopTests(unittest.TestCase):
         loader.exec_module(self.actions)
         self.actions.ROOT = self.profile
 
+    def allow_lock_power(self):
+        path = self.profile / 'preferences.json'
+        preferences = json.loads(path.read_text())
+        preferences['lockPowerRequiresAuth'] = False
+        path.write_text(json.dumps(preferences))
+
     def test_updated_lock_template_takes_precedence_over_stale_theme(self):
         base = self.profile / 'hyprlock.conf'
         generated = self.profile / 'theme/hyprlock.conf'
@@ -708,6 +714,91 @@ else:
         updater.wait.assert_called_once_with(timeout=3)
         self.assertFalse(Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR']).exists())
 
+    def test_recording_cleanup_errors_do_not_prevent_lock_or_fallback(self):
+        import contextlib
+        import io
+        for failure in [OSError('recorder unavailable'),
+                        subprocess.CalledProcessError(1, ['record-stop']),
+                        subprocess.TimeoutExpired(['record-stop'], 2)]:
+            with self.subTest(failure=type(failure).__name__):
+                environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'failed-recorder',
+                               'XDG_RUNTIME_DIR': self.directory.name}
+                animated, updater, native = Mock(), Mock(), Mock()
+                animated.wait.return_value = 1
+                native.wait.return_value = 0
+                errors = io.StringIO()
+                with patch.dict(os.environ, environment), \
+                     patch.object(self.actions, 'run', side_effect=failure), \
+                     patch.object(self.actions.subprocess, 'Popen', side_effect=[animated, updater, native]) as spawn, \
+                     contextlib.redirect_stderr(errors):
+                    self.actions.main('lock')
+                self.assertEqual([call.args[0][0] for call in spawn.call_args_list],
+                                 ['qs', str(self.profile / 'bin/lock-visuals'), 'hyprlock'])
+                native.wait.assert_called_once_with()
+                self.assertIn('locking continues', errors.getvalue())
+
+    def test_pending_recording_selection_does_not_delay_lock_or_fallback(self):
+        # Run the real launcher and recording controller with isolated stubs.
+        # No compositor, authentication, recording or power command touches the host.
+        for crashed in [False, True]:
+            with self.subTest(crashed=crashed):
+                directory = self.profile / ('pending-selection-' + str(crashed))
+                directory.mkdir()
+                stubs = directory / 'bin'
+                stubs.mkdir()
+                marker = directory / 'locker-started'
+                started = directory / 'selection-started'
+                release = directory / 'release-selection'
+                scripts = {
+                    'slurp': 'import time\nfrom pathlib import Path\n'
+                             + f'Path({str(started)!r}).touch()\n'
+                             + f'while not Path({str(release)!r}).exists(): time.sleep(0.01)\n'
+                             + 'raise SystemExit(1)\n',
+                    'qs': 'import os\nfrom pathlib import Path\n'
+                          + ('raise SystemExit(1)\n' if crashed else
+                             f'Path({str(marker)!r}).touch()\n'
+                             + 'Path(os.environ["ARCHSETUP_LOCK_DIR"], "authenticated").touch()\n'),
+                    'hyprlock': 'from pathlib import Path\n' + f'Path({str(marker)!r}).touch()\n',
+                }
+                for name, body in scripts.items():
+                    script = stubs / name
+                    script.write_text('#!' + sys.executable + '\n' + body)
+                    script.chmod(0o755)
+                updater = self.profile / 'bin/lock-visuals'
+                updater.write_text('#!' + sys.executable + '\n')
+                environment = dict(os.environ, XDG_RUNTIME_DIR=str(directory),
+                                   HYPRLAND_INSTANCE_SIGNATURE='pending-region-audit',
+                                   PATH=str(stubs) + os.pathsep + os.environ['PATH'])
+                environment.pop('WAYLAND_DISPLAY', None)
+                region = subprocess.Popen([sys.executable, str(self.profile / 'bin/desktop-record'), 'record-region'],
+                                          env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                lock = None
+                def wait_for(path):
+                    deadline = time.monotonic() + 3
+                    while not path.exists():
+                        self.assertIsNone(region.poll(), 'Selection exited before cancellation')
+                        self.assertLess(time.monotonic(), deadline, f'Timed out waiting for {path.name}')
+                        time.sleep(0.01)
+                try:
+                    wait_for(started)
+                    lock = subprocess.Popen([sys.executable, str(self.profile / 'bin/desktop-action'), 'lock'],
+                                            env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    wait_for(marker)
+                    # The lock and its fallback must start while selection still
+                    # owns the recorder guard. Cleanup must then time out itself.
+                    self.assertFalse(release.exists())
+                    _, error = lock.communicate(timeout=4)
+                    self.assertEqual(lock.returncode, 0, error.decode())
+                    self.assertIn(b'locking continues', error)
+                    self.assertIsNone(region.poll())
+                finally:
+                    release.touch()
+                    region.communicate(timeout=3)
+                    if lock is not None:
+                        if lock.poll() is None:
+                            lock.terminate()
+                        lock.communicate(timeout=3)
+
     def test_animated_lock_without_success_marker_falls_back_even_on_zero_exit(self):
         for result in [0, 1, -11]:
             with self.subTest(result=result):
@@ -821,6 +912,7 @@ else:
                           for name in names], ["a'lex  ·  A&B", "a'lex  ·  x,[y]<z>#"])
 
     def test_lock_starts_without_image_preparation_and_with_native_power_labels(self):
+        render(self.profile, {'archsetup_desktop_lock_require_auth_for_power': False})
         self.native_lock_only()
         environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'test-compositor',
                        'XDG_RUNTIME_DIR': self.directory.name}
@@ -829,6 +921,7 @@ else:
         configurations = []
         def launch(arguments, **kwargs):
             if arguments[0] == 'hyprlock':
+                run.assert_not_called()
                 configurations.append(Path(arguments[2]).read_text())
                 private = Path(kwargs['env']['ARCHSETUP_LOCK_DIR'])
                 for action, label in [('poweroff', 'Power off'), ('reboot', 'Reboot')]:
@@ -842,7 +935,8 @@ else:
              patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn:
             self.actions.main('lock')
             private = Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR'])
-            run.assert_called_once_with(str(self.profile / 'bin/desktop-record'), 'record-stop')
+            run.assert_called_once_with(str(self.profile / 'bin/desktop-record'), 'record-stop', timeout=2,
+                                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
             self.assertEqual(spawn.call_args_list[0].args,
                              (['hyprlock', '-c', str(private / 'hyprlock.conf')],))
             self.assertEqual(spawn.call_args_list[1].args,
@@ -892,7 +986,8 @@ else:
         with patch.dict(os.environ, environment), patch.object(self.actions, 'run') as run, \
              patch.object(self.actions.subprocess, 'Popen', side_effect=launch):
             self.actions.main('lock')
-            run.assert_called_once_with(str(self.profile / 'bin/desktop-record'), 'record-stop')
+            run.assert_called_once_with(str(self.profile / 'bin/desktop-record'), 'record-stop', timeout=2,
+                                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
     def test_lock_stops_image_updater_if_hyprlock_fails(self):
         self.native_lock_only()
@@ -970,7 +1065,108 @@ else:
         finally:
             signal.pthread_sigmask(signal.SIG_SETMASK, original)
 
+    def test_lock_power_policy_renders_both_modes(self):
+        for required in [True, False]:
+            with self.subTest(required=required):
+                profile = render(self.profile / str(required), {
+                    'archsetup_desktop_lock_require_auth_for_power': required})
+                preferences = json.loads((profile / 'preferences.json').read_text())
+                self.assertIs(preferences['lockPowerRequiresAuth'], required)
+                native = (profile / 'hyprlock.conf').read_text()
+                for action in ['poweroff', 'reboot']:
+                    self.assertEqual(f'click-{action}' in native, not required)
+                    self.assertEqual(f'lock-{action}.label' in native, not required)
+                self.assertIn('pam:enabled = true', native)
+                self.assertIn('pam:module = archsetup-hyprlock', native)
+        self.assertIs(json.loads((self.profile / 'preferences.json').read_text())['lockPowerRequiresAuth'], True)
+
+    def test_lock_power_policy_fails_closed_and_blocks_direct_requests(self):
+        visuals = self.lock_visuals()
+        preferences = self.profile / 'preferences.json'
+        for content in [None, '{', '{}', '[]', 'null',
+                        '{"lockPowerRequiresAuth": true}',
+                        '{"lockPowerRequiresAuth": "false"}',
+                        '{"lockPowerRequiresAuth": 0}']:
+            with self.subTest(content=content):
+                if content is None:
+                    preferences.unlink(missing_ok=True)
+                else:
+                    preferences.write_text(content)
+                paint, execute = Mock(), Mock()
+                buttons = visuals.PowerControls(paint=paint, execute=execute)
+                with patch.object(visuals.subprocess, 'run') as run, \
+                     patch.object(visuals.socket, 'socket') as socket:
+                    for action in ['poweroff', 'reboot']:
+                        self.assertFalse(buttons.press(action))
+                        self.assertFalse(buttons.press(action))
+                        with self.assertRaises(PermissionError):
+                            visuals.click_power(action)
+                        with self.assertRaises(PermissionError):
+                            visuals.power_action(action)
+                    run.assert_not_called()
+                    socket.assert_not_called()
+                    execute.assert_not_called()
+                    paint.assert_not_called()
+
+    def test_requiring_unlock_cancels_pending_power_confirmation(self):
+        self.allow_lock_power()
+        visuals = self.lock_visuals()
+        paint, execute = Mock(), Mock()
+        buttons = visuals.PowerControls(paint=paint, execute=execute)
+        self.assertTrue(buttons.press('poweroff'))
+        preferences = self.profile / 'preferences.json'
+        preferences.write_text('{"lockPowerRequiresAuth": true}')
+        self.assertFalse(buttons.press('poweroff'))
+        self.assertIsNone(buttons.selected)
+        paint.assert_called_with(None)
+        execute.assert_not_called()
+        self.allow_lock_power()
+        self.assertTrue(buttons.press('poweroff'))
+        execute.assert_not_called()
+
+    def test_locked_power_controller_rejects_raw_socket_requests(self):
+        import socket
+        private = self.profile / 'restricted-lock'
+        private.mkdir(mode=0o700)
+        log = self.profile / 'unexpected-power-action'
+        systemctl = self.profile / 'bin/systemctl'
+        systemctl.write_text('#!' + sys.executable + '\nfrom pathlib import Path\n'
+                            + f'Path({str(log)!r}).touch()\n')
+        systemctl.chmod(0o755)
+        environment = dict(os.environ, ARCHSETUP_LOCK_DIR=str(private),
+                           PATH=str(systemctl.parent) + os.pathsep + os.environ['PATH'])
+        updater = subprocess.Popen([sys.executable, str(self.profile / 'bin/lock-visuals'), 'watch', str(os.getpid())],
+                                   env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        try:
+            endpoint = private / 'control.sock'
+            clock = self.profile / 'theme/lock-clock.png'
+            deadline = time.monotonic() + 4
+            while not endpoint.exists() or not (private / 'lock-reboot.label').exists() or not clock.exists():
+                self.assertIsNone(updater.poll())
+                self.assertLess(time.monotonic(), deadline)
+                time.sleep(0.01)
+            before = clock.stat().st_mtime_ns
+            with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as client:
+                client.connect(str(endpoint))
+                for request in [b'p', b'p', b'r', b'r']:
+                    client.send(request)
+            # Wait for a full visual refresh, ensuring the controller has had
+            # time to consume the datagrams between its clock updates.
+            deadline = time.monotonic() + 4
+            while not clock.exists() or clock.stat().st_mtime_ns == before:
+                self.assertIsNone(updater.poll())
+                self.assertLess(time.monotonic(), deadline)
+                time.sleep(0.02)
+            self.assertFalse(log.exists())
+            self.assertEqual((private / 'lock-poweroff.label').read_text(), 'Power off\n')
+            self.assertEqual((private / 'lock-reboot.label').read_text(), 'Reboot\n')
+        finally:
+            updater.terminate()
+            _, error = updater.communicate(timeout=3)
+        self.assertEqual(updater.returncode, 0, error.decode())
+
     def test_lock_power_buttons_confirm_selected_action_or_cancel(self):
+        self.allow_lock_power()
         visuals = self.lock_visuals()
         for selected, other in [('poweroff', 'reboot'), ('reboot', 'poweroff')]:
             with self.subTest(selected=selected):
@@ -991,6 +1187,7 @@ else:
                 execute.assert_called_once_with(selected)
 
     def test_failed_power_confirmation_restores_original_buttons(self):
+        self.allow_lock_power()
         import contextlib
         import io
         visuals = self.lock_visuals()
@@ -1007,6 +1204,7 @@ else:
         self.assertEqual(paint.call_args.args, ('poweroff',))
 
     def test_confirmed_lock_power_actions_call_systemctl(self):
+        self.allow_lock_power()
         visuals = self.lock_visuals()
         for action in ['poweroff', 'reboot']:
             with self.subTest(action=action), patch.object(visuals.subprocess, 'run') as run:
@@ -1048,6 +1246,7 @@ else:
                 self.assertEqual(visuals.receive_power(control), expected)
 
     def test_live_lock_power_controller_confirms_cancels_and_cleans_up(self):
+        self.allow_lock_power()
         # Keep the real desktop helper so an accidental session-menu request is
         # observable. Stub only the final system commands; never reboot the host.
         for selected, other in [('poweroff', 'reboot'), ('reboot', 'poweroff')]:
@@ -1145,6 +1344,7 @@ else:
         self.assertEqual(clock.stat().st_mtime_ns, final_mtime)
 
     def test_live_image_updates_never_signal_a_legacy_locker_descriptor(self):
+        self.allow_lock_power()
         unexpected = self.profile / 'unexpected-lock-refresh'
         code = ('import signal, time\nfrom pathlib import Path\n'
                 + f'signal.signal(signal.SIGUSR2, lambda *_: Path({str(unexpected)!r}).touch())\n'

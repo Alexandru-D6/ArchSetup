@@ -56,6 +56,7 @@ archsetup_desktop_install_brave: true
 archsetup_desktop_quickshell_package: quickshell
 archsetup_desktop_manage_login: true
 archsetup_desktop_autologin_locked: true
+archsetup_desktop_lock_require_auth_for_power: true
 archsetup_desktop_manage_network: false
 archsetup_desktop_reduced_motion: true
 archsetup_desktop_monitors:
@@ -190,6 +191,13 @@ The session and lock screens use the same 12-point size for ordinary text. The
 password field is at the bottom center, 20 pixels above the edge; the clock is
 in the middle of the screen. Adjust `archsetup_desktop_control_font_size` in your
 profile to change both screens' control text together.
+
+Shutdown and reboot require unlocking first by default: the lock screens hide
+their power buttons, and you use the desktop session menu after authentication.
+Set `archsetup_desktop_lock_require_auth_for_power: false` in your profile and
+reapply to allow confirmed shutdown/reboot directly from either lock screen.
+Recording cleanup runs separately from locking, so a pending region selection or
+recorder failure cannot prevent the locker from starting.
 
 Check mouse feel, display resolution/refresh rate, audio and Bluetooth. Save your
 work before testing suspend. The QEMU test guest has a reproduced virtual GPU

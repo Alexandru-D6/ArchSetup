@@ -117,7 +117,10 @@ lookups. Quickshell reloads that image asynchronously once per second and keeps
 the current frame visible until its replacement is ready. Password input never
 waits for image generation.
 Super+L starts the locker using cached visuals, with fresh images generated
-afterward. The configured background color covers the screen while wallpaper
+afterward. Recording cleanup starts after the locker in a separate worker with
+a two-second timeout. A pending recording selection, recorder failure or missing
+helper cannot block locker startup or the launcher's fallback path.
+The configured background color covers the screen while wallpaper
 resources load. The independent Quickshell process uses
 [Wayland session-lock surfaces](https://quickshell.org/docs/v0.2.1/types/Quickshell.Wayland/WlSessionLock/)
 on every monitor. A crash leaves the compositor locked; the launcher starts native
@@ -138,9 +141,18 @@ Image updates never send refresh signals. The Hyprlock fallback keeps its native
 layout labels and image timer, with SIGUSR2 blocked in all its threads to avoid
 that version's unsafe refresh handler.
 
-The bottom toolbar has a compact user/keyboard-layout pill, the password field,
-and clickable, text-only **Power off** and **Reboot** buttons. Layouts such as US
-Euro and US AltGr use short names. Password feedback uses randomly selected circles,
+The bottom toolbar has a compact user/keyboard-layout pill and the password field.
+By default, `archsetup_desktop_lock_require_auth_for_power: true` hides **Power off**
+and **Reboot** on both the animated lock and native Hyprlock fallback. Unlock first,
+then use the desktop session menu. To permit power actions while locked, set that
+variable to `false` in your Ansible profile and reapply. The lock helper also checks
+the policy before accepting requests and before executing an action; stale buttons
+or direct control-socket requests cannot bypass it. Missing or invalid preferences
+require unlocking. The planned Configuration window will expose this setting in
+General as **Require unlock before shutdown or reboot**.
+
+When power actions are allowed, the toolbar includes clickable, text-only buttons.
+Layouts such as US Euro and US AltGr use short names. Password feedback uses randomly selected circles,
 diamonds, triangles, hexagons, clovers and stars. Shapes depend only on the number
 of characters and fresh randomness; existing shapes stay stable while editing.
 The identity pill fits its current content. The password pill stays at 15% of
@@ -155,8 +167,8 @@ use `archsetup_desktop_control_font_size` for ordinary text (12 points by defaul
 equivalent to 16 pixels at 96 dpi). Labels, status, layout names, password prompts
 and buttons share that size; long names are shortened instead of using a smaller
 font. Clock digits remain larger, and the day/month badges both use 28-pixel text.
-Clicking **Power off** or **Reboot** changes that button to **Confirm** and the
-other to **Cancel**. Confirm runs the selected action; Cancel restores both
+When enabled, clicking **Power off** or **Reboot** changes that button to **Confirm**
+and the other to **Cancel**. Confirm runs the selected action; Cancel restores both
 original buttons. File-change notifications update captions immediately;
 the Hyprlock fallback reads those same private labels every 100 ms asynchronously.
 Confirmation and cancellation are available immediately, with no timed click

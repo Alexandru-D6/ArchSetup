@@ -98,6 +98,7 @@ input-field {
     valign = bottom
     zindex = 1
 }
+{% if not (archsetup_desktop_lock_require_auth_for_power | bool) %}
 {% for action, width, x in [('poweroff', 136, 240), ('reboot', 120, 380)] %}
 # Only this shape is clickable: the overlaid text must not send a second click.
 shape {
@@ -125,6 +126,7 @@ label {
     zindex = 2
 }
 {% endfor %}
+{% endif %}
 label {
     monitor =
     text = cmd[update:1000] {{ desktop_root }}/bin/lock-visuals capslock

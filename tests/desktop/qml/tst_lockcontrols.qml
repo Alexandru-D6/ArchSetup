@@ -31,6 +31,7 @@ Rectangle {
             controls.fontSize = 12;
             controls.reducedMotion = true;
             controls.busy = false;
+            controls.powerActionsEnabled = true;
             controls.message = "";
             controls.prompt = "Enter password";
             controls.poweroffLabel = "Power off";
@@ -169,6 +170,26 @@ Rectangle {
             mouseClick(findChild(controls, "lock-reboot"));
             compare(power.count, 2);
             compare(power.signalArguments[1][0], "reboot");
+            tryCompare(input(), "activeFocus", true);
+        }
+        function test_require_unlock_hides_power_controls_and_compacts_toolbar() {
+            fixture.width = 320;
+            waitForRendering(controls);
+            const previousHeight = controls.height;
+            controls.powerActionsEnabled = false;
+            waitForRendering(controls);
+            for (const name of ["poweroff", "reboot"]) {
+                const button = findChild(controls, "lock-" + name);
+                verify(!button.visible);
+                verify(!button.enabled);
+                button.clicked();
+            }
+            compare(power.count, 0);
+            verify(controls.height < previousHeight, "Hidden buttons still reserve toolbar space");
+            input().text = "dummy response";
+            keyClick(Qt.Key_Return);
+            compare(submission.count, 1);
+            compare(input().text, "");
             tryCompare(input(), "activeFocus", true);
         }
         function test_small_screen_wraps_long_labels_and_password() {

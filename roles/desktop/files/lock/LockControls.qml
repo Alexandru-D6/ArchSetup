@@ -11,6 +11,7 @@ FocusScope {
     property bool reducedMotion: false
     property bool busy: false
     property bool capsLock: false
+    property bool powerActionsEnabled: false
     property string prompt: "Enter password"
     property string message: ""
     property string poweroffLabel: "Power off"
@@ -60,8 +61,9 @@ FocusScope {
         id: toolbar
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        width: Math.min(controls.maximumPillWidth, identity.width + password.width + poweroff.width + reboot.width + spacing * 3)
-        height: childrenRect.height
+        width: Math.min(controls.maximumPillWidth, identity.width + password.width + spacing
+                        + (controls.powerActionsEnabled ? poweroff.width + reboot.width + spacing * 2 : 0))
+        height: implicitHeight
         spacing: 12
 
         Rectangle {
@@ -181,6 +183,8 @@ FocusScope {
         }
         component PowerButton: Button {
             id: button
+            visible: controls.powerActionsEnabled
+            enabled: controls.powerActionsEnabled
             property string powerAction: ""
             property real pillWidth: 136
             width: Math.min(controls.maximumPillWidth, implicitWidth)
@@ -191,7 +195,10 @@ FocusScope {
             topPadding: 10
             bottomPadding: 10
             focusPolicy: Qt.NoFocus
-            onClicked: { controls.powerPressed(powerAction); controls.focusPassword(); }
+            onClicked: {
+                if (controls.powerActionsEnabled) controls.powerPressed(powerAction);
+                controls.focusPassword();
+            }
             background: Rectangle {
                 radius: height / 2
                 color: controls.surface

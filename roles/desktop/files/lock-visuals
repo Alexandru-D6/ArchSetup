@@ -279,9 +279,21 @@ def power_labels(selected=None):
             path.unlink(missing_ok=True)
 
 
+def power_requires_auth():
+    # Only an explicit JSON false permits power controls before unlocking.
+    # Missing, unreadable or malformed preferences retain the safe default.
+    try:
+        preferences = json.loads((ROOT / 'preferences.json').read_text())
+        return not isinstance(preferences, dict) or preferences.get('lockPowerRequiresAuth') is not False
+    except (OSError, ValueError, UnicodeError):
+        return True
+
+
 def power_action(action):
     if action not in ('poweroff', 'reboot'):
         raise ValueError('Invalid confirmed lock-screen power action')
+    if power_requires_auth():
+        raise PermissionError('Unlock before using the desktop power menu')
     subprocess.run(['systemctl', action], check=True)
 
 
@@ -294,6 +306,11 @@ class PowerControls:
 
     def press(self, action):
         if action not in ('poweroff', 'reboot') or self.executing:
+            return False
+        if power_requires_auth():
+            if self.selected is not None:
+                self.paint(None)
+                self.selected = None
             return False
         if self.selected is None:
             self.paint(action)
@@ -316,6 +333,8 @@ class PowerControls:
 
 
 def click_power(action):
+    if power_requires_auth():
+        raise PermissionError('Unlock before using the desktop power menu')
     with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as client:
         client.connect(str(power_directory(required=True) / 'control.sock'))
         client.send({'poweroff': b'p', 'reboot': b'r'}[action])

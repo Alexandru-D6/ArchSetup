@@ -4,6 +4,7 @@
   "font": {{ archsetup_desktop_font | to_json }},
   "defaultTheme": {{ archsetup_desktop_theme | to_json }},
   "controlFontSize": {{ archsetup_desktop_control_font_size | int | to_json }},
+  "lockPowerRequiresAuth": {{ archsetup_desktop_lock_require_auth_for_power | bool | to_json }},
   "keyboardLayouts": {{ archsetup_desktop_input.kb_layout | default('us') | to_json }},
   "keyboardVariants": {{ archsetup_desktop_input.kb_variant | default('') | to_json }},
   "codeEditor": {{ archsetup_desktop_code_editor | to_json }},

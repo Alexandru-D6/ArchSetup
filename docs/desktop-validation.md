@@ -1,5 +1,32 @@
 # Desktop validation — 2026-10-10
 
+## Lock startup and optional power controls — 2026-10-14
+
+The lock launcher starts the locker before requesting recording cleanup. Cleanup
+runs in a separate worker, has a two-second timeout and reports failures without
+interrupting locker startup or native fallback. Isolated process tests reproduce
+a pending region selection holding the recorder guard; both the animated locker
+and fallback start while that selection is still pending. Cleanup times out and
+exits without cancelling the lock. Error-injection checks cover a missing recorder,
+nonzero exit and timeout.
+
+`archsetup_desktop_lock_require_auth_for_power` defaults to `true`. Both lock
+screens hide shutdown/reboot controls; the user unlocks and uses the desktop
+session menu. An explicit `false` restores the existing confirmation controls.
+The visual helper checks the policy on requests and execution, rejects direct
+socket requests when unlocking is required, and denies power actions when its
+preferences are missing or malformed. Changing the policy to require unlocking
+cancels pending confirmations. The Configuration window plan includes the setting
+in General and its search metadata.
+
+All 66 desktop regressions pass. New checks cover both policies, native template rendering, direct helper
+and socket requests, confirmation cancellation and QML button visibility/layout
+while retaining password focus. Component/test lint, both desktop playbook syntax
+checks and whitespace checks pass. Tests use isolated processes, synthetic PAM
+policies and offscreen Qt rendering; no real power action or authentication was
+performed. Workstation deployment and a complete Wayland lock cycle were not run.
+Reapply the desktop profile and start a new lock session to use these changes.
+
 ## Searchable shortcut window — 2026-10-14
 
 Super+/ and the shortcut-help aliases now toggle a centered Quickshell window

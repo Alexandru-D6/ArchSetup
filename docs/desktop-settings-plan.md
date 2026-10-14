@@ -95,6 +95,14 @@ register their settings as part of their implementation so search stays complete
 | Desktop clock position | A 3×3 placement selector, horizontal/vertical percentage controls and a small monitor preview. Position applies to the clock and its date caption together. |
 | Lock-screen clock position | Independent controls and preview for the clock, Locked label and date caption as one group. Keep the group clear of the password toolbar. |
 | Keyboard layouts | Add, remove and reorder layouts; select a variant for each entry. Show the active layout and the existing `Super+Space` switching shortcut. Include a test field for the applied layout. |
+| Lock-screen power | **Require unlock before shutdown or reboot**, enabled by default. Hide power buttons on both lock screens and reject their helper requests; after unlocking, use the desktop session menu. Disabling this setting restores the lock-screen confirmation buttons. Index aliases such as power, shutdown, reboot, login and password. |
+
+The lock-screen power policy is already available through the Ansible variable
+`archsetup_desktop_lock_require_auth_for_power`, rendered as `lockPowerRequiresAuth`
+in `preferences.json`. The first General implementation should expose this existing
+setting, with its user override at `general.lockPowerRequiresAuth`. Applying it must
+update both the effective preferences and the native lock configuration for the
+next lock session. Missing or invalid values require unlocking.
 
 Position values use normalized coordinates from 0 to 1 over the area in which
 the complete widget can fit: `left = safeLeft + x * (safeWidth - widgetWidth)`,
@@ -152,6 +160,7 @@ An illustrative user override file is:
   "revision": 1,
   "general": {
     "dateFormat": "iso-date",
+    "lockPowerRequiresAuth": true,
     "clockPlacement": {
       "desktop": {"x": 0.0, "y": 1.0},
       "lockScreen": {"x": 0.5, "y": 0.5}
@@ -217,7 +226,8 @@ reviewing the changed values before retrying.
    Apply/Revert, entry points and focus behavior.
 2. **Settings foundation and date/time:** schema, migration from current defaults,
    backend contract, timezone catalog/application, derived UTC offset, date presets,
-   consistent previews and persistence across Ansible runs.
+   consistent previews and persistence across Ansible runs. Expose the existing
+   lock-screen power policy and regenerate both lock implementations when it changes.
 3. **Clock placement:** separate relative positions and previews, desktop date
    caption, monitor bounds/scaling, lock group positioning and native fallback.
 4. **Keyboard layouts:** installed catalog, paired layout/variant editor, generated
@@ -234,6 +244,8 @@ input, concurrent edits, denied/cancelled timezone changes, write/reload failure
 recovery and repeated Ansible application. Clock cases include midnight, DST,
 half-hour/quarter-hour offsets, multiple resolutions/scales and lock-control bounds.
 Keyboard cases include repeated languages with different variants, empty variants,
-reordering, removal, invalid pairs and personal overrides. Complete a live Wayland
-session check for Polkit focus, reload, logout/login persistence and both lock paths;
+reordering, removal, invalid pairs and personal overrides. Check both lock-screen
+power modes, including rejection of direct helper requests when unlocking is
+required. Complete a live Wayland session check for Polkit focus, reload,
+logout/login persistence and both lock paths;
 offscreen component tests alone do not establish those behaviors.

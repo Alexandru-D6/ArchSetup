@@ -276,6 +276,17 @@ def screenshot(action):
 def shell_toggle(name):
     run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'control', name)
 
+def stop_recording_for_lock():
+    # Region selection can hold the recorder's guard indefinitely. Cleanup must
+    # neither delay the locker/fallback nor leave a waiting helper behind.
+    try:
+        recorder = ROOT / 'bin/desktop-record'
+        if recorder.is_file():
+            run(str(recorder), 'record-stop', timeout=2,
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f'Recording cleanup unavailable; locking continues: {error}', file=sys.stderr)
+
 def main(action):
     if action == 'terminal': run('kitty', '--config', str(themed('kitty.conf')))
     elif action == 'files': run('thunar')
@@ -299,8 +310,6 @@ def main(action):
         with lockfile.open('w') as descriptor:
             try: fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError: return
-            recorder = ROOT / 'bin/desktop-record'
-            if recorder.exists(): run(str(recorder), 'record-stop')
             # Each lock owns its button labels and control socket. Pending clicks
             # and confirmation labels cannot carry over to a later lock session.
             with tempfile.TemporaryDirectory(prefix='archsetup-lock-', dir=os.environ['XDG_RUNTIME_DIR']) as lock_dir:
@@ -334,7 +343,14 @@ def main(action):
                     arguments = native_arguments
                     locker = native_locker()
                 updater = None
+                recording_cleanup = None
                 try:
+                    try:
+                        recording_cleanup = threading.Thread(target=stop_recording_for_lock, daemon=True)
+                        recording_cleanup.start()
+                    except RuntimeError as error:
+                        recording_cleanup = None
+                        print(f'Recording cleanup unavailable; locking continues: {error}', file=sys.stderr)
                     try:
                         updater = subprocess.Popen([str(ROOT / 'bin/lock-visuals'), 'watch', str(os.getpid())],
                                                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -362,6 +378,8 @@ def main(action):
                         except subprocess.TimeoutExpired:
                             updater.kill()
                             updater.wait()
+                    if recording_cleanup is not None:
+                        recording_cleanup.join(timeout=3)
     elif action in ('overview', 'settings', 'session', 'tools', 'media', 'help'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):
