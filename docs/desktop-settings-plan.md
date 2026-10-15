@@ -1,7 +1,27 @@
 # Configuration window architecture
 
-Status: proposed architecture, 2026-10-14. This document plans the work; runtime
-implementation starts with the window framework and the General category.
+Status: implementation started, 2026-10-15; architecture agreed 2026-10-14.
+The first increment implements the window framework and the existing General
+lock-screen power setting. Date/time, clock placement and keyboard editing remain
+planned. The architecture below describes the full target.
+
+Implemented: shared centered frame, persistent Configuration window, search and
+category registry, queued reveal/focus navigation, drafts outside the page loader,
+Apply/Revert, unsaved-close choices and both entry points. The backend supports
+structured `read`/`apply` requests, schema validation, effective defaults/overrides,
+serialized atomic writes and revision conflicts. Search indexes implemented
+settings only. `SettingsBackend.qml` and `SettingsSource.qml` live under `shared/`
+and are installed inside both Quickshell roots because Quickshell rejects imports
+outside a configuration root.
+
+For the first policy, `settings.json` is the single commit point. The existing
+lock launcher builds the next session's private native configuration from the
+effective policy and themed power fragment. Apply validates that generation before
+committing; it never restarts a locker or changes the managed defaults. If a
+template is incomplete at lock startup, locking continues with the installed
+configuration and the helper still enforces the effective policy. The recovery
+journal and multi-resource rollback remain part of the later system timezone and
+keyboard operations; this first field has no external side effects to roll back.
 
 The window should share the shortcut window's centered surface, rounded corners,
 spacing, font and current palette. A scrollable category list occupies the left
@@ -127,6 +147,7 @@ installed IANA database and handles daylight-saving transitions. See the
 | `GeneralSettings.qml` | The General form and previews, with stable setting IDs and `revealSetting` navigation. Reusable controls handle timezone selection, clock positioning and the ordered layout editor. |
 | `SettingsStore.qml` | Applied snapshot, draft, dirty fields, field errors, category selection and asynchronous operations. It holds draft state outside the page loader. |
 | `SettingsSource.qml` | Read the backend's effective settings and observe committed changes for desktop and lock consumers. It never writes user configuration. |
+| `SettingsBackend.qml` | Asynchronous JSON process transport, helper errors and request timeouts, shared by readers and writers. |
 | `desktop-settings` | Python command interface for reading settings, catalog lookup, previews and applying changes. Requests/results are structured JSON through process stdin/stdout. |
 | Shared Python settings module | Schema validation, defaults/override resolution, date formatting, timezone offsets, keyboard catalog validation and generation of compositor/lock configuration. Existing helpers reuse this module. |
 

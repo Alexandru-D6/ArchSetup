@@ -1,6 +1,39 @@
-# Resume checkpoint — 2026-10-14 (latest)
+# Resume checkpoint — 2026-10-15 (latest)
 
-Latest task: removed recording cleanup from the lock startup dependency and made
+Latest task: began yesterday's Configuration plan with the complete window
+framework and the first General setting, **Require unlock before shutdown or
+reboot**. Super+I and session Settings open the persistent form; Super+Comma keeps
+Quick settings. Shared frame styling also powers ShortcutHelp. Registry search,
+queued reveal/focus, independent scrolling, drafts outside page loaders,
+Apply/Revert and Apply/Discard/Stay close choices are implemented. The window pins
+its monitor, survives transient overlays and recenters after monitor removal.
+
+The JSON backend and shared Python settings module validate versioned user-owned
+`settings.json`, merge managed defaults, serialize atomic writes and detect stale
+revisions. Ansible initializes overrides only when absent; Apply leaves defaults
+and appearance state alone. The effective policy feeds both lockers and the power
+helper. Native settings are staged before Apply and generated into the next lock's
+private configuration; missing templates cannot prevent locking. Shared QML
+readers are installed inside both shell and lock roots to meet Quickshell's import
+boundary. There is no system-service side effect for this first field, so the
+recovery journal remains deferred to timezone/keyboard application.
+
+Validation: 12 settings tests pass; 67 desktop regressions pass across full and
+focused runs, with retries of existing mouse/clock timing checks. All 81 Qt checks,
+new component/test lint, rendered lock lint, both playbook syntax checks, native
+Lua parsing and whitespace checks pass. A temporary graphical VM passed actual
+keyboard/mouse navigation, search, drafts, saving, close choices, focus return,
+session entry, monitor pinning/hotplug and shell-restart persistence. Both themes
+were visually inspected; previews and details are in docs/desktop-validation.md.
+The VM is shut down. No workstation deployment or fresh full lock/unlock/power
+cycle was performed. Reapply the desktop profile to install this increment.
+
+Next: continue step 2 of docs/desktop-settings-plan.md with timezone catalog and
+authorization, derived UTC offset and date presets/shared clock snapshots. Clock
+placement and keyboard editing follow in steps 3 and 4; they are not exposed as
+placeholder controls or search results.
+
+Previous task: removed recording cleanup from the lock startup dependency and made
 lock-screen power actions optional. The locker starts first; recording cleanup
 runs in a separate worker with a two-second timeout; errors cannot abort startup
 or fallback launch. The new `archsetup_desktop_lock_require_auth_for_power` defaults

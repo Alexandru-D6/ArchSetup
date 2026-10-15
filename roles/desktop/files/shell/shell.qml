@@ -11,6 +11,7 @@ import Quickshell.Wayland
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
 import qs
+import "shared"
 
 ShellRoot {
     id: root
@@ -24,6 +25,7 @@ ShellRoot {
             else if (root.page === "session") sessionMenu.forceActiveFocus();
             else if (root.page === "help") shortcutHelp.focusSearch();
             else if (root.page !== "") panelContent.forceActiveFocus();
+            else if (root.configurationOpen) root.focusConfiguration();
         }
     }
     property bool inhibitIdle: false
@@ -34,6 +36,8 @@ ShellRoot {
     property bool keyboardVisible: false
     property bool keyboardShift: false
     property bool keyboardControl: false
+    property bool configurationOpen: false
+    property string configurationScreenName: ""
     property var preferences: ({})
     property var userState: ({})
     property bool light: typeof userState.light === "boolean" ? userState.light : palette.light !== false
@@ -51,8 +55,23 @@ ShellRoot {
     property var status: ({volume: "—", network: "—", brightness: false})
     function action(name) { Quickshell.execDetached([profile + "/bin/desktop-action", name]); }
     function toggle(name) {
+        if (name === "configuration") { openConfiguration(); return; }
         if (name === "session") sessionMenu.select("lock");
         page = page === name ? "" : name;
+    }
+    function openConfiguration() {
+        if (!configurationOpen) {
+            configurationScreenName = Hyprland.focusedMonitor?.name || Quickshell.screens[0]?.name || "";
+            configurationOpen = true;
+            settingsSource.refresh();
+            configurationWindow.focusSearch();
+        }
+        page = "";
+        focusTimer.restart();
+    }
+    function focusConfiguration() {
+        configurationWindow.focusForm();
+        configurationFocus.active = true;
     }
     function shutdown() {
         sessionMenu.select("poweroff");
@@ -81,11 +100,21 @@ ShellRoot {
         id: shortcutSource
         path: root.profile + "/shortcuts.json"
     }
-    FileView {
-        path: root.profile + "/preferences.json"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: { try { root.preferences = JSON.parse(text()); } catch (e) { console.warn(e); } }
+    SettingsSource {
+        id: settingsSource
+        profile: root.profile
+        onPreferencesChanged: root.preferences = preferences
+        onSnapshotChanged: settingsStore.receive(snapshot)
+        onErrorChanged: settingsStore.sourceError = error
+    }
+    SettingsStore {
+        id: settingsStore
+        onApplyRequested: request => settingsWriter.send(request)
+    }
+    SettingsBackend {
+        id: settingsWriter
+        profile: root.profile
+        onFinished: response => { settingsStore.finish(response); settingsSource.refresh(); }
     }
     FileView {
         path: root.profile + "/state.json"
@@ -126,6 +155,11 @@ ShellRoot {
         function shutdown(): void { root.shutdown(); }
         function status(): string {
             return JSON.stringify({page: root.page, windows: ToplevelManager.toplevels.values.length,
+                configurationOpen: root.configurationOpen, configurationScreen: root.configurationScreenName,
+                configurationDirty: settingsStore.dirty, configurationBusy: settingsStore.busy,
+                configurationError: settingsStore.error || settingsStore.sourceError,
+                configurationQuery: configurationWindow.query, configurationFocus: configurationWindow.activeFocus,
+                configurationConfirmingClose: configurationWindow.confirmingClose,
                 hyprlandWindows: Hyprland.toplevels.values.length, screens: Quickshell.screens.length,
                 overviewFocus: windows.activeFocus, selectedWindow: windows.currentIndex,
                 selectedSessionAction: sessionMenu.selectedAction,
@@ -262,6 +296,41 @@ ShellRoot {
     }
 
     PanelWindow {
+        id: configurationPanel
+        visible: root.configurationOpen
+        screen: Quickshell.screens.find(s => s.name === root.configurationScreenName) || Quickshell.screens[0]
+        onScreenChanged: if (screen && root.configurationOpen) root.configurationScreenName = screen.name
+        implicitWidth: Math.min(1360, (screen?.width || 1360) - ((screen?.width || 1360) < 600 ? 16 : 48))
+        implicitHeight: Math.min(840, (screen?.height || 840) - ((screen?.height || 840) < 400 ? 16 : 80))
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.namespace: "archsetup-configuration"
+        WlrLayershell.layer: WlrLayer.Top
+        WlrLayershell.keyboardFocus: root.page === "" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        color: "transparent"
+        ConfigurationWindow {
+            id: configurationWindow
+            anchors.fill: parent
+            inset: false
+            store: settingsStore
+            uiFont: root.uiFont
+            surface: root.surface
+            raised: root.raised
+            textColor: root.ink
+            accent: root.accent
+            accentText: root.onAccent
+            onClosed: root.configurationOpen = false
+        }
+    }
+    HyprlandFocusGrab {
+        id: configurationFocus
+        windows: [configurationPanel]
+        // Request focus on opening/re-entry, then release the grab so other
+        // applications and authorization dialogs can receive focus normally.
+        onActiveChanged: if (active) releaseConfigurationFocus.restart()
+    }
+    Timer { id: releaseConfigurationFocus; interval: 50; onTriggered: configurationFocus.active = false }
+
+    PanelWindow {
         id: overlay
         visible: root.page !== ""
         screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) || Quickshell.screens[0]
@@ -302,7 +371,7 @@ ShellRoot {
             onCancelled: root.page = ""
             onActivated: action => {
                 root.page = "";
-                if (action === "settings") root.toggle("settings");
+                if (action === "settings") root.openConfiguration();
                 else root.action(action === "poweroff" ? "poweroff-confirmed" : action);
             }
         }

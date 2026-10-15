@@ -74,7 +74,7 @@ Quickshell configuration, not upstream code.
 | Super + X | Text editor |
 | Ctrl + Super + Shift + Alt + W | Office |
 | Ctrl + Super + V | Volume mixer |
-| Super + I | Quick settings |
+| Super + I | Configuration window |
 | Ctrl + Shift + Escape | Task manager |
 | Super + Super_L | Launcher on left Super release |
 | Super + Super_R | Launcher on right Super release |

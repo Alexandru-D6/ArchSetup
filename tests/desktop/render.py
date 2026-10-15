@@ -25,15 +25,19 @@ def render(destination, overrides=None):
         (destination / template.stem).write_text(env.get_template(template.name).render(defaults))
     shutil.copytree(ROLE / 'files/shell', destination / 'shell', dirs_exist_ok=True)
     shutil.copytree(ROLE / 'files/lock', destination / 'lock', dirs_exist_ok=True)
+    for config in ['shell', 'lock']:
+        shutil.copytree(ROLE / 'files/shared', destination / config / 'shared', dirs_exist_ok=True)
     shutil.copytree(ROLE / 'files/assets', destination / 'assets', dirs_exist_ok=True)
     (destination / 'bin').mkdir(exist_ok=True)
-    for filename in ['desktop-action', 'desktop-record', 'session-services', 'validate-config', 'lock-visuals']:
+    for filename in ['desktop-action', 'desktop-settings', 'desktop_settings.py', 'desktop-record', 'session-services', 'validate-config', 'lock-visuals']:
         shutil.copy2(ROLE / 'files' / filename, destination / 'bin' / filename)
         (destination / 'bin' / filename).chmod(0o755)
     shutil.copy2(ROLE / 'files/shortcuts.json', destination / 'shortcuts.json')
     shutil.copy2(ROLE / 'files/themes.json', destination / 'themes.json')
     (destination / '.runtime-validation').mkdir(mode=0o700, exist_ok=True)
     (destination / 'state.json').write_text('{}\n')
+    if not (destination / 'settings.json').exists():
+        (destination / 'settings.json').write_text('{"schemaVersion":1,"revision":0,"general":{}}\n')
     return destination
 if __name__ == '__main__':
     print(render(sys.argv[1]))

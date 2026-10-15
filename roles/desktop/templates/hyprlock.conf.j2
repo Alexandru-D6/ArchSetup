@@ -98,35 +98,9 @@ input-field {
     valign = bottom
     zindex = 1
 }
-{% if not (archsetup_desktop_lock_require_auth_for_power | bool) %}
-{% for action, width, x in [('poweroff', 136, 240), ('reboot', 120, 380)] %}
-# Only this shape is clickable: the overlaid text must not send a second click.
-shape {
-    monitor =
-    size = {{ width - 2 }}, 48
-    color = rgba(292332ff)
-    rounding = 25
-    border_size = 1
-    border_color = rgba(45404fff)
-    position = {{ x }}, 20
-    halign = center
-    valign = bottom
-    zindex = 1
-    onclick = {{ desktop_root }}/bin/lock-visuals click-{{ action }}
-}
-label {
-    monitor =
-    text = cmd[update:100:1] cat "{{ desktop_root }}/theme/lock-{{ action }}.label"
-    color = rgba(eae0f5ff)
-    font_size = {{ archsetup_desktop_control_font_size | int }}
-    font_family = {{ archsetup_desktop_font }}
-    position = {{ x }}, {{ 45 - (((archsetup_desktop_control_font_size | int) * 4 / 3 * 1.3 / 2) | round(0, 'ceil') | int) }}
-    halign = center
-    valign = bottom
-    zindex = 2
-}
-{% endfor %}
-{% endif %}
+# archsetup-lock-power-start
+{% if not (archsetup_desktop_lock_require_auth_for_power | bool) %}{% include 'lock-power.conf.j2' %}{% endif %}
+# archsetup-lock-power-end
 label {
     monitor =
     text = cmd[update:1000] {{ desktop_root }}/bin/lock-visuals capslock

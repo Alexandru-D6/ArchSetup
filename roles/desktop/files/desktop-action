@@ -19,6 +19,7 @@ from pathlib import Path
 import subprocess
 import sys
 from datetime import datetime
+from desktop_settings import SettingsError, native_lock_configuration
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -119,14 +120,14 @@ def refresh_theme(state):
     atomic_write(folder / 'palette.json', json.dumps(palette) + '\n')
     # Fixed local paths keep personal filenames out of config and shell commands.
     write_wallpaper(folder, state, palette)
-    configurations = ['fuzzel.ini', 'swaync.css', 'hyprlock.conf', 'kitty.conf']
+    configurations = ['fuzzel.ini', 'swaync.css', 'hyprlock.conf', 'lock-power.conf', 'kitty.conf']
     if (ROOT / 'lock-identity.conf').exists(): configurations.append('lock-identity.conf')
     for name in configurations:
         lines = (ROOT / name).read_text().splitlines(keepends=True)
         for index, line in enumerate(lines):
             # Native lock labels contain usernames/layouts. Color substitutions
             # must leave their text and the configuration's file paths intact.
-            if name in ('hyprlock.conf', 'lock-identity.conf') and line.partition('=')[0].strip() not in (
+            if name in ('hyprlock.conf', 'lock-power.conf', 'lock-identity.conf') and line.partition('=')[0].strip() not in (
                     'color', 'border_color', 'outer_color', 'inner_color', 'font_color'):
                 continue
             for original, replacement in colors.items(): line = line.replace(original, replacement)
@@ -319,6 +320,13 @@ def main(action):
                 for power, label in [('poweroff', 'Power off'), ('reboot', 'Reboot')]:
                     (Path(lock_dir) / f'lock-{power}.label').write_text(label + '\n')
                 configuration = themed('hyprlock.conf').read_text()
+                try:
+                    configuration = native_lock_configuration(ROOT, configuration)
+                except (OSError, SettingsError) as error:
+                    # A partially installed settings template must not prevent
+                    # either locker from starting. Power helpers still enforce
+                    # the effective policy, even if the old buttons are visible.
+                    print(f'Lock settings unavailable; using the installed lock configuration: {error}', file=sys.stderr)
                 for power in ('poweroff', 'reboot'):
                     configuration = configuration.replace(str(ROOT / f'theme/lock-{power}.label'),
                                                           str(Path(lock_dir) / f'lock-{power}.label'))
@@ -380,7 +388,7 @@ def main(action):
                             updater.wait()
                     if recording_cleanup is not None:
                         recording_cleanup.join(timeout=3)
-    elif action in ('overview', 'settings', 'session', 'tools', 'media', 'help'):
+    elif action in ('overview', 'settings', 'configuration', 'session', 'tools', 'media', 'help'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):
         shell_toggle(action)

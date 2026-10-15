@@ -1,5 +1,51 @@
 # Desktop validation — 2026-10-10
 
+## Configuration window, first General setting — 2026-10-15
+
+Super+I and the session menu's Settings tile open a persistent Configuration
+window. Super+Comma retains Quick settings. A shared frame supplies the shortcut
+window's geometry and palette. The new sidebar searches implemented setting
+metadata, groups matches by category and reveals/focuses the selected control.
+Drafts live outside category loaders. Apply/Revert, layered Escape handling and
+Apply/Discard/Stay close choices preserve edits until explicitly saved or discarded.
+The first General field exposes the existing lock-screen power policy.
+
+The `desktop-settings` JSON interface resolves managed defaults and versioned,
+user-owned `settings.json`. Writes are serialized, atomic and revision checked.
+Defaults and appearance files remain unchanged by interactive Apply. The lock
+helper enforces the effective policy; both lockers read the override, and native
+configuration is generated for the next lock session. Incomplete settings
+templates cannot block locker startup. Repeated initialization through the real
+Ansible copy task preserves saved values and reports `changed=0`.
+
+All 12 settings regressions pass, covering malformed/unsupported documents,
+invalid values, duplicate JSON keys/non-finite numbers, concurrent processes,
+stale/default revisions, write failures, unchanged applies, native configuration
+and a production Quickshell read/apply/watch/conflict/recovery fixture. All 67
+desktop regressions pass across full and focused runs: existing session-menu
+mouse and background-clock timing checks each needed one focused retry. The final
+Qt suite passes all 81 checks, including 24 Configuration checks, light/dark
+rendering, keyboard close choices and independent scrolling down to 320×240 with
+long status messages. New component/test lint, rendered locker lint, both desktop
+playbook syntax checks, native Lua parsing and whitespace checks pass. The full
+shell retains its existing dynamic `qs` import/PanelWindow tooling warnings.
+
+In a temporary overlay of the graphical Arch VM, actual keyboard and pointer
+events verified Super+I, typed search, Enter/Space edits, outside clicks,
+Apply/Revert, Escape and close choices, the session Settings tile and restoration
+of focus after shortcut help or another application. Repeated opening reused the
+same Wayland surface. Two-output checks verified that an open form stays on its
+original monitor, a new opening follows the focused monitor and removal of that
+monitor recenters the still-open form. Saved overrides survived a shell restart.
+The compositor reported no configuration errors. The VM was shut down afterward.
+
+The [light preview](images/desktop-configuration.png) and
+[dark preview](images/desktop-configuration-dark.png) were visually inspected.
+No workstation deployment, new password authentication cycle, real lock-screen
+power action or full logout/login persistence trial was performed for this change.
+Date/time, clock placement and keyboard editing remain the next implementation
+stages in the [settings plan](desktop-settings-plan.md).
+
 ## Lock startup and optional power controls — 2026-10-14
 
 The lock launcher starts the locker before requesting recording cleanup. Cleanup

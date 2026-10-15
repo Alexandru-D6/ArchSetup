@@ -21,6 +21,12 @@
         - "{{ desktop_root }}/.managed"
         - "{{ desktop_root }}/hyprland.lua"
         - "{{ desktop_root }}/hyprlock.conf"
+        - "{{ desktop_root }}/lock-power.conf"
+        - "{{ desktop_root }}/bin/desktop-settings"
+        - "{{ desktop_root }}/bin/desktop_settings.py"
+        - "{{ desktop_root }}/shell/ConfigurationWindow.qml"
+        - "{{ desktop_root }}/shell/shared/SettingsSource.qml"
+        - "{{ desktop_root }}/lock/shared/SettingsSource.qml"
         - "{{ desktop_root }}/hypridle.conf"
         - "{{ desktop_root }}/kitty.conf"
         - "{{ desktop_root }}/themes.json"
@@ -38,6 +44,14 @@
       loop: "{{ desktop_verified_files.results }}"
       loop_control:
         label: "{{ item.item }}"
+
+    - name: Validate effective user settings without modifying them
+      ansible.builtin.command:
+        argv: ["{{ desktop_root }}/bin/desktop-settings"]
+        stdin: '{"operation":"read"}'
+      become_user: "{{ archsetup_desktop_user }}"
+      changed_when: false
+      check_mode: false
 
     - name: Check the default Kitty configuration
       ansible.builtin.stat:

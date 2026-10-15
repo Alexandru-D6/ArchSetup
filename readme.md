@@ -157,6 +157,7 @@ preserves existing keyring contents.
 | Super+W | Brave |
 | Super+C | VSCodium |
 | Super+Tab | Window overview; arrows select, Enter focuses |
+| Super+I | Configuration window |
 | Super+Comma | Quick settings, theme and wallpaper |
 | Super+N | Notification history |
 | Super+L | Lock the screen |
@@ -186,6 +187,14 @@ Arrow keys or Tab move between actions, and Escape or a background click cancels
 The grid also offers Lock, Suspend, Log out, Task manager and Restart. Settings
 is in the bottom-left corner; the bottom-right BIOS / UEFI shortcut restarts into
 firmware settings when the machine supports it.
+
+Super+I and the session menu's Settings tile open **Configuration**. Search finds
+individual settings; Ctrl+F focuses search and Enter reveals a result. General
+currently offers **Require unlock before shutdown or reboot**, enabled by default.
+Apply saves changes for the next lock session; Revert restores saved values.
+Closing with unsaved edits offers Apply, Discard or Stay. Choices are stored in
+user-owned `settings.json` and survive Ansible reruns. Date/time, clock placement
+and keyboard editing are the next stages of the [settings plan](docs/desktop-settings-plan.md).
 
 The session and lock screens use the same 12-point size for ordinary text. The
 password field is at the bottom center, 20 pixels above the edge; the clock is

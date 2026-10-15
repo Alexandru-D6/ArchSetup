@@ -443,9 +443,9 @@
   },
   {
     "key": "SUPER + I",
-    "description": "Quick settings",
+    "description": "Configuration",
     "category": "Applications",
-    "action": "settings",
+    "action": "configuration",
     "dont_inhibit": true
   },
   {

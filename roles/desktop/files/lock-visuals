@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from desktop_settings import effective_preferences
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -280,13 +281,7 @@ def power_labels(selected=None):
 
 
 def power_requires_auth():
-    # Only an explicit JSON false permits power controls before unlocking.
-    # Missing, unreadable or malformed preferences retain the safe default.
-    try:
-        preferences = json.loads((ROOT / 'preferences.json').read_text())
-        return not isinstance(preferences, dict) or preferences.get('lockPowerRequiresAuth') is not False
-    except (OSError, ValueError, UnicodeError):
-        return True
+    return effective_preferences(ROOT).get('lockPowerRequiresAuth') is not False
 
 
 def power_action(action):

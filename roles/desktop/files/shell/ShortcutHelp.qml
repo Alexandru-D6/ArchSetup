@@ -73,43 +73,21 @@ FocusScope {
         }
     }
 
-    Rectangle {
+    CenteredWindowFrame {
         id: surface
         objectName: "shortcuts-surface"
-        anchors.centerIn: parent
-        width: Math.min(1360, parent.width - (parent.width < 600 ? 16 : 48))
-        height: Math.min(840, parent.height - (parent.height < 400 ? 16 : 80))
-        radius: 24
+        title: "Shortcuts"
+        closeObjectName: "shortcuts-close"
         color: help.surface
-        border.width: 1
-        border.color: help.raised
-        MouseArea { anchors.fill: parent }
+        raised: help.raised
+        textColor: help.textColor
+        accent: help.accent
+        uiFont: help.uiFont
+        onCloseRequested: help.cancelled()
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: surface.width < 600 ? 16 : 24
             spacing: 14
-            RowLayout {
-                Layout.fillWidth: true
-                Text {
-                    text: "Shortcuts"
-                    color: help.textColor
-                    font.family: help.uiFont
-                    font.pixelSize: 24
-                    Layout.fillWidth: true
-                }
-                Button {
-                    id: closeButton
-                    objectName: "shortcuts-close"
-                    text: "Close"
-                    Accessible.name: "Close shortcuts"
-                    padding: 10
-                    implicitHeight: 34
-                    onClicked: help.cancelled()
-                    background: Rectangle { radius: 17; color: closeButton.hovered || closeButton.activeFocus ? help.raised : "transparent"; border.width: closeButton.activeFocus ? 1 : 0; border.color: help.accent }
-                    contentItem: Text { text: closeButton.text; color: help.textColor; font.family: help.uiFont; font.pixelSize: 13; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                }
-            }
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8

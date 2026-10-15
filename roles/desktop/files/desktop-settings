@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""One JSON request on stdin; one structured JSON response on stdout."""
+import json
+from pathlib import Path
+import sys
+
+from desktop_settings import SettingsError, apply, parse_json, snapshot
+
+
+def main():
+    root = Path(__file__).resolve().parent.parent
+    try:
+        request = parse_json(sys.stdin.readline(65537))
+        if not isinstance(request, dict):
+            raise ValueError('Expected a JSON request')
+        operation = request.get('operation')
+        if operation == 'read':
+            result = snapshot(root)
+        elif operation == 'apply':
+            result = apply(root, request.get('revision'), request.get('changes'))
+        else:
+            raise SettingsError('request', 'Unknown settings operation.')
+        response = {'ok': True, 'snapshot': result}
+    except SettingsError as error:
+        response = {'ok': False, 'code': error.code, 'message': str(error), 'fields': error.fields}
+        if error.snapshot is not None:
+            response['snapshot'] = error.snapshot
+    except (ValueError, UnicodeError):
+        response = {'ok': False, 'code': 'request', 'message': 'Invalid settings request.'}
+    except OSError:
+        response = {'ok': False, 'code': 'io', 'message': 'Unable to save or prepare settings. Check the profile files and retry.'}
+    print(json.dumps(response, allow_nan=False))
+    return 0 if response['ok'] else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

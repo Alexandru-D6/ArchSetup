@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import "shared" as Desktop
 
 ShellRoot {
     id: root
@@ -33,9 +34,10 @@ ShellRoot {
         Quickshell.watchFiles = false;
         lock.locked = true;
     }
-    FileView {
-        path: root.profile + "/preferences.json"
-        onLoaded: { try { root.preferences = JSON.parse(text()); } catch (e) { console.warn("Cannot load lock preferences"); } }
+    Desktop.SettingsSource {
+        profile: root.profile
+        live: false
+        onPreferencesChanged: root.preferences = preferences
     }
     FileView {
         path: root.profile + "/theme/palette.json"

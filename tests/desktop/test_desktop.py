@@ -15,6 +15,7 @@ import yaml
 import jinja2
 
 from render import render, ROLE
+sys.path.insert(0, str(ROLE / 'files'))
 
 class DesktopTests(unittest.TestCase):
     def setUp(self):
@@ -677,7 +678,7 @@ else:
         if executable is None: self.skipTest('Quickshell is required')
         fixture = self.profile / 'shortcut-validation'
         shutil.copytree(Path(__file__).parent / 'shortcuts', fixture)
-        for component in ['ShortcutHelp.qml', 'ShortcutSource.qml']:
+        for component in ['ShortcutHelp.qml', 'ShortcutSource.qml', 'CenteredWindowFrame.qml', 'SettingsButton.qml']:
             shutil.copy2(self.profile / 'shell' / component, fixture / component)
         environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
                            XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'),
@@ -709,6 +710,27 @@ else:
              patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn:
             self.actions.main('lock')
         self.assertEqual(spawn.call_count, 2)
+        locker.wait.assert_called_once_with()
+        updater.terminate.assert_called_once_with()
+        updater.wait.assert_called_once_with(timeout=3)
+        self.assertFalse(Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR']).exists())
+
+    def test_incomplete_settings_templates_do_not_block_lock_startup(self):
+        environment = {'HYPRLAND_INSTANCE_SIGNATURE': 'settings-template-failure',
+                       'XDG_RUNTIME_DIR': self.directory.name}
+        locker, updater = Mock(pid=123), Mock()
+        locker.wait.return_value = 0
+        def launch(arguments, **kwargs):
+            if arguments[0] == 'qs':
+                private = Path(kwargs['env']['ARCHSETUP_LOCK_DIR'])
+                self.assertIn('pam:module = archsetup-hyprlock', (private / 'hyprlock.conf').read_text())
+                (private / 'authenticated').write_text('authenticated\n')
+                return locker
+            return updater
+        with patch.dict(os.environ, environment), patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn, \
+             patch.object(self.actions, 'native_lock_configuration', side_effect=OSError('Missing power template')), \
+             patch.object(self.actions, 'stop_recording_for_lock'):
+            self.actions.main('lock')
         locker.wait.assert_called_once_with()
         updater.terminate.assert_called_once_with()
         updater.wait.assert_called_once_with(timeout=3)

@@ -145,11 +145,12 @@ The bottom toolbar has a compact user/keyboard-layout pill and the password fiel
 By default, `archsetup_desktop_lock_require_auth_for_power: true` hides **Power off**
 and **Reboot** on both the animated lock and native Hyprlock fallback. Unlock first,
 then use the desktop session menu. To permit power actions while locked, set that
-variable to `false` in your Ansible profile and reapply. The lock helper also checks
+variable to `false` in your Ansible profile and reapply, or change **Require unlock
+before shutdown or reboot** in Configuration → General. Interactive choices take
+precedence over the Ansible default and apply to the next lock session. The lock helper also checks
 the policy before accepting requests and before executing an action; stale buttons
 or direct control-socket requests cannot bypass it. Missing or invalid preferences
-require unlocking. The planned Configuration window will expose this setting in
-General as **Require unlock before shutdown or reboot**.
+require unlocking.
 
 When power actions are allowed, the toolbar includes clickable, text-only buttons.
 Layouts such as US Euro and US AltGr use short names. Password feedback uses randomly selected circles,
@@ -264,16 +265,38 @@ The Power button, Ctrl+Alt+Delete and Super+Shift+Escape open a full-screen sess
 overlay with a centered two-row icon grid. It offers Lock, Suspend, Log out, Task
 manager, Settings, Shut down, Restart and BIOS / UEFI. Settings is the bottom-left
 tile; BIOS / UEFI is the bottom-right tile and restarts into firmware settings.
-The highlighted tile becomes
-a circle, with its label beneath the grid. Hover or arrow/Tab keys change the
-selection; click a tile or press Enter/Space to execute it. Escape and background
-clicks dismiss the overlay. BIOS / UEFI is disabled when logind reports firmware
-setup unavailable. Its action uses `systemctl reboot --firmware-setup`, as documented
-in [systemd's command reference](https://github.com/systemd/systemd/blob/main/man/systemctl.xml).
+The highlighted tile becomes a circle, with its label beneath the grid. Hover or
+arrow/Tab keys change the selection; click a tile or press Enter/Space to execute
+it. Escape and background clicks dismiss the overlay. BIOS / UEFI is disabled
+when logind reports firmware setup unavailable. Its action uses
+`systemctl reboot --firmware-setup`, as documented in
+[systemd's command reference](https://github.com/systemd/systemd/blob/main/man/systemctl.xml).
 The shutdown shortcut and `desktop-action poweroff` open this overlay with
 Shut down selected, and wait for selection before executing the shutdown.
 Keep-awake inhibits idle locking/blanking, but does not disable the before-suspend
 lock path.
+
+Settings and Super+I open the persistent **Configuration** window. Super+Comma
+continues to open Quick settings. The Configuration sidebar has a fixed search
+field and an independently scrolling category/result list; Ctrl+F focuses search,
+Up/Down selects a result and Enter scrolls to and focuses its control. Search
+matches category names, labels, descriptions and aliases, with every query term
+required. Clearing search retains the current form and its draft.
+
+General currently exposes the lock-screen power policy. Apply saves changes and
+keeps the form open; Revert restores saved values. Close and Escape offer Apply,
+Discard or Stay when edits are unsaved. Escape first closes a dialog or clears
+search. Outside clicks, focus changes and other shell overlays retain the form
+and its drafts. Reopening focuses the existing window on its original monitor;
+disconnecting that monitor recenters it on an available screen.
+
+Interactive overrides live in versioned, user-owned `settings.json`; Ansible only
+initializes it when absent. `preferences.json` remains managed defaults and
+`state.json` retains appearance choices. A revision conflict preserves edits and
+requires Revert to load the external values. Invalid or unreadable settings
+disable Apply until repaired and require unlocking for lock-screen power requests.
+See the [window preview](images/desktop-configuration.png) and
+[remaining General implementation](desktop-settings-plan.md).
 
 Put images in `~/Pictures/Wallpapers`, then use Wallpaper in quick settings.
 Quick settings → **Color theme** selects **Rose** or the previous **Material**
@@ -300,7 +323,7 @@ them with Super+Q.
 Managed paths:
 
 - `~/.config/archsetup/`: templates, shell, helpers and shortcut map, except
-  `state.json` and `overrides.lua` which remain user-owned.
+  `settings.json`, `state.json` and `overrides.lua` which remain user-owned.
 - `~/.config/kitty/kitty.conf`: link to the generated managed Kitty theme; the
   previous configuration is retained as `kitty.conf.pre-archsetup`.
 - The password-store flag in `~/.config/codium-flags.conf` when VSCodium is selected.
@@ -349,6 +372,7 @@ With Python, Jinja2, PyYAML and Hyprland available:
 
 ```bash
 python tests/desktop/test_desktop.py
+python tests/desktop/test_settings.py
 python tests/desktop/render.py /tmp/archsetup-preview
 Hyprland --verify-config --config /tmp/archsetup-preview/hyprland.lua
 ansible-playbook playbooks/desktop.yml --syntax-check
