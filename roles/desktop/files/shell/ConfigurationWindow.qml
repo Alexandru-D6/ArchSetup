@@ -245,6 +245,14 @@ FocusScope {
                     ToolTip.text: text
                 }
                 SettingsButton {
+                    objectName: "settings-recover"
+                    theme: configuration
+                    text: "Recover"
+                    visible: configuration.store.recoveryNeeded
+                    enabled: !configuration.store.busy
+                    onClicked: configuration.store.recover()
+                }
+                SettingsButton {
                     objectName: "settings-revert"
                     theme: configuration
                     text: "Revert"

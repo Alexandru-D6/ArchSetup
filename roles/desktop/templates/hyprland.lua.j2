@@ -33,6 +33,10 @@ hl.config({
     misc = { disable_hyprland_logo = true, disable_splash_rendering = true,
         on_focus_under_fullscreen = 2, exit_window_retains_fullscreen = false },
 })
+-- Interactive input overrides follow managed defaults; personal overrides remain last.
+local settings_input = root .. "/settings-input.lua"
+local settings_file = io.open(settings_input, "r")
+if settings_file then settings_file:close(); dofile(settings_input) end
 -- Speeds are deciseconds: 80–140 ms, with a sharp ease-out and no overshoot.
 hl.curve("archsetupSharp", { type = "bezier", points = { {0.16, 1}, {0.3, 1} } })
 hl.animation({ leaf = "global", enabled = true, speed = 1, bezier = "archsetupSharp" })

@@ -1,5 +1,49 @@
 # Desktop validation — 2026-10-10
 
+## General timezone, layouts and clock placement — 2026-10-16
+
+General now edits the system timezone, ordered keyboard layout/variant pairs and
+independent desktop/lock-screen clock positions. Timezone preview derives the
+current UTC offset, including daylight saving and fractional-hour offsets.
+Default restores the original position; presets, percentages and Randomize save
+normalized coordinates for the complete clock/date group. Randomize samples once
+and the chosen point persists through Apply. Clock images, full dates and compact
+bar dates use explicit timezone snapshots.
+
+All 27 settings tests, 67 desktop regressions and 86 Qt interaction checks pass.
+Coverage includes native XKB compilation/Lua parsing, installed variants, four-pair
+limits, typed Qt list arguments, ordered edits, independent positions, DST rollback,
+midnight and fractional offsets, cancelled authorization, atomic failures, external
+revisions, rollback/recovery and busy-writer detection. Scaled, rotated, portrait
+and small-screen placement checks keep clock groups clear of password controls.
+The real Ansible initialization and input-sync tasks preserve saved layouts on
+repeat runs with `changed=0`. Component/locker lint, both desktop playbook syntax
+checks, native Lua parsing and whitespace checks pass.
+
+Actual keyboard/pointer events in a disposable graphical VM verified timezone
+selection, Polkit authorization and cancellation, focus return, retained drafts,
+independent random placements, adding a fourth layout, applying it live and
+Super+Space without a revision conflict. The existing active pair survived a
+reordered live reload. The timezone changed from UTC to Asia/Kathmandu; the bar,
+preview and clock captions agreed after the date changed to the following day.
+Qt signal containers are normalized before draft validation for compatibility
+with the VM's Qt version.
+
+Both the animated locker and a directly started native locker displayed the saved
+clock position and matching Kathmandu date, kept password controls clear, and
+accepted the temporary VM password. A separate forced-crash handoff from the
+animated locker to Hyprlock did not recover: Hyprland retained its crashed-lock
+screen and Hyprlock reported `onLockFinished`. That handoff remains an unresolved
+VM acceptance case; direct native startup passed after restarting the test session.
+
+Updated previews show [timezone selection](images/desktop-configuration.png),
+[clock placement](images/desktop-configuration-clock.png),
+[keyboard layouts](images/desktop-configuration-keyboard.png) and the
+[dark palette](images/desktop-configuration-dark.png).
+
+The VM was shut down afterward. The implementation is prepared for desktop-profile
+reapplication; the workstation profile was not deployed. Date-format presets remain planned.
+
 ## Configuration window, first General setting — 2026-10-15
 
 Super+I and the session menu's Settings tile open a persistent Configuration

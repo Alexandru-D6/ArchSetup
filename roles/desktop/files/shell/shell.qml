@@ -54,6 +54,7 @@ ShellRoot {
     property string profile: Quickshell.shellDir + "/.."
     property var status: ({volume: "—", network: "—", brightness: false})
     function action(name) { Quickshell.execDetached([profile + "/bin/desktop-action", name]); }
+    function refreshClock() { if (palette.primaryContainer && !clockProcess.running) clockProcess.running = true; }
     function toggle(name) {
         if (name === "configuration") { openConfiguration(); return; }
         if (name === "session") sessionMenu.select("lock");
@@ -70,6 +71,7 @@ ShellRoot {
         focusTimer.restart();
     }
     function focusConfiguration() {
+        if (settingsStore.busy) return;
         configurationWindow.focusForm();
         configurationFocus.active = true;
     }
@@ -103,18 +105,46 @@ ShellRoot {
     SettingsSource {
         id: settingsSource
         profile: root.profile
-        onPreferencesChanged: root.preferences = preferences
+        onPreferencesChanged: {
+            const timezoneChanged = root.preferences.timezone !== preferences.timezone;
+            root.preferences = preferences;
+            if (timezoneChanged) root.refreshClock();
+        }
         onSnapshotChanged: settingsStore.receive(snapshot)
         onErrorChanged: settingsStore.sourceError = error
+        onErrorCodeChanged: settingsStore.recoveryNeeded = errorCode === "recovery"
     }
     SettingsStore {
         id: settingsStore
-        onApplyRequested: request => settingsWriter.send(request)
+        onApplyRequested: request => { configurationFocus.active = false; settingsWriter.send(request); }
+        onPreviewRequested: zone => {
+            root.previewZone = zone;
+            if (!previewReader.busy) previewReader.send({operation: "preview", timezone: zone});
+        }
+    }
+    property string previewZone: ""
+    SettingsBackend {
+        id: catalogReader
+        profile: root.profile
+        Component.onCompleted: send({operation: "catalog"})
+        onFinished: response => {
+            if (response.ok) { settingsStore.catalog = response.catalog; settingsStore.catalogError = ""; }
+            else settingsStore.catalogError = response.message || "Unable to load the installed settings catalog.";
+        }
+    }
+    SettingsBackend {
+        id: previewReader
+        profile: root.profile
+        onFinished: response => {
+            if (request.timezone !== root.previewZone) { Qt.callLater(() => send({operation: "preview", timezone: root.previewZone})); return; }
+            if (response.ok) { settingsStore.clockPreview = response.clock; settingsStore.previewError = ""; }
+            else settingsStore.previewError = response.message || "Unable to preview this timezone.";
+        }
     }
     SettingsBackend {
         id: settingsWriter
         profile: root.profile
-        onFinished: response => { settingsStore.finish(response); settingsSource.refresh(); }
+        onFinished: response => { settingsStore.finish(response, request.operation); settingsSource.refresh(); focusTimer.restart(); }
     }
     FileView {
         path: root.profile + "/state.json"
@@ -137,6 +167,7 @@ ShellRoot {
         stdout: StdioCollector { onStreamFinished: root.clockRevision++ }
     }
     Timer { interval: 60000; running: true; repeat: true; onTriggered: if (!clockProcess.running) clockProcess.running = true }
+    ClockSource { id: desktopTime; path: root.profile + "/theme/clock.json" }
     Process {
         id: statusProcess
         command: [root.profile + "/bin/desktop-action", "status"]
@@ -145,7 +176,13 @@ ShellRoot {
         }
     }
     Timer { interval: 5000; running: true; repeat: true; triggeredOnStart: true; onTriggered: statusProcess.running = true }
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    SystemClock { id: clock; precision: SystemClock.Minutes; onDateChanged: Qt.callLater(root.refreshClock) }
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "activelayout") settingsStore.runtime = Object.assign({}, settingsStore.runtime, {activeLayout: event.data.slice(event.data.indexOf(",") + 1)});
+        }
+    }
     IpcHandler {
         target: "desktop"
         function toggle(name: string): void { root.toggle(name); }
@@ -157,6 +194,8 @@ ShellRoot {
             return JSON.stringify({page: root.page, windows: ToplevelManager.toplevels.values.length,
                 configurationOpen: root.configurationOpen, configurationScreen: root.configurationScreenName,
                 configurationDirty: settingsStore.dirty, configurationBusy: settingsStore.busy,
+                configurationCanApply: settingsStore.canApply, configurationConflict: settingsStore.conflict,
+                configurationFieldErrors: settingsStore.fieldErrors, configurationRecoveryNeeded: settingsStore.recoveryNeeded,
                 configurationError: settingsStore.error || settingsStore.sourceError,
                 configurationQuery: configurationWindow.query, configurationFocus: configurationWindow.activeFocus,
                 configurationConfirmingClose: configurationWindow.confirmingClose,
@@ -212,12 +251,36 @@ ShellRoot {
             IdleInhibitor { window: desktopBackground; enabled: root.inhibitIdle }
             color: root.surface
             Image { anchors.fill: parent; fillMode: Image.PreserveAspectCrop; source: "file://" + root.wallpaper + "?v=" + root.wallpaperRevision; cache: false }
-            Image {
+            PlacedClock {
+                id: desktopClock
+                objectName: "desktop-clock-group"
                 visible: root.desktopClockVisible
-                width: 230; height: 230
-                anchors { left: parent.left; bottom: parent.bottom; leftMargin: 70; bottomMargin: 70 }
-                source: root.clockRevision > 0 ? "file://" + root.profile + "/theme/clock.png?v=" + root.clockRevision : ""
-                cache: false
+                position: root.preferences.clockPlacement?.desktop || null
+                safeTop: root.barVisible && !root.barBottom ? 56 : 16
+                safeBottom: root.barVisible && root.barBottom ? 56 : 16
+                readonly property real dialSize: Math.max(1, Math.min(230, desktopBackground.width - 32, desktopBackground.height - safeTop - safeBottom - dateCaption.height - 10))
+                width: dialSize
+                height: dialSize + 10 + dateCaption.height
+                defaultY: desktopBackground.height - 70 - dialSize
+                Image {
+                    width: desktopClock.dialSize; height: width
+                    source: root.clockRevision > 0 ? "file://" + root.profile + "/theme/clock.png?v=" + root.clockRevision : ""
+                    cache: false
+                    asynchronous: true
+                    retainWhileLoading: true
+                }
+                Text {
+                    id: dateCaption
+                    objectName: "desktop-clock-date"
+                    y: desktopClock.dialSize + 10
+                    width: parent.width
+                    text: desktopTime.snapshot.date || ""
+                    color: root.ink
+                    font.family: root.uiFont
+                    font.pixelSize: 13
+                    elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                }
             }
         }
     }
@@ -264,7 +327,7 @@ ShellRoot {
                         id: timeRow
                         anchors.centerIn: parent
                         spacing: 4
-                        Chip { text: Qt.formatDateTime(clock.date, panel.width > 1100 ? "HH:mm · d MMM" : "HH:mm"); onClicked: root.toggle("settings") }
+                        Chip { text: (desktopTime.snapshot.time || Qt.formatDateTime(clock.date, "HH:mm")) + (panel.width > 1100 ? " · " + (desktopTime.snapshot.shortDate || Qt.formatDateTime(clock.date, "d MMM")) : ""); onClicked: root.toggle("settings") }
                         Chip {
                             visible: UPower.displayDevice.isLaptopBattery
                             text: Math.round(UPower.displayDevice.percentage * 100) + "%"
@@ -304,8 +367,8 @@ ShellRoot {
         implicitHeight: Math.min(840, (screen?.height || 840) - ((screen?.height || 840) < 400 ? 16 : 80))
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "archsetup-configuration"
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.keyboardFocus: root.page === "" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.layer: settingsStore.busy ? WlrLayer.Bottom : WlrLayer.Top
+        WlrLayershell.keyboardFocus: root.page === "" && !settingsStore.busy ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
         ConfigurationWindow {
             id: configurationWindow
@@ -468,7 +531,7 @@ ShellRoot {
                                 Chip { text: "Keyboard"; onClicked: { root.page = ""; root.control("keyboard"); } }
                             }
                             Item { Layout.fillHeight: true }
-                            Text { text: Qt.formatDateTime(clock.date, "dddd, d MMMM yyyy"); color: root.ink }
+                            Text { text: desktopTime.snapshot.date || ""; color: root.ink }
                         }
                         ToolsContent { desktop: root }
                         ColumnLayout {

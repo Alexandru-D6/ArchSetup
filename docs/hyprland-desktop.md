@@ -283,8 +283,22 @@ Up/Down selects a result and Enter scrolls to and focuses its control. Search
 matches category names, labels, descriptions and aliases, with every query term
 required. Clearing search retains the current form and its draft.
 
-General currently exposes the lock-screen power policy. Apply saves changes and
-keeps the form open; Revert restores saved values. Close and Escape offer Apply,
+General includes a searchable system timezone selector with current-time and UTC
+offset preview, ordered keyboard layouts with variants and a typing test, separate
+desktop/lock clock positions, and the lock-screen power policy. Timezone Apply uses
+the normal system authorization prompt. Keyboard changes apply immediately and
+retain the active layout if it is still available; Super+Space switches layouts.
+Up to four installed layout/variant pairs are supported. Personal or device-specific
+input overrides are reported if they prevent the selected layouts from taking effect.
+
+Clock controls offer Default, nine presets, horizontal/vertical percentages and
+Randomize. Randomize chooses a point now and Apply saves it. The complete clock
+and date group stays within each monitor's usable area, reserving the panel and
+password controls. Desktop placement updates immediately; both lock implementations
+use the new placement on the next lock. Default restores the original placement.
+All clock images and date captions use the system timezone, including after a change.
+
+Apply saves changes and keeps the form open; Revert restores saved values. Close and Escape offer Apply,
 Discard or Stay when edits are unsaved. Escape first closes a dialog or clears
 search. Outside clicks, focus changes and other shell overlays retain the form
 and its drafts. Reopening focuses the existing window on its original monitor;
@@ -295,8 +309,11 @@ initializes it when absent. `preferences.json` remains managed defaults and
 `state.json` retains appearance choices. A revision conflict preserves edits and
 requires Revert to load the external values. Invalid or unreadable settings
 disable Apply until repaired and require unlocking for lock-screen power requests.
+Failed system changes roll back without discarding your edits. If Apply is
+interrupted or rollback cannot finish, Recover reconciles the saved and system
+state before another Apply. Ansible rebuilds generated input from saved overrides.
 See the [window preview](images/desktop-configuration.png) and
-[remaining General implementation](desktop-settings-plan.md).
+[settings architecture and remaining date-format presets](desktop-settings-plan.md).
 
 Put images in `~/Pictures/Wallpapers`, then use Wallpaper in quick settings.
 Quick settings → **Color theme** selects **Rose** or the previous **Material**

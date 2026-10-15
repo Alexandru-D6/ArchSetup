@@ -29,7 +29,7 @@ def render(destination, overrides=None):
         shutil.copytree(ROLE / 'files/shared', destination / config / 'shared', dirs_exist_ok=True)
     shutil.copytree(ROLE / 'files/assets', destination / 'assets', dirs_exist_ok=True)
     (destination / 'bin').mkdir(exist_ok=True)
-    for filename in ['desktop-action', 'desktop-settings', 'desktop_settings.py', 'desktop-record', 'session-services', 'validate-config', 'lock-visuals']:
+    for filename in ['desktop-action', 'desktop-settings', 'desktop_settings.py', 'desktop_system.py', 'desktop-record', 'session-services', 'validate-config', 'lock-visuals']:
         shutil.copy2(ROLE / 'files' / filename, destination / 'bin' / filename)
         (destination / 'bin' / filename).chmod(0o755)
     shutil.copy2(ROLE / 'files/shortcuts.json', destination / 'shortcuts.json')

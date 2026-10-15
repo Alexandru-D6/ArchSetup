@@ -9,6 +9,7 @@ Item {
     property var snapshot: null
     property var preferences: ({lockPowerRequiresAuth: true})
     property string error: ""
+    property string errorCode: ""
     property bool pending: false
     function refresh() {
         if (reader.busy) { pending = true; return; }
@@ -23,9 +24,11 @@ Item {
                 source.preferences = response.snapshot.preferences;
                 source.snapshot = response.snapshot;
                 source.error = "";
-            } else {
+                source.errorCode = "";
+            } else if (response.code !== "busy") {
                 source.preferences = Object.assign({}, source.preferences, {lockPowerRequiresAuth: true});
                 source.error = response.message || "Unable to read settings.";
+                source.errorCode = response.code || "read";
             }
             if (source.pending) { source.pending = false; Qt.callLater(source.refresh); }
         }

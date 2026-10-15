@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from desktop_settings import effective_preferences
+from desktop_settings import atomic_text, clock_snapshot, effective_preferences
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -51,7 +51,7 @@ def control_font_size():
 def lock_clock_image(now=None):
     """Blue cookie dial with hollow hours, pink minutes and separate day/month badges."""
     from PIL import Image, ImageDraw, ImageFont
-    now = now or datetime.now()
+    now = now or datetime.fromisoformat(clock_snapshot()['iso'])
     scale = 3
     image = Image.new('RGBA', (250 * scale, 260 * scale))
     draw = ImageDraw.Draw(image)
@@ -112,6 +112,7 @@ def lock_clock_image(now=None):
     draw.text(point(206, 214), str(now.month), font=ImageFont.truetype(regular, 28 * scale),
               fill='#dce3ff', anchor='mm')
     output = save_image(image, 'lock-clock.png')
+    atomic_text(ROOT / 'theme/lock-clock.json', json.dumps(clock_snapshot(zone=getattr(now.tzinfo, 'key', None), now=now)) + '\n')
     return output
 
 
@@ -130,7 +131,7 @@ def keyboard_info():
     """Map XKB's event names to compact labels, querying the active keyboard once."""
     import ctypes
     import ctypes.util
-    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    preferences = effective_preferences(ROOT)
     compact = configured_layouts(preferences)
     layouts = {}
     library = ctypes.CDLL(ctypes.util.find_library('xkbcommon'))
@@ -172,10 +173,10 @@ def keyboard_info():
                        'capsLock': bool(keyboard.get('capsLock', False))})
 
 
-def identity_config(username=None, layouts=None):
+def identity_config(username=None, layouts=None, preferences=None, render_only=False):
     """Fit all layout names once; Hyprlock selects them on native keyboard events."""
     from PIL import ImageFont
-    preferences = json.loads((ROOT / 'preferences.json').read_text())
+    preferences = preferences if preferences is not None else effective_preferences(ROOT)
     username = username or pwd.getpwuid(os.getuid()).pw_name
     layouts = layouts or configured_layouts(preferences)
     scale, maximum = 3, 164  # 196 px toolbar limit, including 32 px of padding.
@@ -236,6 +237,8 @@ label {{
     zindex = 2
 }}
 '''
+    if render_only:
+        return content
     output = ROOT / 'lock-identity.conf'
     if output.exists() and output.read_text() == content:
         return 'unchanged'
@@ -388,7 +391,7 @@ def watch(parent):
 
 def clock_image():
     from PIL import Image, ImageDraw, ImageFont
-    now = datetime.now()
+    now = datetime.fromisoformat(clock_snapshot()['iso'])
     palette = json.loads((ROOT / 'theme/palette.json').read_text())
     scale, size = 3, 230
     image = Image.new('RGBA', (size * scale, size * scale))
@@ -437,6 +440,7 @@ def clock_image():
         os.replace(path, output)
     finally:
         path.unlink(missing_ok=True)
+    atomic_text(ROOT / 'theme/clock.json', json.dumps(clock_snapshot(zone=getattr(now.tzinfo, 'key', None), now=now)) + '\n')
     print(output)
 
 
@@ -464,6 +468,7 @@ def capslock():
 if __name__ == '__main__':
     try:
         output = {'clock': clock_image, 'lock-clock': lock_clock_image, 'identity-config': identity_config,
+                  'render-identity': lambda: identity_config(preferences=json.load(sys.stdin), render_only=True),
                   'keyboard-info': keyboard_info,
                   # Ignore a legacy pidfd argument during a partial deployment.
                   # This updater only writes files; it never signals the locker.

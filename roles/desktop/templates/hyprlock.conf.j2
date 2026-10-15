@@ -39,6 +39,7 @@ shape {
     valign = center
     zindex = 0
 }
+# archsetup-lock-clock-start
 image {
     monitor =
     path = {{ desktop_root }}/theme/lock-clock.png
@@ -67,7 +68,7 @@ label {
 }
 label {
     monitor =
-    text = cmd[update:60000] date +"%A, %B %-d"
+    text = cmd[update:1000] "{{ desktop_root }}/bin/desktop-settings" date
     color = rgba(f0eaffff)
     font_size = {{ archsetup_desktop_control_font_size | int }}
     font_family = {{ archsetup_desktop_font }}
@@ -76,6 +77,7 @@ label {
     valign = center
     zindex = 1
 }
+# archsetup-lock-clock-end
 # A measured native label reacts to Wayland layout changes without image polling.
 source = {{ desktop_root }}/lock-identity.conf
 input-field {

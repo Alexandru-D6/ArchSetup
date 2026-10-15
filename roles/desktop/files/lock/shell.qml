@@ -14,6 +14,7 @@ ShellRoot {
     readonly property string lockDirectory: Quickshell.env("ARCHSETUP_LOCK_DIR")
     property var preferences: ({})
     property var palette: ({})
+    Desktop.ClockSource { id: lockTime; path: root.profile + "/theme/lock-clock.json"; onSnapshotChanged: root.clockRevision++ }
     property string username: ""
     property var layoutNames: ({})
     property string rawLayout: ""
@@ -76,7 +77,6 @@ ShellRoot {
             if (event.name === "activelayout") root.rawLayout = event.data.slice(event.data.indexOf(",") + 1);
         }
     }
-    Timer { interval: 1000; running: true; repeat: true; onTriggered: root.clockRevision++ }
     Process {
         id: statusProcess
         command: [root.profile + "/bin/lock-visuals", "status"]
@@ -108,6 +108,8 @@ ShellRoot {
                 profile: root.profile
                 clockRevision: root.clockRevision
                 status: root.status
+                clockPosition: root.preferences.clockPlacement?.lockScreen || null
+                dateCaption: lockTime.snapshot.date || ""
                 controls.username: root.username
                 controls.layout: root.layout
                 controls.uiFont: root.preferences.font || "DejaVu Sans"

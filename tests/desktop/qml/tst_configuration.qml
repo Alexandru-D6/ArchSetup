@@ -9,6 +9,8 @@ Rectangle {
     readonly property string field: "general.lockPowerRequiresAuth"
     property var originalCategories: []
     property var originalSettings: []
+    signal typedLayouts(list<var> value)
+    onTypedLayouts: value => store.edit("general.keyboard.layouts", value)
     SettingsStore { id: store }
     ConfigurationWindow {
         id: configuration
@@ -19,6 +21,7 @@ Rectangle {
     }
     SignalSpy { id: closed; target: configuration; signalName: "closed" }
     SignalSpy { id: applyRequest; target: store; signalName: "applyRequested" }
+    SignalSpy { id: previewRequest; target: store; signalName: "previewRequested" }
 
     TestCase {
         name: "Configuration"
@@ -29,8 +32,17 @@ Rectangle {
             verify(item !== null, name);
             mouseClick(item, item.width / 2, item.height / 2);
         }
-        function snapshot(revision, value) { return {revision: revision, values: {[fixture.field]: value}}; }
+        function snapshot(revision, value) {
+            return {revision: revision, values: {
+                [fixture.field]: value,
+                "general.timezone": "Europe/Madrid",
+                "general.keyboard.layouts": [{layout: "us", variant: ""}],
+                "general.clockPlacement.desktop": null,
+                "general.clockPlacement.lockScreen": null
+            }, runtime: {activeLayout: "English (US)"}};
+        }
         function change() {
+            configuration.loadedPage.revealSetting(fixture.field);
             const toggle = control("settings-lock-power");
             verify(toggle !== null);
             mouseClick(toggle, 14, toggle.height / 2);
@@ -45,6 +57,19 @@ Rectangle {
             store.busy = false;
             store.loaded = false;
             store.sourceError = "";
+            store.recoveryNeeded = false;
+            store.catalogError = "";
+            store.previewError = "";
+            store.catalog = {maxLayouts: 4, timezones: [
+                {id: "Europe/Madrid", name: "Europe/Madrid"},
+                {id: "Asia/Kathmandu", name: "Asia/Kathmandu"},
+                {id: "Etc/UTC", name: "Etc/UTC"}
+            ], layouts: [
+                {id: "us", name: "English (US)", variants: [{id: "", name: "Default"}, {id: "intl", name: "International"}]},
+                {id: "es", name: "Spanish", variants: [{id: "", name: "Default"}]},
+                {id: "de", name: "German", variants: [{id: "", name: "Default"}]}
+            ]};
+            store.clockPreview = {timezone: "Europe/Madrid", utcOffset: "UTC+02:00", time: "14:20", date: "Thursday, October 15"};
             store.receive(snapshot("original", true));
             configuration.registry.categories = fixture.originalCategories;
             configuration.registry.settings = fixture.originalSettings;
@@ -58,9 +83,10 @@ Rectangle {
             configuration.accentText = "#ffffff";
             configuration.visible = true;
             configuration.clearSearch();
-            closed.clear(); applyRequest.clear();
+            closed.clear(); applyRequest.clear(); previewRequest.clear();
             tryVerify(() => control("settings-lock-power") !== null);
             control("settings-general-scroll").highlightedSetting = "";
+            control("settings-general-scroll").contentY = 0;
             tryCompare(control("settings-search"), "activeFocus", true);
             waitForRendering(configuration);
         }
@@ -70,10 +96,10 @@ Rectangle {
         }
         function test_search_data() {
             return [
-                {tag: "category", query: " GENERAL ", count: 1},
+                {tag: "category", query: " GENERAL ", count: 6},
                 {tag: "aliases and whitespace", query: "  LOGIN   password ", count: 1},
                 {tag: "multiple terms", query: "lock restart", count: 1},
-                {tag: "no matches", query: "timezone", count: 0},
+                {tag: "no matches", query: "nonexistent", count: 0},
                 {tag: "all terms required", query: "power nonexistent", count: 0},
                 {tag: "empty query", query: "  ", count: 0}
             ];
@@ -222,6 +248,106 @@ Rectangle {
             compare(store.canApply, false);
             compare(control("settings-status").text, store.sourceError);
         }
+        function test_timezone_picker_filters_and_previews_without_applying() {
+            configuration.loadedPage.revealSetting("general.timezone");
+            const picker = control("settings-timezone");
+            picker.query = "  asia   kathmandu ";
+            compare(picker.matches.length, 1);
+            const choice = control("settings-timezone-choice");
+            choice.forceActiveFocus();
+            keyClick(Qt.Key_Down);
+            compare(store.draft["general.timezone"], "Asia/Kathmandu");
+            compare(store.applied["general.timezone"], "Europe/Madrid");
+            compare(previewRequest.count, 1);
+            compare(previewRequest.signalArguments[0][0], "Asia/Kathmandu");
+            compare(applyRequest.count, 0);
+            store.clockPreview = {timezone: "Asia/Kathmandu", utcOffset: "UTC+05:45", time: "00:15", date: "Friday, October 16"};
+            verify(control("settings-utc-offset").text.indexOf("UTC+05:45") >= 0);
+            configuration.query = "UTC";
+            configuration.activateResult(0);
+            compare(control("settings-utc-offset").activeFocus, true);
+        }
+        function test_clock_default_presets_and_random_positions_are_independent() {
+            configuration.loadedPage.revealSetting("general.clockPlacement.desktop");
+            click("settings-desktop-position-preset-2");
+            compare(store.draft["general.clockPlacement.desktop"], {x: 1, y: 0});
+            compare(store.applied["general.clockPlacement.desktop"], null);
+            compare(store.draft["general.clockPlacement.lockScreen"], null);
+            configuration.loadedPage.revealSetting("general.clockPlacement.lockScreen");
+            click("settings-lock-position-randomize");
+            const random = store.draft["general.clockPlacement.lockScreen"];
+            verify(random.x >= 0 && random.x <= 1 && random.y >= 0 && random.y <= 1);
+            click("settings-apply");
+            compare(applyRequest.signalArguments[0][0].changes["general.clockPlacement.lockScreen"], random);
+            const saved = snapshot("positions", true);
+            saved.values = store.clone(store.draft);
+            store.finish({ok: true, snapshot: saved});
+            configuration.loadedPage.revealSetting("general.clockPlacement.desktop");
+            click("settings-desktop-position-default");
+            compare(store.draft["general.clockPlacement.desktop"], null);
+            compare(store.draft["general.clockPlacement.lockScreen"], random);
+            click("settings-revert");
+            compare(store.draft["general.clockPlacement.desktop"], {x: 1, y: 0});
+        }
+        function test_keyboard_layout_editor_adds_reorders_variants_and_tests_applied_layout() {
+            configuration.loadedPage.revealSetting("general.keyboard.layouts");
+            const picker = control("keyboard-add-layout");
+            picker.query = "spanish";
+            const choice = control("keyboard-add-layout-choice");
+            choice.forceActiveFocus();
+            keyClick(Qt.Key_Down);
+            compare(control("settings-keyboard").newLayout, "es");
+            // Scroll the Add button into view independently of the setting heading.
+            const form = control("settings-general-scroll");
+            form.contentY = Math.min(form.contentHeight - form.height, form.contentY + 280);
+            click("keyboard-add");
+            compare(store.draft["general.keyboard.layouts"], [{layout: "us", variant: ""}, {layout: "es", variant: ""}]);
+            verify(store.canApply, JSON.stringify(store.fieldErrors));
+            configuration.loadedPage.revealSetting("general.keyboard.layouts");
+            click("keyboard-up-1");
+            compare(store.draft["general.keyboard.layouts"][0].layout, "es");
+            const variant = control("keyboard-variant-1");
+            variant.forceActiveFocus();
+            keyClick(Qt.Key_Down);
+            compare(store.draft["general.keyboard.layouts"][1].variant, "intl");
+            compare(store.applied["general.keyboard.layouts"], [{layout: "us", variant: ""}]);
+            click("keyboard-remove-0");
+            compare(control("keyboard-remove-0").enabled, false);
+            const testField = control("keyboard-test");
+            testField.forceActiveFocus(); keyClick(Qt.Key_A);
+            compare(testField.text, "a");
+            compare(store.runtime.activeLayout, "English (US)");
+            click("settings-revert");
+            compare(store.draft["general.keyboard.layouts"], [{layout: "us", variant: ""}]);
+        }
+        function test_recovery_preserves_draft_and_adopts_actual_system_revision() {
+            store.edit("general.timezone", "Asia/Kathmandu");
+            click("settings-apply");
+            store.finish({ok: false, code: "recovery", message: "Recovery required"});
+            compare(store.recoveryNeeded, true);
+            compare(store.canApply, false);
+            click("settings-recover");
+            compare(applyRequest.signalArguments[1][0].operation, "recover");
+            compare(store.busy, true);
+            store.finish({ok: true, snapshot: snapshot("recovered", true)}, "recover");
+            compare(store.revision, "recovered");
+            compare(store.draft["general.timezone"], "Asia/Kathmandu");
+            compare(store.applied["general.timezone"], "Europe/Madrid");
+            compare(store.canApply, true);
+            compare(closed.count, 0);
+        }
+        function test_keyboard_validation_accepts_four_distinct_pairs_and_rejects_invalid_variants() {
+            const pairs = [{layout: "us", variant: ""}, {layout: "us", variant: "intl"}, {layout: "es", variant: ""}, {layout: "de", variant: ""}];
+            fixture.typedLayouts(pairs);
+            verify(Array.isArray(store.draft["general.keyboard.layouts"]));
+            verify(store.canApply, JSON.stringify(store.fieldErrors));
+            store.edit("general.keyboard.layouts", pairs.concat([pairs[0]]));
+            compare(store.canApply, false);
+            store.edit("general.keyboard.layouts", [pairs[0], pairs[0]]);
+            compare(store.canApply, false);
+            store.edit("general.keyboard.layouts", [{layout: "es", variant: "intl"}]);
+            compare(store.canApply, false);
+        }
         function test_outside_click_focus_loss_and_category_unloading_preserve_draft() {
             change();
             mouseClick(configuration, 2, 2);
@@ -247,7 +373,7 @@ Rectangle {
             configuration.registry.categories = fixture.originalCategories.concat([
                 {id: "other", title: "Other", page: fixture.originalCategories[0].page}
             ]);
-            configuration.registry.settings = [Object.assign({}, fixture.originalSettings[0], {category: "other"})];
+            configuration.registry.settings = fixture.originalSettings.map(item => item.id === fixture.field ? Object.assign({}, item, {category: "other"}) : item);
             configuration.query = "Other password";
             compare(configuration.results.length, 1);
             configuration.activateResult(0);

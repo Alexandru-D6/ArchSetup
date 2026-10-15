@@ -1,27 +1,31 @@
 # Configuration window architecture
 
-Status: implementation started, 2026-10-15; architecture agreed 2026-10-14.
-The first increment implements the window framework and the existing General
-lock-screen power setting. Date/time, clock placement and keyboard editing remain
-planned. The architecture below describes the full target.
+Status: General timezone, keyboard layouts and clock placement implemented,
+2026-10-16; architecture agreed 2026-10-14. Date-format presets remain planned.
+The architecture below describes the full target.
 
 Implemented: shared centered frame, persistent Configuration window, search and
 category registry, queued reveal/focus navigation, drafts outside the page loader,
 Apply/Revert, unsaved-close choices and both entry points. The backend supports
-structured `read`/`apply` requests, schema validation, effective defaults/overrides,
-serialized atomic writes and revision conflicts. Search indexes implemented
+structured `read`/`apply`/`catalog`/`preview`/`recover`/`sync` requests, schema validation,
+effective defaults/overrides, serialized atomic writes and revision conflicts. Search indexes implemented
 settings only. `SettingsBackend.qml` and `SettingsSource.qml` live under `shared/`
 and are installed inside both Quickshell roots because Quickshell rejects imports
 outside a configuration root.
 
-For the first policy, `settings.json` is the single commit point. The existing
-lock launcher builds the next session's private native configuration from the
-effective policy and themed power fragment. Apply validates that generation before
-committing; it never restarts a locker or changes the managed defaults. If a
-template is incomplete at lock startup, locking continues with the installed
-configuration and the helper still enforces the effective policy. The recovery
-journal and multi-resource rollback remain part of the later system timezone and
-keyboard operations; this first field has no external side effects to roll back.
+General now reads installed timezone/XKB catalogs, previews the selected timezone's
+time and UTC offset, and applies system timezone changes through timedate1 and
+Polkit. Ordered layout/variant pairs are compiled and parsed before a live reload;
+the active pair is retained when still available. Both clock groups have independent
+Default, 3×3 presets, percentage controls and Randomize. Randomize samples once;
+Apply saves that point. Missing/null positions retain the previous placement.
+
+`settings.json` is the commit point. A journal records previous outputs and system
+state before timezone/keyboard side effects; failures roll back, and an interrupted
+Apply exposes Recover while retaining the draft. Polling distinguishes an active
+writer from an interrupted request. The lock launcher builds the next session's
+private native configuration from effective placement/policy; applying settings
+never restarts an active locker. An incomplete template cannot prevent locking.
 
 The window should share the shortcut window's centered surface, rounded corners,
 spacing, font and current palette. A scrollable category list occupies the left
@@ -180,7 +184,6 @@ An illustrative user override file is:
   "schemaVersion": 1,
   "revision": 1,
   "general": {
-    "dateFormat": "iso-date",
     "lockPowerRequiresAuth": true,
     "clockPlacement": {
       "desktop": {"x": 0.0, "y": 1.0},

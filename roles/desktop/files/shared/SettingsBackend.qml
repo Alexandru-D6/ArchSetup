@@ -36,7 +36,7 @@ Item {
         onExited: exitCode => {
             try {
                 const response = JSON.parse(output.text);
-                if (typeof response.ok !== "boolean" || (response.ok && (exitCode !== 0 || !response.snapshot)))
+                if (typeof response.ok !== "boolean" || (response.ok && (exitCode !== 0 || (!response.snapshot && !response.catalog && !response.clock))))
                     throw new Error("Invalid settings response");
                 backend.complete(response);
             } catch (error) {
@@ -47,7 +47,7 @@ Item {
     }
     Timer {
         id: timeout
-        interval: 10000
+        interval: backend.request.operation === "apply" || backend.request.operation === "recover" ? 300000 : 10000
         onTriggered: {
             process.running = false;
             backend.complete({ok: false, code: "timeout", message: "The settings request timed out. Reload the current values before retrying."});

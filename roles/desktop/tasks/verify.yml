@@ -24,6 +24,8 @@
         - "{{ desktop_root }}/lock-power.conf"
         - "{{ desktop_root }}/bin/desktop-settings"
         - "{{ desktop_root }}/bin/desktop_settings.py"
+        - "{{ desktop_root }}/bin/desktop_system.py"
+        - "{{ desktop_root }}/settings-input.lua"
         - "{{ desktop_root }}/shell/ConfigurationWindow.qml"
         - "{{ desktop_root }}/shell/shared/SettingsSource.qml"
         - "{{ desktop_root }}/lock/shared/SettingsSource.qml"

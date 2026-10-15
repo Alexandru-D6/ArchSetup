@@ -1,6 +1,32 @@
-# Resume checkpoint — 2026-10-15 (latest)
+# Resume checkpoint — 2026-10-16 (latest)
 
-Latest task: began yesterday's Configuration plan with the complete window
+Latest task: implemented the remaining requested General controls: installed
+keyboard layouts/variants, system timezone with derived UTC preview, and separate
+desktop/lock-screen clock positions. Default, nine presets, percentages and
+Randomize are available; Randomize chooses a fixed point for Apply to save.
+Desktop placement updates immediately and both lockers use saved placement on
+their next launch. Clock/date assets and captions use explicit system-timezone
+snapshots, including DST and fractional offsets. Date-format presets remain planned.
+
+The backend compiles XKB pairs and validates generated Lua before a live reload,
+preserving the active pair when available. timedate1 uses normal Polkit
+authorization; Settings lowers its layer and releases focus while Apply runs.
+External side effects use a journal and rollback, with explicit Recover after an
+interruption or failed restoration. Readers distinguish active Apply from an
+abandoned journal. Ansible preserves overrides and rebuilds interactive input
+idempotently. Qt signal containers are normalized to JSON values before draft
+validation, including on the older Qt version in the VM.
+
+Validation: 27 settings regressions, 67 desktop tests and 86 Qt interaction checks
+pass. Native parsing, component/locker lint, desktop/verify playbook syntax and
+whitespace checks pass. A disposable graphical VM verified authorized/cancelled
+timezone Apply, focus return, midnight after UTC→Kathmandu, live four-layout Apply,
+active-pair retention, Super+Space and independent saved random clock positions.
+See docs/desktop-validation.md for current locker acceptance and preview details,
+including the unresolved forced-crash fallback handoff. The VM was shut down.
+The workstation profile was not deployed; reapply the desktop profile to install.
+
+Previous task: began yesterday's Configuration plan with the complete window
 framework and the first General setting, **Require unlock before shutdown or
 reboot**. Super+I and session Settings open the persistent form; Super+Comma keeps
 Quick settings. Shared frame styling also powers ShortcutHelp. Registry search,

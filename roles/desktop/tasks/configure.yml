@@ -72,6 +72,7 @@
     - {src: desktop-action, dest: bin/desktop-action, mode: '0755'}
     - {src: desktop-settings, dest: bin/desktop-settings, mode: '0755'}
     - {src: desktop_settings.py, dest: bin/desktop_settings.py, mode: '0644'}
+    - {src: desktop_system.py, dest: bin/desktop_system.py, mode: '0644'}
     - {src: desktop-record, dest: bin/desktop-record, mode: '0755'}
     - {src: lock-visuals, dest: bin/lock-visuals, mode: '0755'}
     - {src: session-services, dest: bin/session-services, mode: '0755'}
@@ -173,6 +174,15 @@
     group: "{{ desktop_group }}"
     mode: '0600'
     force: false
+
+- name: Rebuild interactive input settings from preserved user overrides
+  become_user: "{{ archsetup_desktop_user }}"
+  ansible.builtin.command:
+    argv: ["{{ desktop_root }}/bin/desktop-settings"]
+    stdin: '{"operation":"sync"}'
+  register: desktop_settings_sync
+  changed_when: (desktop_settings_sync.stdout | from_json).changed | bool
+  when: not ansible_check_mode
 
 - name: Create the default Kitty configuration directory
   ansible.builtin.file:

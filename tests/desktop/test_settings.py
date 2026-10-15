@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Settings persistence, conflict handling and production-process integration."""
 import getpass
+import fcntl
+from datetime import datetime, timezone
 import grp
 import importlib.machinery
 import importlib.util
@@ -23,6 +25,9 @@ import desktop_settings as settings
 
 class SettingsTests(unittest.TestCase):
     def setUp(self):
+        environment = patch.dict(os.environ, {'HYPRLAND_INSTANCE_SIGNATURE': ''})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.directory = tempfile.TemporaryDirectory(prefix='archsetup-settings-test-')
         self.addCleanup(self.directory.cleanup)
         self.profile = render(self.directory.name)
@@ -37,6 +42,214 @@ class SettingsTests(unittest.TestCase):
     def apply(self, value):
         return settings.apply(self.profile, settings.snapshot(self.profile)['revision'],
                               {settings.POWER_FIELD: value})
+
+    def change(self, changes):
+        return settings.apply(self.profile, settings.snapshot(self.profile)['revision'], changes)
+
+    def test_clock_positions_are_independent_persistent_and_validated(self):
+        first = settings.snapshot(self.profile)['values']
+        self.assertIsNone(first[settings.DESKTOP_FIELD])
+        self.assertIsNone(first[settings.LOCK_FIELD])
+        value = { 'x': 0.125, 'y': 1 }
+        changed = self.change({settings.DESKTOP_FIELD: value})
+        self.assertEqual(changed['values'][settings.DESKTOP_FIELD], value)
+        self.assertIsNone(changed['values'][settings.LOCK_FIELD])
+        self.change({settings.LOCK_FIELD: {'x': 1, 'y': 0}})
+        self.change({settings.DESKTOP_FIELD: None})
+        render(self.profile)
+        saved = settings.snapshot(self.profile)['values']
+        self.assertIsNone(saved[settings.DESKTOP_FIELD])
+        self.assertEqual(saved[settings.LOCK_FIELD], {'x': 1, 'y': 0})
+        before = (self.profile / 'settings.json').read_bytes()
+        for invalid in [False, [], {}, {'x': 0}, {'x': True, 'y': 0}, {'x': float('nan'), 'y': 0},
+                        {'x': -0.01, 'y': 0}, {'x': 0, 'y': 1.01}, {'x': 0, 'y': 0, 'z': 0}]:
+            with self.subTest(invalid=invalid), self.assertRaises(settings.SettingsError):
+                self.change({settings.DESKTOP_FIELD: invalid})
+            self.assertEqual((self.profile / 'settings.json').read_bytes(), before)
+
+    def test_timezone_preview_handles_dst_midnight_and_fractional_offsets(self):
+        preview = settings.clock_snapshot('Asia/Kathmandu', datetime(2026, 10, 15, 18, 30, tzinfo=timezone.utc))
+        self.assertEqual((preview['utcOffset'], preview['time'], preview['date']), ('UTC+05:45', '00:15', 'Friday, October 16'))
+        before = settings.clock_snapshot('Europe/Madrid', datetime(2026, 10, 25, 0, 59, tzinfo=timezone.utc))
+        after = settings.clock_snapshot('Europe/Madrid', datetime(2026, 10, 25, 1, 0, tzinfo=timezone.utc))
+        self.assertEqual((before['time'], before['utcOffset']), ('02:59', 'UTC+02:00'))
+        self.assertEqual((after['time'], after['utcOffset']), ('02:00', 'UTC+01:00'))
+        negative = settings.clock_snapshot('America/St_Johns', datetime(2026, 1, 1, tzinfo=timezone.utc))
+        self.assertEqual(negative['utcOffset'], 'UTC−03:30')
+
+    def test_timezone_uses_system_service_without_storing_a_duplicate(self):
+        zone = ['Etc/UTC']
+        def set_zone(value, interactive=True): zone[0] = value
+        with patch.object(settings.system, 'timezone_name', side_effect=lambda: zone[0]), \
+             patch.object(settings.system, 'set_timezone', side_effect=set_zone) as setter:
+            result = self.change({settings.TIMEZONE_FIELD: 'Asia/Kathmandu'})
+            setter.assert_called_once_with('Asia/Kathmandu')
+            self.assertEqual(result['values'][settings.TIMEZONE_FIELD], 'Asia/Kathmandu')
+            self.assertNotIn('timezone', json.loads((self.profile / 'settings.json').read_text())['general'])
+            self.assertFalse((self.profile / '.settings-recovery.json').exists())
+            revision = result['revision']
+            zone[0] = 'Europe/Madrid'
+            with self.assertRaises(settings.SettingsError) as caught:
+                settings.apply(self.profile, revision, {settings.POWER_FIELD: False})
+            self.assertEqual(caught.exception.code, 'conflict')
+
+    def test_denied_timezone_change_keeps_saved_values_and_other_draft_fields(self):
+        before = (self.profile / 'settings.json').read_bytes()
+        with patch.object(settings.system, 'timezone_name', return_value='Etc/UTC'), \
+             patch.object(settings.system, 'set_timezone', side_effect=RuntimeError('Authorization cancelled')):
+            with self.assertRaises(settings.SettingsError) as caught:
+                self.change({settings.TIMEZONE_FIELD: 'Europe/Madrid', settings.POWER_FIELD: False,
+                             settings.DESKTOP_FIELD: {'x': 1, 'y': 1}})
+        self.assertEqual(caught.exception.code, 'system')
+        self.assertIn('cancelled', str(caught.exception))
+        self.assertEqual((self.profile / 'settings.json').read_bytes(), before)
+        self.assertFalse((self.profile / '.settings-recovery.json').exists())
+
+    def test_keyboard_pairs_generate_native_validated_input_and_survive_sync(self):
+        layouts = [{'layout': 'es', 'variant': ''}, {'layout': 'us', 'variant': 'altgr-intl'}]
+        before = (self.profile / 'preferences.json').read_bytes()
+        result = self.change({settings.LAYOUTS_FIELD: layouts})
+        self.assertEqual(result['values'][settings.LAYOUTS_FIELD], layouts)
+        self.assertEqual(result['preferences']['keyboardVariants'], ',altgr-intl')
+        self.assertIn('kb_layout="es,us",kb_variant=",altgr-intl"', (self.profile / 'settings-input.lua').read_text())
+        self.assertIn('ES', (self.profile / 'lock-identity.conf').read_text())
+        self.assertEqual((self.profile / 'preferences.json').read_bytes(), before)
+        self.assertFalse(settings.sync(self.profile))
+        (self.profile / 'settings-input.lua').unlink()
+        self.assertTrue(settings.sync(self.profile))
+        self.assertFalse(settings.sync(self.profile))
+        self.assertEqual(settings.snapshot(self.profile)['values'][settings.LAYOUTS_FIELD], layouts)
+
+    def test_invalid_keyboard_pairs_never_write_generated_or_saved_files(self):
+        before = (self.profile / 'settings.json').read_bytes()
+        for invalid in [[], None, [{'layout': 'unknown', 'variant': ''}], [{'layout': 'us', 'variant': 'unknown'}],
+                        [{'layout': 'es', 'variant': 'altgr-intl'}], [{'layout': 'us'}],
+                        [{'layout': 'us', 'variant': ''}] * 2, [{'layout': 'us', 'variant': ''}] * 5]:
+            with self.subTest(invalid=invalid), self.assertRaises(settings.SettingsError):
+                self.change({settings.LAYOUTS_FIELD: invalid})
+            self.assertEqual((self.profile / 'settings.json').read_bytes(), before)
+            self.assertFalse((self.profile / 'settings-input.lua').exists())
+
+    def test_keyboard_reload_failure_rolls_back_outputs_and_timezone(self):
+        zone = ['Etc/UTC']
+        old = {'layout': 'us,us', 'variant': 'euro,altgr-intl', 'file': '', 'keyboards': []}
+        before = (self.profile / 'settings.json').read_bytes()
+        def set_zone(value, interactive=True): zone[0] = value
+        with patch.object(settings.system, 'timezone_name', side_effect=lambda: zone[0]), \
+             patch.object(settings.system, 'set_timezone', side_effect=set_zone) as setter, \
+             patch.object(settings.system, 'observe_keyboard', return_value=old), \
+             patch.object(settings.system, 'in_session', return_value=True), \
+             patch.object(settings.system, 'reload_keyboard', side_effect=[RuntimeError('Injected reload failure'), None]):
+            with self.assertRaises(settings.SettingsError):
+                self.change({settings.LAYOUTS_FIELD: [{'layout': 'es', 'variant': ''}], settings.TIMEZONE_FIELD: 'Europe/Madrid'})
+            self.assertEqual(setter.call_args_list[-1].args, ('Etc/UTC',))
+            self.assertFalse(setter.call_args_list[-1].kwargs['interactive'])
+        self.assertEqual(zone[0], 'Etc/UTC')
+        self.assertEqual((self.profile / 'settings.json').read_bytes(), before)
+        self.assertFalse((self.profile / 'settings-input.lua').exists())
+        self.assertFalse((self.profile / '.settings-recovery.json').exists())
+
+    def test_failed_rollback_requires_explicit_recovery_and_retains_record(self):
+        old = {'layout': 'us,us', 'variant': 'euro,altgr-intl', 'file': '', 'keyboards': []}
+        with patch.object(settings.system, 'observe_keyboard', return_value=old), \
+             patch.object(settings.system, 'in_session', return_value=True), \
+             patch.object(settings.system, 'reload_keyboard', side_effect=RuntimeError('Injected failure')):
+            with self.assertRaises(settings.SettingsError) as caught:
+                self.change({settings.LAYOUTS_FIELD: [{'layout': 'es', 'variant': ''}]})
+        self.assertEqual(caught.exception.code, 'recovery')
+        with self.assertRaises(settings.SettingsError): settings.snapshot(self.profile)
+        self.assertTrue((self.profile / '.settings-recovery.json').exists())
+        recovered = settings.recover(self.profile)
+        self.assertEqual(recovered['values'][settings.LAYOUTS_FIELD], settings.default_layouts(recovered['preferences']))
+        self.assertFalse((self.profile / '.settings-recovery.json').exists())
+        (self.profile / '.settings-recovery.json').write_text('{}')
+        self.assertEqual(self.request({'operation': 'recover'})['code'], 'recovery')
+
+    def test_reader_distinguishes_active_apply_from_interrupted_apply(self):
+        (self.profile / '.settings-recovery.json').write_text('{}')
+        with (self.profile / '.settings.lock').open('w') as guard:
+            fcntl.flock(guard, fcntl.LOCK_EX)
+            self.assertEqual(self.request({'operation': 'read'})['code'], 'busy')
+        self.assertEqual(self.request({'operation': 'read'})['code'], 'recovery')
+
+    def test_native_clock_positions_fit_scaled_rotated_and_small_monitors(self):
+        for monitor in [dict(name='DP-1', width=1920, height=1080, scale=1, transform=0),
+                        dict(name='DP-1', width=3840, height=2160, scale=2, transform=0),
+                        dict(name='DP-1', width=1080, height=1920, scale=1, transform=1),
+                        dict(name='DP-1', width=800, height=600, scale=1, transform=0)]:
+            for position in [{'x': 0, 'y': 0}, {'x': 1, 'y': 1}, {'x': 0.5, 'y': 0.5}]:
+                with self.subTest(monitor=monitor, position=position):
+                    native = settings.native_clock(self.profile, {'clockPlacement': {'lockScreen': position}}, [monitor])
+                    self.assertIn('monitor = DP-1', native)
+                    self.assertEqual(native.count('valign = top'), 3)
+                    self.assertIn('/bin/desktop-settings" date', native)
+                    width, height = monitor['width'] / monitor['scale'], monitor['height'] / monitor['scale']
+                    if monitor['transform'] % 2: width, height = height, width
+                    size = int(native.split('size = ')[1].splitlines()[0])
+                    x, y = map(int, native.split('position = ')[1].splitlines()[0].split(','))
+                    self.assertGreaterEqual(x, 16)
+                    self.assertGreaterEqual(-y, 64)
+                    self.assertLessEqual(x + size, width - 16)
+                    self.assertLessEqual(-y + size * 260 / 250 + 70, height - 140 + 2)
+
+    def test_monitor_query_failure_uses_the_lock_launchers_existing_fallback(self):
+        preferences = settings.effective_preferences(self.profile)
+        preferences['clockPlacement']['lockScreen'] = {'x': 0, 'y': 0}
+        with patch.object(settings.system, 'monitors', side_effect=RuntimeError('Monitor query failed')):
+            with self.assertRaises(settings.SettingsError) as caught:
+                settings.native_lock_configuration(self.profile, (self.profile / 'hyprlock.conf').read_text(), preferences)
+        self.assertEqual(caught.exception.code, 'native-config')
+
+    def test_catalog_and_preview_contract_never_modify_settings(self):
+        before = (self.profile / 'settings.json').read_bytes()
+        catalog = self.request({'operation': 'catalog'})['catalog']
+        self.assertIn('Europe/Madrid', [item['id'] for item in catalog['timezones']])
+        self.assertIn('us', [item['id'] for item in catalog['layouts']])
+        self.assertEqual(catalog['maxLayouts'], 4)
+        preview = self.request({'operation': 'preview', 'timezone': 'Asia/Kathmandu'})['clock']
+        self.assertEqual(preview['utcOffset'], 'UTC+05:45')
+        self.assertEqual(self.request({'operation': 'preview', 'timezone': 'Invalid/Zone'})['code'], 'validation')
+        self.assertEqual((self.profile / 'settings.json').read_bytes(), before)
+
+    def test_current_hyprland_option_values_normalize_empty_keymap(self):
+        def command(arguments):
+            if arguments[-1] == 'devices':
+                return json.dumps({'keyboards': []})
+            return json.dumps({'value': {'input:kb_file': '[[EMPTY]]', 'input:kb_layout': 'us', 'input:kb_variant': ''}[arguments[-1]]})
+        with patch.object(settings.system, 'in_session', return_value=True), \
+             patch.object(settings.system, 'command', side_effect=command):
+            observed = settings.system.observe_keyboard()
+        self.assertEqual((observed['layout'], observed['variant'], observed['file']), ('us', '', ''))
+
+    def test_active_group_and_caps_lock_do_not_create_configuration_conflicts(self):
+        preferences, saved = settings.documents(self.profile)
+        keyboard = {'layout': 'us,us', 'variant': 'euro,altgr-intl', 'file': '',
+                    'keyboards': [{'name': 'keyboard', 'layout': 'us,us', 'variant': 'euro,altgr-intl',
+                                   'main': True, 'active_layout_index': 0, 'active_keymap': 'English (US)', 'capsLock': False}]}
+        first = settings.snapshot_from(preferences, saved, {'timezone': 'Etc/UTC', 'keyboard': keyboard})
+        keyboard['keyboards'][0].update(active_layout_index=1, active_keymap='English (intl.)', capsLock=True)
+        second = settings.snapshot_from(preferences, saved, {'timezone': 'Etc/UTC', 'keyboard': keyboard})
+        self.assertEqual(first['revision'], second['revision'])
+        self.assertEqual(second['runtime']['activeLayout'], 'English (intl.)')
+        keyboard['keyboards'][0]['layout'] = 'es'
+        third = settings.snapshot_from(preferences, saved, {'timezone': 'Etc/UTC', 'keyboard': keyboard})
+        self.assertNotEqual(first['revision'], third['revision'])
+
+    def test_reloading_keyboard_preserves_active_pair_and_rejects_device_overrides(self):
+        previous = {'layout': 'us,us', 'variant': 'euro,altgr-intl', 'file': '',
+                    'keyboards': [{'name': 'keyboard', 'active_layout_index': 1}]}
+        layouts = [{'layout': 'es', 'variant': ''}, {'layout': 'us', 'variant': 'altgr-intl'}]
+        current = {'layout': 'es,us', 'variant': ',altgr-intl', 'file': '',
+                   'keyboards': [{'name': 'keyboard', 'layout': 'es,us', 'variant': ',altgr-intl'}]}
+        def command(arguments): return ''
+        with patch.object(settings.system, 'in_session', return_value=True), \
+             patch.object(settings.system, 'observe_keyboard', return_value=current), \
+             patch.object(settings.system, 'command', side_effect=command) as runner:
+            settings.system.reload_keyboard(layouts, previous)
+            self.assertEqual(runner.call_args_list[-1].args[0], ['hyprctl', 'switchxkblayout', 'keyboard', '1'])
+            current['keyboards'][0]['layout'] = 'de'
+            with self.assertRaisesRegex(RuntimeError, 'keyboard-specific'):
+                settings.system.reload_keyboard(layouts, previous)
 
     def test_defaults_and_overrides_survive_reapplying_defaults(self):
         before_preferences = (self.profile / 'preferences.json').read_bytes()
@@ -108,7 +321,7 @@ class SettingsTests(unittest.TestCase):
         path = self.profile / 'settings.json'
         before = path.read_bytes()
         with patch.object(settings.os, 'replace', side_effect=OSError('Injected write failure')):
-            with self.assertRaises(OSError):
+            with self.assertRaises(settings.SettingsError):
                 self.apply(False)
         self.assertEqual(path.read_bytes(), before)
         self.assertEqual(list(self.profile.glob('.settings-*')), [])
@@ -177,16 +390,19 @@ class SettingsTests(unittest.TestCase):
         executable = shutil.which('ansible-playbook') or str(Path(sys.executable).parent / 'ansible-playbook')
         if not Path(executable).is_file(): self.skipTest('ansible-playbook is required')
         path = self.profile / 'settings.json'
+        self.change({settings.LAYOUTS_FIELD: [{'layout': 'es', 'variant': ''}, {'layout': 'us', 'variant': 'euro'}]})
         self.apply(False)
         before = path.read_bytes(), path.stat().st_mtime_ns
+        generated = (self.profile / 'settings-input.lua').read_bytes()
         tasks = yaml.safe_load((ROLE / 'tasks/configure.yml').read_text())
         initializer = next(task for task in tasks if task['name'] == 'Initialize user-owned desktop settings')
+        rebuild = next(task for task in tasks if task['name'] == 'Rebuild interactive input settings from preserved user overrides')
         playbook = self.profile / 'settings-repeat.yml'
         playbook.write_text(yaml.safe_dump([{
             'hosts': 'localhost', 'gather_facts': False, 'become': False,
             'vars': {'desktop_root': str(self.profile), 'archsetup_desktop_user': getpass.getuser(),
                      'desktop_group': grp.getgrgid(os.getgid()).gr_name},
-            'tasks': [initializer, initializer]}]))
+            'tasks': [initializer, rebuild, initializer, rebuild]}]))
         environment = dict(os.environ, ANSIBLE_HOME=str(self.profile / 'ansible-home'),
                            ANSIBLE_LOCAL_TEMP=str(self.profile / 'ansible-tmp'))
         result = subprocess.run([executable, '-i', 'localhost,', '-c', 'local', str(playbook)],
@@ -194,6 +410,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertRegex(result.stdout, r'changed=0\s+unreachable=0\s+failed=0')
         self.assertEqual((path.read_bytes(), path.stat().st_mtime_ns), before)
+        self.assertEqual((self.profile / 'settings-input.lua').read_bytes(), generated)
 
     def test_quickshell_settings_processes_apply_observe_conflicts_and_recover(self):
         executable = shutil.which('qs')
