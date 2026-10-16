@@ -124,34 +124,35 @@ Rectangle {
     }
     Timer { id: headerClick; interval: 300; onTriggered: center.openYearPicker() }
     Timer { interval: center.stopwatchRunning ? 30 : 200; running: true; repeat: true; onTriggered: center.tick() }
+    function handlePageWheel(event) {
+        const pixels = event.pixelDelta.x !== 0 || event.pixelDelta.y !== 0;
+        const dx = pixels ? event.pixelDelta.x : event.angleDelta.x / 8;
+        const dy = pixels ? event.pixelDelta.y : event.angleDelta.y / 8;
+        if (event.phase === Qt.ScrollBegin) {
+            wheelGestureAxis = 0;
+            wheelGestureX = 0;
+            wheelGestureY = 0;
+        }
+        const phased = event.phase !== Qt.NoScrollPhase;
+        if (phased && wheelGestureAxis === 0) {
+            wheelGestureX += dx;
+            wheelGestureY += dy;
+            // Ignore a few pixels of initial sideways finger jitter.
+            if (Math.max(Math.abs(wheelGestureX), Math.abs(wheelGestureY)) >= 8)
+                wheelGestureAxis = Math.abs(wheelGestureX) > Math.abs(wheelGestureY) ? 1 : 2;
+        }
+        const horizontal = phased ? wheelGestureAxis === 1 : Math.abs(dx) > Math.abs(dy);
+        event.accepted = horizontal && dx !== 0 && event.phase !== Qt.ScrollEnd;
+        if (event.accepted) wheelPage(dx);
+        if (event.phase === Qt.ScrollEnd) wheelGestureAxis = 0;
+    }
     // The pager's native wheel interaction is disabled below, so neutral begin
     // and end events can reach the vertical lists without stalling page changes.
     MouseArea {
         anchors.fill: parent
         z: 100
         acceptedButtons: Qt.NoButton
-        onWheel: event => {
-            const pixels = event.pixelDelta.x !== 0 || event.pixelDelta.y !== 0;
-            const dx = pixels ? event.pixelDelta.x : event.angleDelta.x / 8;
-            const dy = pixels ? event.pixelDelta.y : event.angleDelta.y / 8;
-            if (event.phase === Qt.ScrollBegin) {
-                center.wheelGestureAxis = 0;
-                center.wheelGestureX = 0;
-                center.wheelGestureY = 0;
-            }
-            const phased = event.phase !== Qt.NoScrollPhase;
-            if (phased && center.wheelGestureAxis === 0) {
-                center.wheelGestureX += dx;
-                center.wheelGestureY += dy;
-                // Ignore a few pixels of initial sideways finger jitter.
-                if (Math.max(Math.abs(center.wheelGestureX), Math.abs(center.wheelGestureY)) >= 8)
-                    center.wheelGestureAxis = Math.abs(center.wheelGestureX) > Math.abs(center.wheelGestureY) ? 1 : 2;
-            }
-            const horizontal = phased ? center.wheelGestureAxis === 1 : Math.abs(dx) > Math.abs(dy);
-            event.accepted = horizontal && dx !== 0 && event.phase !== Qt.ScrollEnd;
-            if (event.accepted) center.wheelPage(dx);
-            if (event.phase === Qt.ScrollEnd) center.wheelGestureAxis = 0;
-        }
+        onWheel: event => center.handlePageWheel(event)
     }
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 16; spacing: 14
@@ -291,70 +292,7 @@ Rectangle {
                             ClockReadout { label: "UTC+0"; utc: true; Layout.fillWidth: true }
                         }
                         TextEdit { text: "Unix seconds: " + Math.floor(center.now.getTime() / 1000); readOnly: true; selectByMouse: true; color: center.textColor; Layout.fillWidth: true; horizontalAlignment: TextEdit.AlignHCenter }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            SettingsComboBox {
-                                id: zonePicker
-                                objectName: "timezone-picker"
-                                theme: center
-                                textRole: ""; valueRole: ""
-                                Layout.fillWidth: true; editable: true
-                                indicator: Item {
-                                    objectName: "timezone-indicator"
-                                    width: 32; height: 32
-                                    x: zonePicker.width - width - 6
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    Canvas {
-                                        id: zoneChevron
-                                        anchors.centerIn: parent
-                                        width: 12; height: 8
-                                        onPaint: {
-                                            const ctx = getContext("2d"); ctx.reset();
-                                            ctx.strokeStyle = center.textColor; ctx.lineWidth = 2;
-                                            ctx.lineCap = "round"; ctx.lineJoin = "round";
-                                            ctx.beginPath(); ctx.moveTo(1, 1); ctx.lineTo(6, 7); ctx.lineTo(11, 1); ctx.stroke();
-                                        }
-                                        Connections { target: center; function onTextColorChanged() { zoneChevron.requestPaint(); } }
-                                    }
-                                }
-                                contentItem: TextField {
-                                    text: zonePicker.editText
-                                    color: center.textColor
-                                    font: zonePicker.font
-                                    placeholderText: "Choose a timezone"
-                                    placeholderTextColor: center.textColor
-                                    selectionColor: center.accent; selectedTextColor: center.accentText
-                                    background: null
-                                    leftPadding: 12; rightPadding: 34
-                                    selectByMouse: true
-                                    onTextEdited: zonePicker.editText = text
-                                    onAccepted: center.addZone(text)
-                                }
-                                delegate: ItemDelegate {
-                                    required property string modelData
-                                    required property int index
-                                    width: zonePicker.width
-                                    highlighted: zonePicker.highlightedIndex === index
-                                    contentItem: Text { text: modelData; color: parent.highlighted ? center.accentText : center.textColor; font: zonePicker.font; elide: Text.ElideRight }
-                                    background: Rectangle { color: parent.highlighted ? center.accent : center.surface; radius: 8 }
-                                }
-                                popup: Popup {
-                                    y: zonePicker.height + 4; width: zonePicker.width; padding: 6
-                                    implicitHeight: Math.min(240, contentItem.implicitHeight + 12)
-                                    background: Rectangle { radius: 12; color: center.surface; border.color: center.raised }
-                                    contentItem: ListView {
-                                        clip: true; implicitHeight: contentHeight
-                                        model: zonePicker.popup.visible ? zonePicker.delegateModel : null
-                                        currentIndex: zonePicker.highlightedIndex
-                                        ScrollBar.vertical: ScrollBar {}
-                                    }
-                                }
-                                model: center.availableZones
-                                onAccepted: center.addZone(editText)
-                                Accessible.name: "Timezone, for example Europe/Madrid"
-                            }
-                            SettingsButton { theme: center; text: "Add"; enabled: center.availableZones.indexOf(zonePicker.editText) >= 0; onClicked: center.addZone(zonePicker.editText) }
-                        }
+                        TimezoneSearch { Layout.fillWidth: true }
                         Text { visible: center.availableZones.length === 0; text: center.timezoneError || "Loading timezones…"; color: center.textColor }
                         GridLayout {
                             Layout.fillWidth: true; columns: 2
@@ -485,13 +423,123 @@ Rectangle {
             color: center.textColor; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.Wrap
         }
     }
+    component TimezoneSearch: RowLayout {
+        id: search
+        objectName: "timezone-search"
+        readonly property var matches: {
+            const terms = input.text.trim().toLowerCase().replace(/_/g, " ").split(/\s+/).filter(Boolean);
+            return center.availableZones.filter(zone => center.zones.indexOf(zone) < 0 && terms.every(term => zone.toLowerCase().replace(/_/g, " ").includes(term)));
+        }
+        onMatchesChanged: results.currentIndex = matches.length ? 0 : -1
+        function choose(zone) {
+            if (!center.zonesEditable || matches.indexOf(zone) < 0) return;
+            center.addZone(zone);
+            input.clear();
+            input.forceActiveFocus();
+        }
+        function submit() {
+            if (!input.text.trim() || !matches.length) return;
+            const exact = matches.find(zone => zone.toLowerCase() === input.text.trim().toLowerCase());
+            choose(exact || matches[Math.max(0, results.currentIndex)]);
+        }
+        function moveSelection(delta) {
+            results.currentIndex = Math.max(0, Math.min(matches.length - 1, results.currentIndex + delta));
+            results.positionViewAtIndex(results.currentIndex, ListView.Contain);
+        }
+        TextField {
+            id: input
+            objectName: "timezone-search-input"
+            Layout.fillWidth: true
+            implicitHeight: 40
+            enabled: center.zonesEditable
+            placeholderText: "Search timezones (e.g. Madrid)"
+            color: center.textColor
+            placeholderTextColor: center.textColor
+            selectionColor: center.accent; selectedTextColor: center.accentText
+            font.family: center.uiFont; font.pixelSize: 13
+            leftPadding: 12; rightPadding: 12
+            selectByMouse: true
+            background: Rectangle {
+                radius: 12; color: center.surface
+                border.width: input.activeFocus ? 2 : 1
+                border.color: input.activeFocus ? center.accent : center.raised
+            }
+            Accessible.name: "Search timezones"
+            onAccepted: search.submit()
+            Keys.onDownPressed: search.moveSelection(1)
+            Keys.onUpPressed: search.moveSelection(-1)
+            Popup {
+                id: suggestions
+                objectName: "timezone-search-popup"
+                y: input.height + 4
+                width: input.width
+                height: Math.min(216, Math.max(1, results.count) * 36) + padding * 2
+                padding: 6
+                popupType: Popup.Item
+                focus: false
+                modal: false
+                dim: false
+                closePolicy: Popup.CloseOnPressOutsideParent
+                visible: center.visible && center.currentPage === 2 && input.activeFocus && input.text.trim().length > 0
+                background: Rectangle {
+                    radius: 12; color: center.surface
+                    border.color: center.raised
+                }
+                contentItem: Item {
+                    ListView {
+                        id: results
+                        objectName: "timezone-search-results"
+                        anchors.fill: parent
+                        visible: count > 0
+                        clip: true
+                        model: search.matches
+                        highlightMoveDuration: 0
+                        ScrollBar.vertical: ScrollBar {}
+                        delegate: ItemDelegate {
+                            id: result
+                            required property string modelData
+                            required property int index
+                            width: results.width; height: 36
+                            // Selecting a suggestion must not take typing focus
+                            // and dismiss the popup before the click completes.
+                            focusPolicy: Qt.NoFocus
+                            text: modelData
+                            highlighted: results.currentIndex === index
+                            contentItem: Text { text: result.text; color: result.highlighted ? center.accentText : center.textColor; font.family: center.uiFont; font.pixelSize: 13; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 10; color: result.highlighted ? center.accent : result.hovered ? center.raised : center.surface }
+                            onClicked: search.choose(modelData)
+                        }
+                    }
+                    Text {
+                        objectName: "timezone-search-empty"
+                        anchors.fill: parent; anchors.leftMargin: 6
+                        visible: results.count === 0
+                        text: "No matching timezones"
+                        color: center.textColor; font.family: center.uiFont; font.pixelSize: 12
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        onWheel: event => center.handlePageWheel(event)
+                    }
+                }
+            }
+        }
+        SettingsButton {
+            objectName: "timezone-search-add"
+            theme: center; text: "Add"
+            enabled: center.zonesEditable && input.text.trim().length > 0 && search.matches.length > 0
+            onClicked: search.submit()
+        }
+    }
     component TimerArrow: Button {
         id: arrow
         implicitHeight: 34
-        hoverEnabled: true
+        hoverEnabled: enabled
         opacity: enabled ? (hovered || visualFocus ? 1 : 0.55) : 0.25
         contentItem: Text { text: arrow.text; color: center.textColor; font.pixelSize: 30; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-        background: Rectangle { radius: 12; color: arrow.hovered || arrow.visualFocus ? center.raised : "transparent" }
+        background: Rectangle { radius: 12; color: arrow.enabled && (arrow.hovered || arrow.visualFocus) ? center.raised : "transparent" }
     }
     component TimerNumber: ColumnLayout {
         id: number
@@ -499,26 +547,55 @@ Rectangle {
         required property int value
         required property int maximum
         required property int displayed
+        readonly property int currentValue: center.timerRemaining > 0 ? displayed : value
+        property real wheelRemainder: 0
         signal edited(int value)
+        function adjust(steps) {
+            if (center.timerRunning) return;
+            edited(Math.max(0, Math.min(maximum, currentValue + steps)));
+            numberInput.text = Qt.binding(() => String(number.currentValue).padStart(2, "0"));
+        }
         spacing: 4
         Layout.preferredWidth: 94; Layout.maximumWidth: 104
-        TimerArrow { objectName: "increase"; text: "▴"; Layout.fillWidth: true; enabled: !center.timerRunning; Accessible.name: "Increase " + number.label; onClicked: number.edited(Math.min(number.maximum, number.value + 1)) }
+        TimerArrow { objectName: "increase"; text: "▴"; Layout.fillWidth: true; enabled: !center.timerRunning; Accessible.name: "Increase " + number.label; onClicked: number.adjust(1) }
         TextField {
             id: numberInput
             objectName: "timer-number-input"
             Layout.preferredWidth: 80; Layout.maximumWidth: 80; Layout.alignment: Qt.AlignHCenter
-            text: String(center.timerRemaining > 0 ? number.displayed : number.value).padStart(2, "0")
+            text: String(number.currentValue).padStart(2, "0")
             font.pixelSize: 42; horizontalAlignment: TextInput.AlignHCenter; color: center.accent
             readOnly: center.timerRunning
+            hoverEnabled: !readOnly
             validator: IntValidator { bottom: 0; top: number.maximum }
             selectByMouse: true
             Accessible.name: number.label
             onActiveFocusChanged: if (activeFocus) selectAll()
             onTextEdited: if (acceptableInput) number.edited(Number(text))
-            onEditingFinished: { text = Qt.binding(() => String(center.timerRemaining > 0 ? number.displayed : number.value).padStart(2, "0")); }
+            onEditingFinished: { text = Qt.binding(() => String(number.currentValue).padStart(2, "0")); }
+            MouseArea {
+                anchors.fill: parent
+                z: 1
+                acceptedButtons: Qt.NoButton
+                onWheel: event => {
+                    const pixels = event.pixelDelta.x !== 0 || event.pixelDelta.y !== 0;
+                    const dx = pixels ? event.pixelDelta.x : event.angleDelta.x;
+                    const dy = pixels ? event.pixelDelta.y : event.angleDelta.y;
+                    event.accepted = Math.abs(dy) >= Math.abs(dx);
+                    if (!event.accepted) return;
+                    if (event.phase === Qt.ScrollBegin || event.phase === Qt.ScrollEnd || center.timerRunning)
+                        number.wheelRemainder = 0;
+                    if (center.timerRunning || !dy) return;
+                    const delta = pixels ? dy / 24 : dy / 120;
+                    if (number.wheelRemainder * delta < 0) number.wheelRemainder = 0;
+                    number.wheelRemainder += delta;
+                    const steps = Math.trunc(number.wheelRemainder);
+                    if (steps) { number.wheelRemainder -= steps; number.adjust(steps); }
+                }
+            }
         }
-        TimerArrow { objectName: "decrease"; text: "▾"; Layout.fillWidth: true; enabled: !center.timerRunning; Accessible.name: "Decrease " + number.label; onClicked: number.edited(Math.max(0, number.value - 1)) }
+        TimerArrow { objectName: "decrease"; text: "▾"; Layout.fillWidth: true; enabled: !center.timerRunning; Accessible.name: "Decrease " + number.label; onClicked: number.adjust(-1) }
         Text { text: number.label; color: center.textColor; font.pixelSize: 11; Layout.alignment: Qt.AlignHCenter }
+
     }
     component TaskList: ListView {
         id: list

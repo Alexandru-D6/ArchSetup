@@ -224,8 +224,8 @@ ShellRoot {
         hoverEnabled: true
         background: Rectangle {
             radius: height / 2
-            color: chip.selected ? root.accent : (chip.hovered || chip.activeFocus ? root.raised : "transparent")
-            border.width: chip.activeFocus || chip.urgent ? 2 : 0
+            color: chip.selected ? root.accent : (chip.hovered || chip.visualFocus ? root.raised : "transparent")
+            border.width: chip.visualFocus || chip.urgent ? 2 : 0
             border.color: root.accent
         }
         contentItem: Text {

@@ -430,13 +430,17 @@ in the desktop profile.
 
 The clock shows the machine's local time/date and UTC+0 side by side in matching
 formats, with Unix seconds below them.
-Add IANA timezones from the picker to show analog clocks with hour and minute
-hands. These use the system timezone database for daylight-saving and fractional
+Search by city or IANA timezone name; a dropdown below the field updates as you
+type. Click a match or use Up/Down and Enter to add an analog clock with hour and
+minute hands. Search ignores case and accepts spaces in city names. These use
+the system timezone database for daylight-saving and fractional
 offsets; selections are saved in `world-clocks.json`. More conversions expands
 Unix milliseconds and a selectable Unix timestamp converter.
 
-The centered timer has quiet, borderless arrows above and below each number; click a number once
-to type hours, minutes, or seconds. It supports pause/resume and sends a desktop
+The centered timer has quiet, borderless arrows above and below each number; click
+a number once to type hours, minutes, or seconds, or scroll over that unit to
+increase/decrease it. Editing and hover feedback are disabled during a countdown;
+pause it to change the remaining duration. It supports pause/resume and sends a desktop
 notification when finished. The centered stopwatch supports pause/resume and
 laps. Adding laps scrolls the list below the stopwatch without moving its display
 or controls. Both continue while the popup is closed; restarting the shell resets them.

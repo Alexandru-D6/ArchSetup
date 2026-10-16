@@ -43,16 +43,33 @@ Item {
             compare(dismissal.count, 1);
             verify(!popup.visible);
         }
-        function test_outside_press_with_timezone_picker_open() {
+        function test_outside_press_with_timezone_search_results_visible() {
             center.currentPage = 2;
             center.timezoneTimes = {"UTC": {hour: 12, minute: 30}};
             wait(300);
-            const picker = findChild(center, "timezone-picker");
-            mouseClick(picker, picker.width - 12, picker.height / 2);
-            tryCompare(picker.popup, "visible", true);
+            center.zones = [];
+            const input = findChild(center, "timezone-search-input");
+            input.text = "utc";
+            input.forceActiveFocus();
+            tryCompare(findChild(center, "timezone-search-results"), "visible", true);
             mouseClick(popup, 5, 700);
             compare(dismissal.count, 1);
             verify(!popup.visible);
+        }
+        function test_escape_closes_with_timezone_search_results_visible() {
+            center.currentPage = 2;
+            center.timezoneTimes = {"UTC": {hour: 12, minute: 30}};
+            center.zones = [];
+            wait(300);
+            const input = findChild(center, "timezone-search-input");
+            input.text = "utc";
+            input.forceActiveFocus();
+            tryCompare(findChild(center, "timezone-search-popup"), "visible", true);
+            mouseMove(popup, 5, 700);
+            keyClick(Qt.Key_Escape);
+            compare(dismissal.count, 1);
+            verify(!popup.visible);
+            verify(!findChild(center, "timezone-search-popup").visible);
         }
         function test_bottom_bar_placement_and_dismissal() {
             popup.bottomBar = true; wait(10);
