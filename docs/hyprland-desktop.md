@@ -412,3 +412,31 @@ surfaces and shortcuts, window previews, hotplug/scaling, portal screen sharing,
 manual/idle lock and suspend/resume. Hardware acceptance must cover the real
 mouse, DP-2 at 144 Hz and audio devices. Keep validation results distinct from
 checks that still require an interactive user.
+
+The bar places the laptop battery percentage at the left edge. Click the date/time
+button to open the calendar and time tools below the bar (above it when the bar is
+at the bottom). Select Calendar, Todo, Clock, Timer, or Stopwatch using the top
+buttons, swipe horizontally across the pages, or scroll horizontally anywhere
+in the popup to slide between them. Vertical gestures scroll longer task, clock,
+and lap views without changing pages.
+The popup holds keyboard focus while open; Escape dismisses it even when the
+pointer is outside the popup. Pressing outside the card on any monitor dismisses
+it immediately; the transparent backdrop consumes that press.
+Click the calendar month/year heading to select a year and then a month;
+double-click the heading to return to today. Calendar supports date selection and
+daily task checklists. Todo shows pending undated tasks by default; its Completed
+button opens the separate completed-task view. Tasks are stored in `tasks.json`
+in the desktop profile.
+
+The clock shows the machine's local time/date and UTC+0 side by side in matching
+formats, with Unix seconds below them.
+Add IANA timezones from the picker to show analog clocks with hour and minute
+hands. These use the system timezone database for daylight-saving and fractional
+offsets; selections are saved in `world-clocks.json`. More conversions expands
+Unix milliseconds and a selectable Unix timestamp converter.
+
+The centered timer has quiet, borderless arrows above and below each number; click a number once
+to type hours, minutes, or seconds. It supports pause/resume and sends a desktop
+notification when finished. The centered stopwatch supports pause/resume and
+laps. Adding laps scrolls the list below the stopwatch without moving its display
+or controls. Both continue while the popup is closed; restarting the shell resets them.

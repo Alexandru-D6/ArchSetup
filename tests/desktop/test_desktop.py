@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -583,6 +584,31 @@ else:
                                 env=environment, capture_output=True, text=True, timeout=45)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_time_center_touchpad_gestures_move_content(self):
+        compiler, pkg_config = shutil.which('c++'), shutil.which('pkg-config')
+        if not compiler or not pkg_config:
+            self.skipTest('A C++ compiler and Qt 6 development files are required')
+        flags = subprocess.run([pkg_config, '--cflags', '--libs', 'Qt6Quick', 'Qt6Test'],
+                               capture_output=True, text=True)
+        if flags.returncode:
+            self.skipTest('Qt 6 Quick and Test development files are required')
+        fixture = self.profile / 'gesture-validation'
+        shutil.copytree(Path(__file__).parent / 'gestures', fixture)
+        for component in ['TimeCenter.qml', 'SettingsButton.qml', 'SettingsComboBox.qml']:
+            shutil.copy2(self.profile / 'shell' / component, fixture / component)
+        executable = fixture / 'test-gestures'
+        result = subprocess.run([compiler, '-fPIC', '-std=c++17', str(fixture / 'timecenter.cpp'),
+                                 '-o', str(executable), *shlex.split(flags.stdout)],
+                                capture_output=True, text=True, timeout=45)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
+                           QT_QUICK_CONTROLS_STYLE='Basic',
+                           XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'))
+        result = subprocess.run([str(executable), str(fixture / 'shell.qml')], env=environment,
+                                capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('ARCHSETUP_TIME_CENTER_GESTURES_PASSED', result.stdout)
+
     def test_animated_lock_clock_keeps_last_frame_visible_during_reload(self):
         from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
         from io import BytesIO
@@ -672,6 +698,24 @@ else:
         self.assertIn('Configuration Loaded', output)
         self.assertNotIn('Failed to load configuration', output)
         self.assertFalse((private / 'authenticated').exists())
+
+    def test_world_clocks_use_system_timezone_database(self):
+        executable = shutil.which('qs')
+        if executable is None: self.skipTest('Quickshell is required')
+        fixture = self.profile / 'worldclock-validation'
+        shutil.copytree(Path(__file__).parent / 'worldclock', fixture)
+        shutil.copy2(self.profile / 'shell/WorldClockSource.qml', fixture / 'WorldClockSource.qml')
+        environment = dict(os.environ, QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software',
+                           XDG_RUNTIME_DIR=str(self.profile / '.runtime-validation'),
+                           XDG_CACHE_HOME=str(self.profile / 'cache'), XDG_STATE_HOME=str(self.profile / 'qs-state'))
+        environment.pop('WAYLAND_DISPLAY', None)
+        result = subprocess.run([executable, '-p', str(fixture), '--no-color'], env=environment,
+                                capture_output=True, text=True, timeout=8)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn('ARCHSETUP_WORLD_CLOCKS_PASSED', output)
+        for error in ['Failed to load configuration', 'TypeError', 'ReferenceError']:
+            self.assertNotIn(error, output)
 
     def test_shortcut_help_loads_and_watches_map_in_quickshell(self):
         executable = shutil.which('qs')

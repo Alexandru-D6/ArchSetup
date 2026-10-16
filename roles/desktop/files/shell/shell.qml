@@ -28,6 +28,12 @@ ShellRoot {
             else if (root.configurationOpen) root.focusConfiguration();
         }
     }
+    property bool timeCenterOpen: false
+    property string timeCenterScreen: ""
+    property bool zonesLoaded: false
+    property string zoneError: ""
+    property bool tasksLoaded: false
+    property string taskError: ""
     property bool inhibitIdle: false
     property bool barVisible: true
     property bool barBottom: false
@@ -327,14 +333,25 @@ ShellRoot {
                         id: timeRow
                         anchors.centerIn: parent
                         spacing: 4
-                        Chip { text: (desktopTime.snapshot.time || Qt.formatDateTime(clock.date, "HH:mm")) + (panel.width > 1100 ? " · " + (desktopTime.snapshot.shortDate || Qt.formatDateTime(clock.date, "d MMM")) : ""); onClicked: root.toggle("settings") }
                         Chip {
-                            visible: UPower.displayDevice.isLaptopBattery
-                            text: Math.round(UPower.displayDevice.percentage * 100) + "%"
-                            onClicked: root.toggle("settings")
+                            text: (desktopTime.snapshot.time || Qt.formatDateTime(clock.date, "HH:mm")) + (panel.width > 1100 ? " · " + (desktopTime.snapshot.shortDate || Qt.formatDateTime(clock.date, "d MMM")) : "")
+                            selected: root.timeCenterOpen && root.timeCenterScreen === panel.screen.name
+                            Accessible.name: "Calendar and time tools"
+                            onClicked: {
+                                root.timeCenterScreen = panel.screen.name;
+                                root.timeCenterOpen = !root.timeCenterOpen;
+                                if (root.timeCenterOpen) timeCenter.forceActiveFocus();
+                            }
                         }
                     }
                 }
+            }
+            Chip {
+                anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
+                visible: UPower.displayDevice.isLaptopBattery
+                text: Math.round(UPower.displayDevice.percentage * 100) + "%"
+                Accessible.name: "Battery " + text
+                onClicked: root.toggle("settings")
             }
             RowLayout {
                 anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: 12 }
@@ -355,6 +372,100 @@ ShellRoot {
                 Chip { text: "●"; Accessible.name: "Notifications"; onClicked: root.action("notifications") }
                 Chip { text: "Power"; Accessible.name: "Session"; onClicked: root.toggle("session") }
             }
+        }
+    }
+
+    FileView {
+        id: taskFile
+        path: root.profile + "/tasks.json"
+        printErrors: false
+        onLoaded: {
+            try {
+                const saved = JSON.parse(text());
+                if (!Array.isArray(saved) || !saved.every(task => typeof task.text === "string" && typeof task.day === "string" && typeof task.done === "boolean")) throw new Error("Invalid task data");
+                timeCenter.tasks = saved;
+                root.tasksLoaded = true;
+            } catch (error) { root.taskError = "Could not load saved tasks. Original file preserved."; }
+        }
+        onLoadFailed: error => {
+            if (error === FileViewError.FileNotFound) root.tasksLoaded = true;
+            else root.taskError = "Could not read saved tasks.";
+        }
+        onSaveFailed: root.taskError = "Could not save tasks."
+    }
+    WorldClockSource {
+        id: worldClockSource
+        active: timePanel.visible && timeCenter.currentPage === 2
+    }
+    FileView {
+        id: zoneFile
+        path: root.profile + "/world-clocks.json"
+        printErrors: false
+        onLoaded: {
+            try {
+                const saved = JSON.parse(text());
+                if (!Array.isArray(saved) || !saved.every(zone => typeof zone === "string")) throw new Error("Invalid timezone data");
+                timeCenter.zones = saved;
+                root.zonesLoaded = true;
+            } catch (error) { root.zoneError = "Could not load saved clocks. Original file preserved."; }
+        }
+        onLoadFailed: error => {
+            if (error === FileViewError.FileNotFound) root.zonesLoaded = true;
+            else root.zoneError = "Could not read saved clocks.";
+        }
+        onSaveFailed: root.zoneError = "Could not save clocks."
+    }
+    PanelWindow {
+        id: timePanel
+        visible: root.timeCenterOpen && root.barVisible
+        onVisibleChanged: if (visible) Qt.callLater(() => timeCenter.forceActiveFocus())
+        screen: Quickshell.screens.find(s => s.name === root.timeCenterScreen) || Quickshell.screens[0]
+        anchors { top: true; bottom: true; left: true; right: true }
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.namespace: "archsetup-time-center"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        color: "transparent"
+        TimePopupSurface {
+            anchors.fill: parent
+            bottomBar: root.barBottom
+            onDismissed: timeCenter.closed()
+            TimeCenter {
+                id: timeCenter
+                anchors.fill: parent
+                surface: root.surface; raised: root.raised; textColor: root.ink
+                accent: root.accent; accentText: root.onAccent; uiFont: root.uiFont
+                timezoneTimes: worldClockSource.times
+                timezoneError: worldClockSource.error
+                zonesEditable: root.zonesLoaded
+                onZonesEdited: if (root.zonesLoaded) zoneFile.setText(JSON.stringify(zones))
+                tasksEditable: root.tasksLoaded
+                onClosed: root.timeCenterOpen = false
+                onTasksEdited: if (root.tasksLoaded) taskFile.setText(JSON.stringify(tasks))
+                onTimerCompleted: Quickshell.execDetached(["notify-send", "Timer", "Time is up!"])
+            }
+            Text {
+                visible: root.taskError !== "" || root.zoneError !== ""
+                anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter; bottomMargin: 6 }
+                text: root.taskError || root.zoneError; color: root.accent; font.pixelSize: 11
+            }
+        }
+    }
+
+    // Dismiss on other monitors too, without moving the card or keyboard focus.
+    Variants {
+        model: Quickshell.screens
+        delegate: PanelWindow {
+            required property var modelData
+            screen: modelData
+            visible: timePanel.visible && screen !== timePanel.screen
+            anchors { top: true; bottom: true; left: true; right: true }
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.namespace: "archsetup-time-dismiss"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            color: "transparent"
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: timeCenter.closed() }
         }
     }
 
