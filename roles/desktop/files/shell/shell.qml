@@ -218,13 +218,15 @@ ShellRoot {
         id: chip
         property bool selected: false
         property bool urgent: false
+        property color hoverColor: root.raised
+        property color selectedHoverColor: root.accent
         padding: 0
         implicitHeight: 30
         implicitWidth: Math.max(34, contentItem.implicitWidth + 22)
         hoverEnabled: true
         background: Rectangle {
             radius: height / 2
-            color: chip.selected ? root.accent : (chip.hovered || chip.visualFocus ? root.raised : "transparent")
+            color: chip.selected ? (chip.hovered ? chip.selectedHoverColor : root.accent) : (chip.hovered || chip.visualFocus ? chip.hoverColor : "transparent")
             border.width: chip.visualFocus || chip.urgent ? 2 : 0
             border.color: root.accent
         }
@@ -318,6 +320,8 @@ ShellRoot {
                             Chip {
                                 required property int index
                                 readonly property int workspaceId: workspaceRow.firstWorkspace + index
+                                hoverColor: Qt.tint(root.raised, Qt.alpha(root.accent, 0.18))
+                                selectedHoverColor: Qt.tint(root.accent, Qt.alpha(root.onAccent, 0.16))
                                 implicitWidth: Math.max(26, contentItem.implicitWidth + 10); implicitHeight: 26
                                 text: String(workspaceId)
                                 selected: Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id === workspaceId
@@ -334,6 +338,8 @@ ShellRoot {
                         anchors.centerIn: parent
                         spacing: 4
                         Chip {
+                            hoverColor: Qt.tint(root.raised, Qt.alpha(root.accent, 0.18))
+                            selectedHoverColor: Qt.tint(root.accent, Qt.alpha(root.onAccent, 0.16))
                             text: (desktopTime.snapshot.time || Qt.formatDateTime(clock.date, "HH:mm")) + (panel.width > 1100 ? " · " + (desktopTime.snapshot.shortDate || Qt.formatDateTime(clock.date, "d MMM")) : "")
                             selected: root.timeCenterOpen && root.timeCenterScreen === panel.screen.name
                             Accessible.name: "Calendar and time tools"
