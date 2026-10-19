@@ -307,8 +307,10 @@ else:
         if not Path(executable).exists():
             self.skipTest('ansible-playbook is required for shell refresh regression')
         _, playbook, _, environment = fixture
+        # Ansible copies each shell component separately; allow for the control
+        # center components as well as the handler's supervised restart wait.
         return subprocess.run([executable, '-i', 'localhost,', '-c', 'local', str(playbook), *options],
-                              env=environment, capture_output=True, text=True, timeout=30)
+                              env=environment, capture_output=True, text=True, timeout=90)
 
     def test_shell_refresh_runs_once_and_unchanged_apply_does_not_restart(self):
         fixture = self.shell_refresh_fixture('active')
@@ -583,6 +585,32 @@ else:
         result = subprocess.run([executable, '-input', str(Path(__file__).parent / 'qml'), '-o', '-,txt'],
                                 env=environment, capture_output=True, text=True, timeout=45)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_control_center_notification_protocol(self):
+        if not all(shutil.which(command) for command in ['qs', 'gdbus', 'dbus-run-session']):
+            self.skipTest('Quickshell and D-Bus tools are required')
+        fixture = self.profile / 'notification-validation'
+        shutil.copytree(Path(__file__).parent / 'notifications', fixture)
+        shutil.copy2(self.profile / 'shell/NotificationSource.qml', fixture / 'NotificationSource.qml')
+        result = subprocess.run(['dbus-run-session', '--', sys.executable, str(fixture / 'check.py'), str(fixture)],
+                                capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('ARCHSETUP_NOTIFICATIONS_PASSED', result.stdout)
+
+    def test_notification_migration_targets_only_this_profiles_daemon(self):
+        proc = Path(self.directory.name) / 'proc'
+        proc.mkdir()
+        for pid, parent, args in [(100, 1, ['bash', str(self.profile / 'bin/session-services')]),
+                                   (101, 100, ['swaync', '-c', str(self.profile / 'swaync.json')]),
+                                   (102, 1, ['swaync', '-c', '/another/profile/swaync.json']),
+                                   (103, 1, ['unrelated'])]:
+            path = proc / str(pid)
+            path.mkdir()
+            (path / 'cmdline').write_bytes(('\0'.join(args) + '\0').encode())
+            (path / 'status').write_text(f'PPid:\t{parent}\n')
+        with patch.object(self.actions.os, 'kill') as kill, patch.object(self.actions.time, 'monotonic', side_effect=[0, 4]):
+            self.actions.retire_notifications(proc)
+        kill.assert_called_once_with(100, self.actions.signal.SIGTERM)
 
     def test_time_center_touchpad_gestures_move_content(self):
         compiler, pkg_config = shutil.which('c++'), shutil.which('pkg-config')

@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Small JSON interface for the control center. Never evaluates shell text."""
+import concurrent.futures
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+
+def command(*args, optional=False):
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=2 if optional else 12,
+                                env=dict(os.environ, LC_ALL='C'))
+        if result.returncode:
+            raise ValueError(result.stderr.strip() or result.stdout.strip() or 'Command failed')
+        return result.stdout.strip()
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        if optional:
+            return ''
+        raise
+
+
+def fields(line):
+    # nmcli escapes colons and backslashes in connection/device names.
+    result, part, escaped = [], '', False
+    for char in line:
+        if escaped:
+            part += char
+            escaped = False
+        elif char == '\\':
+            escaped = True
+        elif char == ':':
+            result.append(part)
+            part = ''
+        else:
+            part += char
+    result.append(part)
+    return result
+
+
+def connections():
+    result = []
+    for line in command('nmcli', '-t', '-f', 'UUID,TYPE,NAME,ACTIVE', 'connection', 'show', optional=True).splitlines():
+        row = fields(line)
+        if len(row) == 4 and row[1] in ('vpn', 'wireguard'):
+            result.append(dict(id=row[0], name=row[2], active=row[3] == 'yes'))
+    return result
+
+
+def audio(kind):
+    data = json.loads(command('pactl', '-f', 'json', 'list', kind, optional=True) or '[]')
+    return [dict(id=item['name'], name=item.get('description') or item['name'],
+                 muted=item.get('mute', False),
+                 volume=round(sum(channel['value'] for channel in item.get('volume', {}).values())
+                              / max(1, len(item.get('volume', {}))) / 65536 * 100))
+            for item in data if not (kind == 'sources' and item['name'].endswith('.monitor'))]
+
+
+def snapshot():
+    probes = {
+        'wifiRadio': lambda: command('nmcli', 'radio', 'wifi', optional=True),
+        'devices': lambda: command('nmcli', '-t', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'device', optional=True),
+        'bluetooth': lambda: command('bluetoothctl', 'show', optional=True),
+        'outputs': lambda: audio('sinks'), 'inputs': lambda: audio('sources'),
+        'output': lambda: command('pactl', 'get-default-sink', optional=True),
+        'input': lambda: command('pactl', 'get-default-source', optional=True),
+        'vpns': connections,
+    }
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(probes)) as pool:
+        tasks = {name: pool.submit(probe) for name, probe in probes.items()}
+        values = {name: task.result() for name, task in tasks.items()}
+    devices = [fields(line) for line in values.pop('devices').splitlines()]
+    wifi = [row for row in devices if len(row) == 4 and row[1] == 'wifi']
+    bluetooth = values.pop('bluetooth')
+    values.update(wifiAvailable=bool(wifi), wifiEnabled=values.pop('wifiRadio') == 'enabled',
+                  wifiName=next((row[3] for row in wifi if row[2] == 'connected'), ''),
+                  bluetoothAvailable='Controller ' in bluetooth, bluetoothEnabled='Powered: yes' in bluetooth,
+                  nightAvailable=shutil.which('hyprsunset') is not None,
+                  uptime=int(float(Path('/proc/uptime').read_text().split()[0])))
+    return values
+
+
+def apply(request):
+    action, value = request.get('action'), request.get('value')
+    if action in ('wifi', 'bluetooth'):
+        if type(value) is not bool:
+            raise ValueError('Expected an on/off value')
+        if action == 'wifi':
+            command('nmcli', 'radio', 'wifi', 'on' if value else 'off')
+        else:
+            output = command('bluetoothctl', 'power', 'on' if value else 'off')
+            if 'succeeded' not in output:
+                raise ValueError(output or 'Could not change Bluetooth power')
+    elif action in ('volume', 'mute', 'mic', 'output', 'input'):
+        if action == 'volume':
+            if type(value) not in (int, float) or not 0 <= value <= 100:
+                raise ValueError('Volume must be between 0 and 100')
+            command('pactl', 'set-sink-volume', '@DEFAULT_SINK@', f'{round(value)}%')
+        elif action in ('mute', 'mic'):
+            if type(value) is not bool:
+                raise ValueError('Expected a mute value')
+            command('pactl', 'set-sink-mute' if action == 'mute' else 'set-source-mute',
+                    '@DEFAULT_SINK@' if action == 'mute' else '@DEFAULT_SOURCE@', '1' if value else '0')
+        else:
+            if value not in [item['id'] for item in audio('sinks' if action == 'output' else 'sources')]:
+                raise ValueError('This audio device is no longer available')
+            command('pactl', 'set-default-sink' if action == 'output' else 'set-default-source', value)
+    elif action == 'vpn':
+        profile = next((item for item in connections() if item['id'] == value), None)
+        if profile is None:
+            raise ValueError('Select a configured VPN connection first')
+        command('nmcli', '--wait', '10', 'connection', 'down' if profile['active'] else 'up', 'uuid', value)
+    else:
+        raise ValueError('Unknown control action')
+
+
+def main():
+    try:
+        request = json.loads(sys.argv[1]) if len(sys.argv) == 2 else {}
+        if request.get('action'):
+            apply(request)
+        print(json.dumps(dict(ok=True, state=snapshot())))
+    except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
+        print(json.dumps(dict(ok=False, error=str(error))))
+
+
+if __name__ == '__main__':
+    main()

@@ -100,6 +100,32 @@ validated Hyprland API series.
 
 ## Configuration and controls
 
+The right end of the bar has one **Control center** button. Its side panel has
+three sections: uptime with Settings and Power, quick actions, and notifications.
+See the [control center preview](images/desktop-control-center.png).
+Super+Comma and Super+N both toggle this panel on the focused monitor. Escape or
+clicking outside dismisses it. Power opens the existing session menu.
+
+Quick actions include Wi-Fi and Bluetooth power, microphone mute, warm night
+light, saved NetworkManager VPN/WireGuard connections, and a color picker that
+copies the selected color. The volume slider and output selector control audio;
+the microphone arrow reveals input selection and the audio mixer. Wi-Fi and
+Bluetooth arrows open their connection managers. Controls display unavailable
+hardware and report failed operations. Night light runs `hyprsunset` at 4000 K
+while enabled and restores normal color when switched off or the shell exits;
+the desktop role installs this dependency.
+
+Quickshell now serves notifications directly using its
+[notification service](https://quickshell.org/docs/v0.3.2/types/Quickshell.Services.Notifications/NotificationServer/).
+The panel supports notification actions, dismissal, Clear, and Do Not Disturb.
+Normal pop-ups disappear after their requested timeout but stay in the panel;
+transient notifications skip history. The latest 100 notifications are retained
+for the current shell session; restarting the process clears this history.
+Do Not Disturb is saved in `notifications.json`. On first startup, the shell stops
+only this profile's former SwayNC daemon and its supervisor so they cannot compete
+for notification delivery. Existing SwayNC theme templates remain for compatibility.
+The warm-display control follows [hyprsunset's CLI](https://wiki.hypr.land/hypr-ecosystem/user/hyprsunset/).
+
 The default **Rose** color theme follows the supplied reference with warm white
 surfaces, blush and peach-pink controls, raspberry accents and dark rose-brown text.
 It has an original pink gradient background, installed system typography and a
@@ -191,11 +217,9 @@ including the LittleArchy profile. Window opening takes 120 ms, closing and fade
 curve avoids bounce; windows scale from 98% and workspace slides travel only 12%
 of the screen. Shell surfaces use the compositor's 80–100 ms layer fades.
 The lock layout label scrolls for 180 ms with immediate password feedback;
-the Hyprlock fallback uses 100 ms fades/color effects. SwayNC uses 120 ms transitions and
-80 ms hover effects. Set `archsetup_desktop_reduced_motion: true` to disable them.
+the Hyprlock fallback uses 100 ms fades/color effects. Set `archsetup_desktop_reduced_motion: true` to disable them.
 Compositor timing follows the [Hyprland animation configuration](https://wiki.hypr.land/Configuring/Advanced-and-Cool/Animations/).
-Fallback lock timing follows the [Hyprlock animation configuration](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#animations);
-notification timing follows the [SwayNC schema](https://github.com/ErikReider/SwayNotificationCenter/blob/main/src/configSchema.json).
+Fallback lock timing follows the [Hyprlock animation configuration](https://wiki.hypr.land/Hypr-Ecosystem/hyprlock/#animations).
 
 `~/.config/archsetup` contains the managed profile. The existing `~/.config/hypr`
 is not changed. Account paths are discovered through the passwd database.
@@ -204,7 +228,7 @@ keyboard layout switching on Super+Space, and the current Lua touchpad scroll
 factor 0.7. Adjust `archsetup_desktop_input` if the old 0.5 value was intended.
 
 Super+D opens applications, Super+Tab shows windows/workspaces, Super+Comma opens
-quick settings, Super+N opens notification history, Super+L locks, and Super+/
+the control center, Super+N opens the same panel, Super+L locks, and Super+/
 shows all shortcuts. The [complete shortcut reference](desktop-shortcuts.md) lists
 application aliases, relative/keypad workspace controls, window actions, zoom,
 local OCR, recording, shell toggles and VM passthrough. Existing Super+D,
@@ -218,7 +242,7 @@ The taskbar shows groups of five on narrow screens and tracks each monitor
 independently; the overview shows ten for its monitor. Button labels and
 highlights update when switching to higher-numbered workspaces.
 The taskbar groups workspaces and clock in the center, with the tray,
-audio, notifications and power controls on the right. Its left side is empty.
+single control-center button on the right. Battery status appears on the left on laptops.
 The overview supports arrow navigation and Enter.
 
 After a successful apply changes shell files or preferences, Ansible refreshes
@@ -257,8 +281,8 @@ theme changes. An existing default Kitty configuration is backed up once to
 disabled (`confirm_os_window_close 0`). Open a new terminal after applying changes
 to load the new settings.
 
-Network, Bluetooth and audio-device buttons open their native configuration
-applications. Brightness controls are hidden without a backlight device.
+The Wi-Fi and Bluetooth arrows and Audio mixer open their native configuration
+applications. Brightness remains available through the brightness keyboard shortcuts.
 Screenshot actions copy PNG data to the clipboard. Clipboard history offers an
 explicit clear action. The emoji picker ships a small editable starter list.
 The Power button, Ctrl+Alt+Delete and Super+Shift+Escape open a full-screen session
@@ -277,7 +301,7 @@ Keep-awake inhibits idle locking/blanking, but does not disable the before-suspe
 lock path.
 
 Settings and Super+I open the persistent **Configuration** window. Super+Comma
-continues to open Quick settings. The Configuration sidebar has a fixed search
+opens the control center. The Configuration sidebar has a fixed search
 field and an independently scrolling category/result list; Ctrl+F focuses search,
 Up/Down selects a result and Enter scrolls to and focuses its control. Search
 matches category names, labels, descriptions and aliases, with every query term
@@ -316,7 +340,7 @@ See the [window preview](images/desktop-configuration.png) and
 [settings architecture and remaining date-format presets](desktop-settings-plan.md).
 
 Put images in `~/Pictures/Wallpapers`, then use Wallpaper in quick settings.
-Quick settings → **Color theme** selects **Rose** or the previous **Material**
+Utilities → **Color theme** selects **Rose** or the previous **Material**
 palette. Rose starts in light mode and includes a matching dark variant; the
 **Light / dark** control switches modes. Set `archsetup_desktop_theme: material`
 in inventory to change the managed default. Explicit theme, light/dark and wallpaper

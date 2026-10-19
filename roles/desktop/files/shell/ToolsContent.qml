@@ -19,7 +19,8 @@ ColumnLayout {
                 {label: "Record with audio", action: "record-full-audio"}, {label: "Stop recording", action: "record-stop"},
                 {label: "Code editor", action: "code-editor"}, {label: "Text editor", action: "text-editor"},
                 {label: "Office", action: "office"}, {label: "Task manager", action: "task-manager"},
-                {label: "Wallpaper", action: "wallpaper"}, {label: "Light / dark", action: "theme"}
+                {label: "Wallpaper", action: "wallpaper"}, {label: "Light / dark", action: "theme"},
+                {label: "Color theme", action: "theme-select"}
             ]
             Button {
                 id: button

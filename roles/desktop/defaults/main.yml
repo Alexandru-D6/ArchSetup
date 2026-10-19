@@ -52,13 +52,13 @@ archsetup_desktop_packages:
   - "{{ archsetup_desktop_quickshell_package }}"
   - hyprlock
   - hypridle
+  - hyprsunset
   - kitty
   - mousepad
   - libreoffice-fresh
   - btop
   - thunar
   - fuzzel
-  - swaync
   - pipewire
   - pipewire-pulse
   - wireplumber

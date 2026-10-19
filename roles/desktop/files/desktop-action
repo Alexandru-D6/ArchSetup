@@ -15,6 +15,7 @@ import socket
 import struct
 import tempfile
 import threading
+import time
 from pathlib import Path
 import subprocess
 import sys
@@ -33,6 +34,38 @@ def run(*args, **kwargs):
 
 def capture(*args):
     return run(*args, stdout=subprocess.PIPE, text=True).stdout
+
+
+def retire_notifications(proc=Path('/proc')):
+    """Stop only this profile's legacy notification daemon and its supervisor."""
+    stopped = []
+    def args(path):
+        return path.joinpath('cmdline').read_bytes().decode(errors='replace').rstrip('\0').split('\0')
+    def alive(path):
+        try:
+            return bool(path.read_bytes())
+        except FileNotFoundError:
+            return False
+    for process in proc.iterdir():
+        if not process.name.isdecimal():
+            continue
+        try:
+            if process.stat().st_uid != os.getuid():
+                continue
+            command = args(process)
+            if Path(command[0]).name != 'swaync' or str(ROOT / 'swaync.json') not in command:
+                continue
+            parent_id = next(line.split()[1] for line in (process / 'status').read_text().splitlines() if line.startswith('PPid:'))
+            parent = proc / parent_id
+            # The old session-services supervisor would otherwise restart swaync.
+            target = int(parent_id) if parent.stat().st_uid == os.getuid() and str(ROOT / 'bin/session-services') in args(parent) else int(process.name)
+            os.kill(target, signal.SIGTERM)
+            stopped.append(process / 'cmdline')
+        except (FileNotFoundError, ProcessLookupError, PermissionError, StopIteration):
+            continue
+    deadline = time.monotonic() + 3
+    while any(alive(path) for path in stopped) and time.monotonic() < deadline:
+        time.sleep(0.05)
 
 def themed(name):
     generated = ROOT / 'theme' / name
@@ -388,7 +421,8 @@ def main(action):
                             updater.wait()
                     if recording_cleanup is not None:
                         recording_cleanup.join(timeout=3)
-    elif action in ('overview', 'settings', 'configuration', 'session', 'tools', 'media', 'help'):
+    elif action == 'retire-notifications': retire_notifications()
+    elif action in ('overview', 'settings', 'notifications', 'configuration', 'session', 'tools', 'media', 'help'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):
         shell_toggle(action)
@@ -398,8 +432,7 @@ def main(action):
     elif action == 'kill-window': run('hyprctl', 'kill')
     elif action.startswith('record-'):
         run(str(ROOT / 'bin/desktop-record'), action)
-    elif action == 'notifications': run('swaync-client', '-t')
-    elif action == 'dnd': run('swaync-client', '-d')
+    elif action == 'dnd': shell_toggle('dnd')
     elif action == 'audio': run('pavucontrol')
     elif action == 'network': run('nm-connection-editor')
     elif action == 'bluetooth': run('blueman-manager')
@@ -465,7 +498,6 @@ def main(action):
             if selected is None: return
             state['wallpaper'] = '' if selected == '[Default background]' else selected
         refresh_theme(state)
-        subprocess.run(['swaync-client', '-rs'], check=False)
         subprocess.run(['hyprctl', 'reload'], check=False)
     elif action == 'poweroff':
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'shutdown')

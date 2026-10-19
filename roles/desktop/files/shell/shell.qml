@@ -16,17 +16,28 @@ import "shared"
 ShellRoot {
     id: root
     property string page: ""
-    onPageChanged: focusTimer.restart()
+    onPageChanged: { if (page !== "") { controlCenterOpen = false; timeCenterOpen = false; } focusTimer.restart(); }
     Timer {
         id: focusTimer
         interval: 50
         onTriggered: {
-            if (root.page === "overview") windows.forceActiveFocus();
+            if (root.controlCenterOpen) controlCenter.forceActiveFocus();
+            else if (root.timeCenterOpen) timeCenter.forceActiveFocus();
+            else if (root.page === "overview") windows.forceActiveFocus();
             else if (root.page === "session") sessionMenu.forceActiveFocus();
             else if (root.page === "help") shortcutHelp.focusSearch();
             else if (root.page !== "") panelContent.forceActiveFocus();
             else if (root.configurationOpen) root.focusConfiguration();
         }
+    }
+    property bool controlCenterOpen: false
+    property string controlCenterScreen: ""
+    function toggleControlCenter(screenName) {
+        const sameScreen = controlCenterScreen === screenName;
+        controlCenterScreen = screenName;
+        controlCenterOpen = !controlCenterOpen || !sameScreen;
+        timeCenterOpen = false;
+        page = "";
     }
     property bool timeCenterOpen: false
     property string timeCenterScreen: ""
@@ -62,11 +73,17 @@ ShellRoot {
     function action(name) { Quickshell.execDetached([profile + "/bin/desktop-action", name]); }
     function refreshClock() { if (palette.primaryContainer && !clockProcess.running) clockProcess.running = true; }
     function toggle(name) {
+        if (name === "settings" || name === "notifications") {
+            toggleControlCenter(Hyprland.focusedMonitor?.name || Quickshell.screens[0]?.name || "");
+            return;
+        }
         if (name === "configuration") { openConfiguration(); return; }
         if (name === "session") sessionMenu.select("lock");
         page = page === name ? "" : name;
     }
     function openConfiguration() {
+        controlCenterOpen = false;
+        timeCenterOpen = false;
         if (!configurationOpen) {
             configurationScreenName = Hyprland.focusedMonitor?.name || Quickshell.screens[0]?.name || "";
             configurationOpen = true;
@@ -89,7 +106,8 @@ ShellRoot {
     function workspace(number) { Hyprland.dispatch("hl.dsp.focus({workspace=" + number + "})"); }
     function workspaceStart(active, count) { return Math.floor((Math.max(1, active || 1) - 1) / count) * count + 1; }
     function control(name) {
-        if (name === "bar") barVisible = !barVisible;
+        if (name === "dnd") notificationSource.dnd = !notificationSource.dnd;
+        else if (name === "bar") barVisible = !barVisible;
         else if (name === "bar-position") barBottom = !barBottom;
         else if (name === "widgets") desktopClockVisible = !desktopClockVisible;
         else if (name === "keyboard") keyboardVisible = !keyboardVisible;
@@ -208,6 +226,8 @@ ShellRoot {
                 hyprlandWindows: Hyprland.toplevels.values.length, screens: Quickshell.screens.length,
                 overviewFocus: windows.activeFocus, selectedWindow: windows.currentIndex,
                 selectedSessionAction: sessionMenu.selectedAction,
+                controlCenterOpen: root.controlCenterOpen, controlCenterScreen: root.controlCenterScreen,
+                notificationCount: notificationSource.notifications.length, dnd: notificationSource.dnd,
                 barVisible: root.barVisible, barBottom: root.barBottom,
                 widgetsVisible: root.desktopClockVisible, keyboardVisible: root.keyboardVisible,
                 toolsDetached: root.toolsDetached, idleInhibited: root.inhibitIdle});
@@ -344,6 +364,7 @@ ShellRoot {
                             selected: root.timeCenterOpen && root.timeCenterScreen === panel.screen.name
                             Accessible.name: "Calendar and time tools"
                             onClicked: {
+                                root.controlCenterOpen = false;
                                 root.timeCenterScreen = panel.screen.name;
                                 root.timeCenterOpen = !root.timeCenterOpen;
                                 if (root.timeCenterOpen) timeCenter.forceActiveFocus();
@@ -374,11 +395,73 @@ ShellRoot {
                         TapHandler { acceptedButtons: Qt.RightButton; onTapped: trayButton.modelData.display(panel, trayButton.x, trayButton.y) }
                     }
                 }
-                Chip { text: root.status.volume; visible: panel.width > 1000; onClicked: root.toggle("settings") }
-                Chip { text: "●"; Accessible.name: "Notifications"; onClicked: root.action("notifications") }
-                Chip { text: "Power"; Accessible.name: "Session"; onClicked: root.toggle("session") }
+                Chip {
+                    implicitWidth: 44
+                    selected: root.controlCenterOpen && root.controlCenterScreen === panel.screen.name
+                    Accessible.name: "Control center" + (notificationSource.notifications.length ? ", " + notificationSource.notifications.length + " notifications" : "")
+                    onClicked: root.toggleControlCenter(panel.screen.name)
+                    SessionIcon { anchors.centerIn: parent; name: "controls"; width: 20; height: 20; color: parent.selected ? root.onAccent : root.ink }
+                    Rectangle { visible: notificationSource.notifications.length > 0; anchors { right: parent.right; top: parent.top; margins: 4 } width: 6; height: 6; radius: 3; color: root.accent }
+                }
             }
         }
+    }
+
+    ControlSource { id: controls; profile: root.profile; active: root.controlCenterOpen }
+    NotificationSource { id: notificationSource; profile: root.profile; active: false; panelOpen: root.controlCenterOpen }
+    Process {
+        command: [root.profile + "/bin/desktop-action", "retire-notifications"]
+        running: true
+        onExited: notificationSource.active = true
+    }
+    PanelWindow {
+        id: controlPanel
+        visible: root.controlCenterOpen
+        screen: Quickshell.screens.find(s => s.name === root.controlCenterScreen) || Quickshell.screens[0]
+        anchors { top: true; bottom: true; left: true; right: true }
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.namespace: "archsetup-control-center"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        color: "transparent"
+        onVisibleChanged: if (visible) Qt.callLater(() => controlCenter.forceActiveFocus())
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: root.controlCenterOpen = false }
+        Rectangle {
+            anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: 8; topMargin: root.barVisible && !root.barBottom ? 48 : 8; bottomMargin: root.barVisible && root.barBottom ? 48 : 8 }
+            width: Math.min(420, parent.width - 16)
+            color: "transparent"
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons }
+            ControlCenter {
+                id: controlCenter
+                anchors.fill: parent
+                surface: root.surface; raised: root.raised; textColor: root.ink
+                accent: root.accent; accentText: root.onAccent; uiFont: root.uiFont
+                snapshot: controls.snapshot; busy: controls.busy; error: controls.error; nightEnabled: controls.nightEnabled
+                notifications: notificationSource.notifications; dnd: notificationSource.dnd
+                onClosed: root.controlCenterOpen = false
+                onSettingsRequested: root.openConfiguration()
+                onPowerRequested: root.toggle("session")
+                onControlRequested: (action, value) => controls.change(action, value)
+                onNightRequested: controls.toggleNight()
+                onDndRequested: notificationSource.dnd = !notificationSource.dnd
+                onClearRequested: notificationSource.clear()
+                onLaunchRequested: action => { root.controlCenterOpen = false; Qt.callLater(() => root.action(action)); }
+            }
+        }
+    }
+    PanelWindow {
+        visible: notificationSource.toast !== null && !root.controlCenterOpen
+        screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) || Quickshell.screens[0]
+        anchors { top: true; right: true }
+        margins { top: root.barVisible && !root.barBottom ? 48 : 8; right: 8 }
+        implicitWidth: Math.min(380, (screen?.width || 400) - 16)
+        implicitHeight: toastCard.implicitHeight
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.namespace: "archsetup-notification"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        color: "transparent"
+        NotificationCard { id: toastCard; width: parent.width; theme: controlCenter; notification: notificationSource.toast; compact: true }
     }
 
     FileView {
@@ -464,14 +547,14 @@ ShellRoot {
         delegate: PanelWindow {
             required property var modelData
             screen: modelData
-            visible: timePanel.visible && screen !== timePanel.screen
+            visible: (timePanel.visible && screen !== timePanel.screen) || (controlPanel.visible && screen !== controlPanel.screen)
             anchors { top: true; bottom: true; left: true; right: true }
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "archsetup-time-dismiss"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             color: "transparent"
-            MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: timeCenter.closed() }
+            MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onPressed: { timeCenter.closed(); root.controlCenterOpen = false; } }
         }
     }
 
@@ -485,7 +568,7 @@ ShellRoot {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "archsetup-configuration"
         WlrLayershell.layer: settingsStore.busy ? WlrLayer.Bottom : WlrLayer.Top
-        WlrLayershell.keyboardFocus: root.page === "" && !settingsStore.busy ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: root.page === "" && !root.controlCenterOpen && !root.timeCenterOpen && !settingsStore.busy ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
         ConfigurationWindow {
             id: configurationWindow
@@ -566,7 +649,7 @@ ShellRoot {
                 anchors.fill: parent; anchors.margins: 24; spacing: 14
                 RowLayout {
                     Layout.fillWidth: true
-                    Text { text: root.page === "overview" ? "Your windows" : root.page === "settings" ? "Quick settings" : root.page === "tools" ? "Utilities" : root.page === "media" ? "Media" : "Session"; color: root.ink; font.family: root.uiFont; font.pixelSize: 24; Layout.fillWidth: true }
+                    Text { text: root.page === "overview" ? "Your windows" : root.page === "tools" ? "Utilities" : root.page === "media" ? "Media" : "Session"; color: root.ink; font.family: root.uiFont; font.pixelSize: 24; Layout.fillWidth: true }
                     Chip { text: "Close"; onClicked: root.page = "" }
                 }
                 Item {
@@ -576,7 +659,7 @@ ShellRoot {
                     Keys.onEscapePressed: root.page = ""
                     StackLayout {
                         anchors.fill: parent
-                        currentIndex: root.page === "overview" ? 0 : root.page === "settings" ? 1 : root.page === "tools" ? 2 : 3
+                        currentIndex: root.page === "overview" ? 0 : root.page === "tools" ? 1 : 2
                         ColumnLayout {
                             RowLayout {
                                 id: overviewWorkspaces
@@ -621,34 +704,6 @@ ShellRoot {
                                 }
                             }
                             Text { visible: windows.count === 0; text: "No open windows · Super+Enter opens a terminal"; color: root.ink }
-                        }
-                        ColumnLayout {
-                            spacing: 12
-                            Text { text: root.status.network + "  ·  Volume " + root.status.volume; color: root.ink; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                            Flow {
-                                Layout.fillWidth: true; Layout.preferredHeight: childrenRect.height; spacing: 8
-                                Chip { text: "Volume −"; onClicked: Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"]) }
-                                Chip { text: "Volume +"; onClicked: Quickshell.execDetached(["wpctl", "set-volume", "-l", "1", "@DEFAULT_AUDIO_SINK@", "5%+"]) }
-                                Chip { text: "Mute"; onClicked: Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]) }
-                                Chip { text: "Microphone"; onClicked: Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"]) }
-                                Chip { text: "Audio devices"; onClicked: root.action("audio") }
-                                Chip { text: "Network"; onClicked: root.action("network") }
-                                Chip { text: "Bluetooth"; onClicked: root.action("bluetooth") }
-                                Chip { text: "Brightness −"; visible: root.status.brightness; onClicked: Quickshell.execDetached(["brightnessctl", "-n2", "set", "5%-"]) }
-                                Chip { text: "Brightness +"; visible: root.status.brightness; onClicked: Quickshell.execDetached(["brightnessctl", "set", "5%+"]) }
-                                Chip { text: "Do not disturb"; onClicked: root.action("dnd") }
-                                Chip { text: "Keep awake"; selected: root.inhibitIdle; onClicked: root.inhibitIdle = !root.inhibitIdle }
-                                Chip { text: "Light / dark"; onClicked: root.action("theme") }
-                                Chip { text: "Color theme · " + (root.palette.name || "Rose"); onClicked: { root.page = ""; root.action("theme-select"); } }
-                                Chip { text: "Calculator"; onClicked: { root.page = ""; root.action("calculator"); } }
-                                Chip { text: "Wallpaper"; onClicked: { root.page = ""; root.action("wallpaper"); } }
-                                Chip { text: "Previous"; onClicked: Quickshell.execDetached(["playerctl", "previous"]) }
-                                Chip { text: "Play / pause"; onClicked: Quickshell.execDetached(["playerctl", "play-pause"]) }
-                                Chip { text: "Next"; onClicked: Quickshell.execDetached(["playerctl", "next"]) }
-                                Chip { text: "Keyboard"; onClicked: { root.page = ""; root.control("keyboard"); } }
-                            }
-                            Item { Layout.fillHeight: true }
-                            Text { text: desktopTime.snapshot.date || ""; color: root.ink }
                         }
                         ToolsContent { desktop: root }
                         ColumnLayout {

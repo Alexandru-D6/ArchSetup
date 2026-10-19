@@ -12,7 +12,8 @@ cleanup() {
   for child in "${children[@]}"; do kill "$child" 2>/dev/null || true; done
   wait || true
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 0' INT TERM
 supervise() (
   trap - EXIT
   child=''
@@ -29,7 +30,7 @@ dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 "$profile/bin/desktop-action" refresh-theme
 start qs -p "$profile/shell" --no-duplicate
 start hypridle -c "$profile/hypridle.conf"
-start swaync -c "$profile/swaync.json" -s "$profile/theme/swaync.css"
+# Quickshell owns org.freedesktop.Notifications and renders the control center.
 start wl-paste --type text --watch cliphist store
 start wl-paste --type image --watch cliphist store
 start /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1

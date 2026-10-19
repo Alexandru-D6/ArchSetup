@@ -1,5 +1,27 @@
 # Desktop validation — 2026-10-10
 
+## Unified control center — 2026-10-19
+
+The bar's three right-side controls are replaced by one control-center button.
+The panel separates uptime/session controls, quick settings and notifications.
+All 71 desktop regressions (including the Qt interaction suite) and 7 control
+backend tests pass. The private D-Bus integration check covers notification
+replacement, timeout/history behavior, transient notifications, actions,
+application close requests, DND and clearing. New visual components pass lint;
+Quickshell's dynamic model/screen types retain their existing tooling warnings.
+
+Light, dark and 600-pixel-height previews were inspected. The installed desktop
+was checked for panel opening/closing, live device discovery, native notification
+delivery/dismissal and 4000 K night light with restoration after termination.
+The host reports no NetworkManager Wi-Fi adapter or saved VPN profiles; their
+hardware connection paths remain untested here. Bluetooth and audio state are
+read successfully. `hyprsunset` 0.4.0-3 is installed.
+
+During deployment, the exiting Quickshell process hit a Qt 6.12 shortcut-destructor
+crash after its IPC shutdown request. Its automatic restart loaded the new shell;
+subsequent panel, notification and night-light checks passed. The crash was in
+process teardown, not a QML load error.
+
 ## General timezone, layouts and clock placement — 2026-10-16
 
 General now edits the system timezone, ordered keyboard layout/variant pairs and
