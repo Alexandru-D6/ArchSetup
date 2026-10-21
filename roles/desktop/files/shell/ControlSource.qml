@@ -7,16 +7,33 @@ Item {
     property bool active: false
     property var snapshot: ({})
     property string error: ""
+    property string wifiDevice: ""
+    property string busyAction: ""
+    property string pendingRequest: ""
+    property int revision: 0
     readonly property bool busy: writer.running
     readonly property bool nightEnabled: night.running
     property bool nightWanted: false
-    function refresh() { if (!reader.running && !writer.running) reader.running = true; }
+    function refresh() {
+        if (reader.running || writer.running) return;
+        reader.revision = revision;
+        reader.command = [profile + "/bin/desktop-controls", JSON.stringify({device: wifiDevice})];
+        reader.running = true;
+    }
+    function selectWifi(device) {
+        if (busy) return;
+        revision++;
+        wifiDevice = device;
+        error = "";
+        refresh();
+    }
     function change(action, value) {
         if (busy) return;
         error = "";
         // Discard any older poll that finishes during this write.
-        reader.running = false;
-        writer.command = [profile + "/bin/desktop-controls", JSON.stringify({action: action, value: value})];
+        revision++;
+        busyAction = action;
+        pendingRequest = JSON.stringify({action: action, value: value, device: wifiDevice});
         writer.running = true;
     }
     function receive(text) {
@@ -33,13 +50,22 @@ Item {
     onActiveChanged: if (active) refresh()
     Process {
         id: reader
-        command: [source.profile + "/bin/desktop-controls"]
-        stdout: StdioCollector { onStreamFinished: if (!source.busy) source.receive(text) }
+        property int revision: 0
+        stdout: StdioCollector { onStreamFinished: if (!source.busy && reader.revision === source.revision) source.receive(text) }
+        onExited: if (revision !== source.revision) source.refresh()
     }
     Process {
         id: writer
+        command: [source.profile + "/bin/desktop-controls", "--stdin"]
+        stdinEnabled: true
+        onStarted: { write(source.pendingRequest + "\n"); source.pendingRequest = ""; }
         stdout: StdioCollector { onStreamFinished: source.receive(text) }
-        onExited: source.refresh()
+        onExited: (code, status) => {
+            source.pendingRequest = "";
+            source.busyAction = "";
+            if (code !== 0 || status !== 0) source.error = "Could not update controls.";
+            source.refresh();
+        }
     }
     Process {
         id: night

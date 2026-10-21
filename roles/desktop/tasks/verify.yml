@@ -24,6 +24,8 @@
         - "{{ desktop_root }}/lock-power.conf"
         - "{{ desktop_root }}/bin/desktop-settings"
         - "{{ desktop_root }}/bin/desktop-controls"
+        - "{{ desktop_root }}/bin/desktop_wifi.py"
+        - "{{ desktop_root }}/bin/desktop-bluetooth"
         - "{{ desktop_root }}/shell/ControlCenter.qml"
         - "{{ desktop_root }}/shell/NotificationSource.qml"
         - "{{ desktop_root }}/bin/desktop_settings.py"

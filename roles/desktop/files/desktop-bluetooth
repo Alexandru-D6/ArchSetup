@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+"""Line-delimited JSON Bluetooth controls and an application-scoped pairing agent."""
+import json
+import os
+import re
+import signal
+import sys
+
+from gi.repository import Gio, GLib, GLibUnix
+
+ADAPTER = 'org.bluez.Adapter1'
+DEVICE = 'org.bluez.Device1'
+AGENT_PATH = '/org/archsetup/BluetoothAgent'
+AGENT_XML = '''<node><interface name="org.bluez.Agent1">
+<method name="Release"/><method name="Cancel"/>
+<method name="RequestPinCode"><arg type="o" direction="in"/><arg type="s" direction="out"/></method>
+<method name="RequestPasskey"><arg type="o" direction="in"/><arg type="u" direction="out"/></method>
+<method name="DisplayPinCode"><arg type="o" direction="in"/><arg type="s" direction="in"/></method>
+<method name="DisplayPasskey"><arg type="o" direction="in"/><arg type="u" direction="in"/><arg type="q" direction="in"/></method>
+<method name="RequestConfirmation"><arg type="o" direction="in"/><arg type="u" direction="in"/></method>
+<method name="RequestAuthorization"><arg type="o" direction="in"/></method>
+<method name="AuthorizeService"><arg type="o" direction="in"/><arg type="s" direction="in"/></method>
+</interface></node>'''
+
+
+def properties(proxy):
+    return {key: proxy.get_cached_property(key).unpack() for key in proxy.get_cached_property_names() or []}
+
+
+def error_text(error):
+    if isinstance(error, GLib.Error):
+        Gio.DBusError.strip_remote_error(error)
+        return error.message
+    return str(error)
+
+
+class Bluetooth:
+    def __init__(self, emit):
+        self.emit_packet = emit
+        self.adapter = ''
+        self.operation = ''
+        self.target = ''
+        self.error = ''
+        self.prompt = None
+        self.pending = None
+        self.registered = False
+        self.scan_path = ''
+        self.scan_wanted = ''
+        self.scan_pending = False
+        self.operation_revision = 0
+        self.manager = Gio.DBusObjectManagerClient.new_for_bus_sync(
+            Gio.BusType.SYSTEM, Gio.DBusObjectManagerClientFlags.DO_NOT_AUTO_START,
+            'org.bluez', '/', None, None, None)
+        self.bus = self.manager.get_connection()
+        self.bus.register_object(AGENT_PATH, Gio.DBusNodeInfo.new_for_xml(AGENT_XML).interfaces[0],
+                                 self.agent_call, None, None)
+        for name in ('object-added', 'object-removed', 'interface-proxy-properties-changed'):
+            self.manager.connect(name, lambda *_: self.publish())
+        self.manager.connect('notify::name-owner', self.owner_changed)
+        self.publish()
+
+    def interfaces(self, name):
+        return {obj.get_object_path(): properties(obj.get_interface(name))
+                for obj in self.manager.get_objects() if obj.get_interface(name)}
+
+    def state(self):
+        adapters = self.interfaces(ADAPTER)
+        if self.adapter not in adapters:
+            self.adapter = next(iter(sorted(adapters)), '')
+        adapter = adapters.get(self.adapter, {})
+        devices = []
+        batteries = self.interfaces('org.bluez.Battery1')
+        for path, props in self.interfaces(DEVICE).items():
+            if props.get('Adapter') != self.adapter:
+                continue
+            devices.append(dict(id=path, name=props.get('Alias') or props.get('Name') or props.get('Address', 'Bluetooth device'),
+                                address=props.get('Address', ''), paired=props.get('Paired', False),
+                                connected=props.get('Connected', False), trusted=props.get('Trusted', False),
+                                battery=batteries.get(path, {}).get('Percentage', -1)))
+        devices.sort(key=lambda item: (not item['connected'], not item['paired'], item['name'].casefold(), item['id']))
+        return dict(bluetoothAvailable=bool(adapter), bluetoothEnabled=adapter.get('Powered', False),
+                    bluetoothAdapter=self.adapter, bluetoothName=adapter.get('Alias', ''),
+                    bluetoothAdapters=[dict(id=path, name=props.get('Alias') or props.get('Address') or path)
+                                       for path, props in adapters.items()],
+                    bluetoothDevices=devices, bluetoothScanning=bool(self.scan_path or self.scan_wanted),
+                    bluetoothError='' if adapter else 'No Bluetooth adapter is available.' if self.manager.get_name_owner()
+                    else 'Bluetooth service is unavailable. Check that bluetoothd is running.')
+
+    def publish(self):
+        adapters = self.interfaces(ADAPTER)
+        if self.scan_wanted and not adapters.get(self.scan_wanted, {}).get('Powered'):
+            self.scan_wanted = ''
+            self.update_scan()
+        self.emit_packet(dict(state=self.state(), busy=bool(self.operation), operation=self.operation,
+                              target=self.target, prompt=self.prompt, error=self.error))
+
+    def owner_changed(self, *_):
+        if not self.manager.get_name_owner():
+            self.registered = False
+            self.scan_path = ''
+            self.scan_wanted = ''
+            self.finish('Bluetooth service stopped.')
+        else:
+            self.publish()
+
+    def call(self, path, interface, method, parameters=None, done=None, timeout=15000):
+        def completed(bus, result, _):
+            try:
+                bus.call_finish(result)
+                error = ''
+            except GLib.Error as exception:
+                error = error_text(exception)
+            if done:
+                done(error)
+        self.bus.call('org.bluez', path, interface, method, parameters, None,
+                      Gio.DBusCallFlags.NONE, timeout, None, completed, None)
+
+    def set_property(self, path, interface, name, value, done):
+        self.call(path, 'org.freedesktop.DBus.Properties', 'Set',
+                  GLib.Variant('(ssv)', (interface, name, GLib.Variant('b', value))), done)
+
+    def stop_scan(self):
+        self.scan_wanted = ''
+        self.update_scan()
+
+    def update_scan(self):
+        if self.scan_pending or self.scan_path == self.scan_wanted:
+            return
+        stopping = bool(self.scan_path)
+        path = self.scan_path if stopping else self.scan_wanted
+        self.scan_pending = True
+        def finished(error):
+            self.scan_pending = False
+            if stopping:
+                self.scan_path = ''
+            elif not error:
+                self.scan_path = path
+            else:
+                self.error = error
+                if self.scan_wanted == path:
+                    self.scan_wanted = ''
+            self.update_scan()
+            self.publish()
+        self.call(path, ADAPTER, 'StopDiscovery' if stopping else 'StartDiscovery', done=finished)
+
+    def scan(self, enabled):
+        if type(enabled) is not bool:
+            raise ValueError('Expected an on/off value.')
+        if not enabled:
+            self.stop_scan()
+        else:
+            if not self.state()['bluetoothEnabled']:
+                raise ValueError('Turn Bluetooth on to scan for devices.')
+            self.scan_wanted = self.adapter
+            self.update_scan()
+        self.publish()
+
+    def clear_prompt(self):
+        if self.pending:
+            self.pending.return_dbus_error('org.bluez.Error.Canceled', 'Pairing canceled')
+        self.pending = None
+        self.prompt = None
+
+    def finish(self, error=''):
+        self.operation_revision += 1
+        self.operation = ''
+        self.target = ''
+        self.error = error
+        self.clear_prompt()
+        self.publish()
+
+    def cancel(self):
+        if self.operation in ('pair', 'connect') and self.target:
+            self.call(self.target, DEVICE, 'CancelPairing' if self.operation == 'pair' else 'Disconnect')
+            self.finish('Bluetooth operation canceled.')
+
+    def device_action(self, action, path):
+        devices = self.interfaces(DEVICE)
+        props = devices.get(path, {})
+        if not props or props.get('Adapter') != self.adapter:
+            raise ValueError('This Bluetooth device is no longer available. Scan again.')
+        if action != 'forget' and not self.state()['bluetoothEnabled']:
+            raise ValueError('Turn Bluetooth on first.')
+        self.operation, self.target = action, path
+        self.operation_revision += 1
+        revision = self.operation_revision
+        def finish(error):
+            if revision == self.operation_revision:
+                self.finish(error)
+        if action == 'pair' and props.get('Paired'):
+            action = 'connect'
+            self.operation = action
+        if action == 'pair':
+            def connected(error):
+                finish('Paired, but could not connect: ' + error if error else '')
+            def trusted(error):
+                if revision != self.operation_revision:
+                    return
+                if error:
+                    finish('Paired, but could not save trust: ' + error)
+                else:
+                    self.operation = 'connect'
+                    self.publish()
+                    self.call(path, DEVICE, 'Connect', done=connected, timeout=30000)
+            def paired(error):
+                if revision != self.operation_revision:
+                    return
+                self.clear_prompt()
+                if error:
+                    finish(error)
+                else:
+                    self.set_property(path, DEVICE, 'Trusted', True, trusted)
+            def registered(error):
+                if not error:
+                    self.registered = True
+                if revision != self.operation_revision:
+                    return
+                if error:
+                    finish(error)
+                else:
+                    self.call(path, DEVICE, 'Pair', done=paired, timeout=90000)
+            if self.registered:
+                registered('')
+            else:
+                self.call('/org/bluez', 'org.bluez.AgentManager1', 'RegisterAgent',
+                          GLib.Variant('(os)', (AGENT_PATH, 'KeyboardDisplay')), registered)
+        elif action == 'forget':
+            self.call(self.adapter, ADAPTER, 'RemoveDevice', GLib.Variant('(o)', (path,)), finish)
+        else:
+            self.call(path, DEVICE, 'Connect' if action == 'connect' else 'Disconnect', done=finish, timeout=30000)
+        self.publish()
+
+    def agent_call(self, connection, sender, path, interface, method, parameters, invocation):
+        if sender != self.manager.get_name_owner():
+            invocation.return_dbus_error('org.bluez.Error.Rejected', 'Unknown pairing service')
+            return
+        args = parameters.unpack()
+        if method in ('Cancel', 'Release'):
+            self.clear_prompt()
+            if method == 'Release':
+                self.registered = False
+            invocation.return_value(None)
+        elif not args or args[0] != self.target or self.operation not in ('pair', 'connect'):
+            invocation.return_dbus_error('org.bluez.Error.Rejected', 'No pairing was requested for this device')
+        else:
+            name = self.interfaces(DEVICE).get(self.target, {}).get('Alias', 'Bluetooth device')
+            kind = {'RequestPinCode': 'pin', 'RequestPasskey': 'passkey', 'RequestConfirmation': 'confirm',
+                    'RequestAuthorization': 'authorize', 'AuthorizeService': 'authorize',
+                    'DisplayPinCode': 'display', 'DisplayPasskey': 'display'}[method]
+            self.clear_prompt()
+            self.prompt = dict(kind=kind, name=name, code='', entered=0)
+            if method in ('RequestConfirmation', 'DisplayPasskey'):
+                self.prompt['code'] = f'{args[1]:06d}'
+            elif method == 'DisplayPinCode':
+                self.prompt['code'] = args[1]
+            if method == 'DisplayPasskey':
+                self.prompt['entered'] = args[2]
+            if kind == 'display':
+                invocation.return_value(None)
+            else:
+                self.pending = invocation
+        self.publish()
+
+    def respond(self, value):
+        if not self.pending or not self.prompt:
+            raise ValueError('The pairing request is no longer active.')
+        kind = self.prompt['kind']
+        if kind in ('confirm', 'authorize'):
+            if type(value) is not bool:
+                raise ValueError('Confirm or reject the pairing request.')
+            if not value:
+                self.cancel()
+                return
+            result = None
+        elif kind == 'passkey':
+            if not isinstance(value, str) or not re.fullmatch(r'[0-9]{1,6}', value):
+                raise ValueError('Enter a passkey of up to six digits.')
+            result = GLib.Variant('(u)', (int(value),))
+        else:
+            if not isinstance(value, str) or not 1 <= len(value) <= 16 or any(ord(c) < 32 for c in value):
+                raise ValueError('Enter a PIN of 1–16 characters.')
+            result = GLib.Variant('(s)', (value,))
+        self.pending.return_value(result)
+        self.pending = None
+        self.prompt = None
+        self.publish()
+
+    def request(self, request):
+        try:
+            action, value = request.get('action'), request.get('value')
+            self.error = ''
+            if action == 'respond':
+                self.respond(value)
+            elif action == 'cancel':
+                self.cancel()
+            elif action == 'scan':
+                self.scan(value)
+            elif self.operation:
+                raise ValueError('Wait for the current Bluetooth operation to finish.')
+            elif action == 'select':
+                if value not in self.interfaces(ADAPTER):
+                    raise ValueError('This Bluetooth adapter is no longer available.')
+                self.stop_scan()
+                self.adapter = value
+            elif action == 'power':
+                if type(value) is not bool:
+                    raise ValueError('Expected an on/off value.')
+                if not self.state()['bluetoothAvailable']:
+                    raise ValueError('No Bluetooth adapter is available.')
+                self.operation = action
+                if not value:
+                    self.stop_scan()
+                self.set_property(self.adapter, ADAPTER, 'Powered', value, self.finish)
+            elif action in ('pair', 'connect', 'disconnect', 'forget'):
+                if not isinstance(value, str):
+                    raise ValueError('Select a Bluetooth device first.')
+                self.device_action(action, value)
+            else:
+                raise ValueError('Unknown Bluetooth action.')
+        except (ValueError, TypeError, AttributeError, GLib.Error) as error:
+            self.error = error_text(error)
+        self.publish()
+
+    def close(self):
+        scan_path = self.scan_path or self.scan_wanted
+        self.cancel()
+        self.stop_scan()
+        self.clear_prompt()
+        if scan_path:
+            try:
+                # Complete cleanup even if the event loop stopped during StartDiscovery.
+                self.bus.call_sync('org.bluez', scan_path, ADAPTER, 'StopDiscovery', None, None,
+                                   Gio.DBusCallFlags.NONE, 2000, None)
+            except GLib.Error:
+                pass  # BlueZ also releases this client's discovery on disconnect.
+        self.bus.flush_sync(None)
+
+
+def main():
+    def emit(packet):
+        try:
+            print(json.dumps(packet), flush=True)
+        except BrokenPipeError:
+            pass
+    try:
+        service = Bluetooth(emit)
+    except GLib.Error as error:
+        emit(dict(error=error_text(error), state={}, busy=False, prompt=None))
+        return 1
+    loop = GLib.MainLoop()
+    buffer = bytearray()
+    def read_input(fd, condition):
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            loop.quit()
+            return False
+        buffer.extend(chunk)
+        while b'\n' in buffer:
+            line, _, rest = buffer.partition(b'\n')
+            buffer[:] = rest
+            try:
+                service.request(json.loads(line))
+            except (ValueError, UnicodeError):
+                service.error = 'Invalid Bluetooth request.'
+                service.publish()
+        return True
+    GLib.io_add_watch(sys.stdin.fileno(), GLib.IO_IN | GLib.IO_HUP, read_input)
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signum, lambda: loop.quit() or False)
+    try:
+        loop.run()
+    finally:
+        service.close()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

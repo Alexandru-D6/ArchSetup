@@ -1,5 +1,50 @@
 # Desktop validation — 2026-10-10
 
+## Inline Bluetooth connections — 2026-10-21
+
+The Bluetooth tile toggles adapter power; only its arrow opens the connections
+submenu within the control center. The submenu supports adapter selection,
+discovery, pairing, connection, disconnection and confirmed device removal.
+Pairing confirmations, PINs and passkeys stay in the panel. Discovery stops and
+pending pairing or connection attempts are cancelled when leaving the submenu.
+The helper uses BlueZ with an application-scoped agent and does not change the
+system's default agent or discoverability.
+
+The two Bluetooth integration tests and the complete desktop QML interaction
+suite pass. A private BlueZ service covers pairing confirmation, PIN/passkey
+validation, cancellation, discovery cleanup, saved-device connections, device
+removal and failures. The production Quickshell source test checks process
+lifecycle and preserves typed PINs across discovery updates. Component lint and
+whitespace checks pass; device-list and pairing previews were visually inspected
+at 420×760.
+
+The installed files match the tested source. A live scan found five devices,
+preserved existing connections and stopped discovery cleanly. Quickshell reloaded
+successfully and answers IPC without QML load errors. Physical device pairing,
+disconnection and adapter power changes were not performed on the workstation.
+
+## Inline iwd Wi-Fi controls — 2026-10-20
+
+The Control center Wi-Fi tile toggles adapter power; its arrow opens Wi-Fi controls
+within the side panel. The helper uses `iwctl` for adapter discovery, numeric signal
+strength, scanning, power, connection and disconnection. Saved networks reuse iwd credentials;
+new WPA-Personal passwords travel over stdin and a private terminal, never argv.
+The panel shows adapter/service errors, handles multiple adapters, clears passwords
+on submission and navigation, and returns to quick actions with Escape or Back.
+
+All 17 focused Python checks and 18 focused Qt checks pass, as does the existing
+desktop QML suite. The production ControlSource test verifies stdin requests,
+error recovery, adapter selection and rejection of stale polls. A private mock iwd
+service exercises the real installed `iwctl` client with spaces, quotes, asterisks,
+Unicode passwords and authentication rejection; it does not touch host networking.
+The panel was visually inspected at 420×760, QML lint and whitespace checks pass,
+and the installed helper identifies the workstation's active iwd connection.
+A live scan succeeded while preserving that connection.
+The running profile was updated with backups and the reloaded shell answers IPC.
+The previously documented Quickshell teardown crash recurred during restart; its
+automatic replacement loaded successfully and remains responsive.
+Live disconnect/power-off operations were not exercised on the active connection.
+
 ## Unified control center — 2026-10-19
 
 The bar's three right-side controls are replaced by one control-center button.

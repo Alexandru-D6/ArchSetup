@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import desktop_wifi
 
 
 def command(*args, optional=False):
@@ -58,10 +59,9 @@ def audio(kind):
             for item in data if not (kind == 'sources' and item['name'].endswith('.monitor'))]
 
 
-def snapshot():
+def snapshot(device=''):
     probes = {
-        'wifiRadio': lambda: command('nmcli', 'radio', 'wifi', optional=True),
-        'devices': lambda: command('nmcli', '-t', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'device', optional=True),
+        'wifi': lambda: desktop_wifi.snapshot(device),
         'bluetooth': lambda: command('bluetoothctl', 'show', optional=True),
         'outputs': lambda: audio('sinks'), 'inputs': lambda: audio('sources'),
         'output': lambda: command('pactl', 'get-default-sink', optional=True),
@@ -71,12 +71,9 @@ def snapshot():
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(probes)) as pool:
         tasks = {name: pool.submit(probe) for name, probe in probes.items()}
         values = {name: task.result() for name, task in tasks.items()}
-    devices = [fields(line) for line in values.pop('devices').splitlines()]
-    wifi = [row for row in devices if len(row) == 4 and row[1] == 'wifi']
     bluetooth = values.pop('bluetooth')
-    values.update(wifiAvailable=bool(wifi), wifiEnabled=values.pop('wifiRadio') == 'enabled',
-                  wifiName=next((row[3] for row in wifi if row[2] == 'connected'), ''),
-                  bluetoothAvailable='Controller ' in bluetooth, bluetoothEnabled='Powered: yes' in bluetooth,
+    values.update(values.pop('wifi'))
+    values.update(bluetoothAvailable='Controller ' in bluetooth, bluetoothEnabled='Powered: yes' in bluetooth,
                   nightAvailable=shutil.which('hyprsunset') is not None,
                   uptime=int(float(Path('/proc/uptime').read_text().split()[0])))
     return values
@@ -84,15 +81,14 @@ def snapshot():
 
 def apply(request):
     action, value = request.get('action'), request.get('value')
-    if action in ('wifi', 'bluetooth'):
+    if isinstance(action, str) and action.startswith('wifi-'):
+        desktop_wifi.apply(action, value)
+    elif action == 'bluetooth':
         if type(value) is not bool:
             raise ValueError('Expected an on/off value')
-        if action == 'wifi':
-            command('nmcli', 'radio', 'wifi', 'on' if value else 'off')
-        else:
-            output = command('bluetoothctl', 'power', 'on' if value else 'off')
-            if 'succeeded' not in output:
-                raise ValueError(output or 'Could not change Bluetooth power')
+        output = command('bluetoothctl', 'power', 'on' if value else 'off')
+        if 'succeeded' not in output:
+            raise ValueError(output or 'Could not change Bluetooth power')
     elif action in ('volume', 'mute', 'mic', 'output', 'input'):
         if action == 'volume':
             if type(value) not in (int, float) or not 0 <= value <= 100:
@@ -118,10 +114,10 @@ def apply(request):
 
 def main():
     try:
-        request = json.loads(sys.argv[1]) if len(sys.argv) == 2 else {}
+        request = json.loads(sys.stdin.readline() if sys.argv[1:] == ['--stdin'] else sys.argv[1]) if len(sys.argv) == 2 else {}
         if request.get('action'):
             apply(request)
-        print(json.dumps(dict(ok=True, state=snapshot())))
+        print(json.dumps(dict(ok=True, state=snapshot(request.get('device', '')))))
     except (OSError, ValueError, KeyError, TypeError, subprocess.TimeoutExpired) as error:
         print(json.dumps(dict(ok=False, error=str(error))))
 

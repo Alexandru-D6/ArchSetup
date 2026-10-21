@@ -90,6 +90,7 @@ archsetup_desktop_packages:
   - upower
   - jq
   - python
+  - python-gobject
   - python-pillow
   - fontconfig
   - noto-fonts

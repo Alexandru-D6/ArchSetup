@@ -408,6 +408,10 @@ ShellRoot {
     }
 
     ControlSource { id: controls; profile: root.profile; active: root.controlCenterOpen }
+    BluetoothSource {
+        id: bluetooth; profile: root.profile; active: root.controlCenterOpen
+        discovery: root.controlCenterOpen && controlCenter.bluetoothDetails
+    }
     NotificationSource { id: notificationSource; profile: root.profile; active: false; panelOpen: root.controlCenterOpen }
     Process {
         command: [root.profile + "/bin/desktop-action", "retire-notifications"]
@@ -436,12 +440,17 @@ ShellRoot {
                 anchors.fill: parent
                 surface: root.surface; raised: root.raised; textColor: root.ink
                 accent: root.accent; accentText: root.onAccent; uiFont: root.uiFont
-                snapshot: controls.snapshot; busy: controls.busy; error: controls.error; nightEnabled: controls.nightEnabled
+                snapshot: Object.assign({}, controls.snapshot, bluetooth.snapshot); busy: controls.busy; error: controls.error || bluetooth.error; nightEnabled: controls.nightEnabled
+                busyAction: controls.busyAction
+                bluetoothReady: bluetooth.ready; bluetoothBusy: bluetooth.busy; bluetoothError: bluetooth.error
+                bluetoothOperation: bluetooth.operation; bluetoothPrompt: bluetooth.prompt
                 notifications: notificationSource.notifications; dnd: notificationSource.dnd
                 onClosed: root.controlCenterOpen = false
                 onSettingsRequested: root.openConfiguration()
                 onPowerRequested: root.toggle("session")
-                onControlRequested: (action, value) => controls.change(action, value)
+                onControlRequested: (action, value) => { if (action === "bluetooth") bluetooth.change("power", value); else controls.change(action, value); }
+                onBluetoothRequested: (action, value) => bluetooth.change(action, value)
+                onWifiDeviceRequested: device => controls.selectWifi(device)
                 onNightRequested: controls.toggleNight()
                 onDndRequested: notificationSource.dnd = !notificationSource.dnd
                 onClearRequested: notificationSource.clear()

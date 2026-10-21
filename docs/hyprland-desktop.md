@@ -106,12 +106,30 @@ See the [control center preview](images/desktop-control-center.png).
 Super+Comma and Super+N both toggle this panel on the focused monitor. Escape or
 clicking outside dismisses it. Power opens the existing session menu.
 
-Quick actions include Wi-Fi and Bluetooth power, microphone mute, warm night
+Quick actions include Wi-Fi, Bluetooth power, microphone mute, warm night
 light, saved NetworkManager VPN/WireGuard connections, and a color picker that
 copies the selected color. The volume slider and output selector control audio;
-the microphone arrow reveals input selection and the audio mixer. Wi-Fi and
-Bluetooth arrows open their connection managers. Controls display unavailable
-hardware and report failed operations. Night light runs `hyprsunset` at 4000 K
+the microphone arrow reveals input selection and the audio mixer. The main Wi-Fi
+tile toggles adapter power; its arrow opens a network list in the same panel,
+using `iwctl` with the running iwd service. Scan, choose an adapter or network,
+enter a password, connect, disconnect, or switch the adapter off from there. Saved networks reuse their
+stored credentials when the password field is empty. Passwords are cleared after
+submission and when leaving the Wi-Fi page, and are sent over stdin rather than
+command arguments. Enterprise networks require an existing iwd configuration;
+WEP is unsupported. Escape returns to quick actions before closing the panel.
+This does not change the machine's network service; the iwd package and a running
+iwd service are required.
+
+The main Bluetooth tile toggles power; its arrow opens Bluetooth connections in
+the same panel. Select an adapter, scan for devices, pair and connect, disconnect,
+or forget a saved device. Pairing confirmations, PIN/passkey entry and keyboard
+pairing codes appear inline. Connected devices and battery levels are shown when
+available. Leaving the submenu stops its discovery session and cancels pending
+pairing or connection attempts. The helper uses BlueZ with `python-gobject`,
+installed by the desktop role, and registers an agent only for its own requests.
+The system's Bluetooth discoverability and default pairing agent are unchanged.
+
+Controls display unavailable hardware and report failed operations. Night light runs `hyprsunset` at 4000 K
 while enabled and restores normal color when switched off or the shell exits;
 the desktop role installs this dependency.
 
@@ -281,8 +299,9 @@ theme changes. An existing default Kitty configuration is backed up once to
 disabled (`confirm_os_window_close 0`). Open a new terminal after applying changes
 to load the new settings.
 
-The Wi-Fi and Bluetooth arrows and Audio mixer open their native configuration
-applications. Brightness remains available through the brightness keyboard shortcuts.
+The Wi-Fi and Bluetooth arrows open connections inside the side panel. Audio
+mixer opens its native configuration application. Brightness remains
+available through the brightness keyboard shortcuts.
 Screenshot actions copy PNG data to the clipboard. Clipboard history offers an
 explicit clear action. The emoji picker ships a small editable starter list.
 The Power button, Ctrl+Alt+Delete and Super+Shift+Escape open a full-screen session
