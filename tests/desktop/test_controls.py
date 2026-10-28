@@ -69,11 +69,15 @@ class ControlTests(unittest.TestCase):
             shutil.copy2(Path(__file__).parent / 'controls/shell.qml', fixture)
             helper = fixture / 'bin/desktop-controls'
             helper.write_text('''#!/usr/bin/env python3
-import json, sys
+import json, sys, time
 from pathlib import Path
 request = json.loads(sys.stdin.readline() if sys.argv[1:] == ['--stdin'] else sys.argv[1])
 statefile = Path(__file__).parent / 'state.json'
-state = json.loads(statefile.read_text()) if statefile.exists() else dict(wifiAvailable=True, wifiName='')
+state = json.loads(statefile.read_text()) if statefile.exists() else dict(wifiAvailable=True, wifiName='', wifiNetworks=[dict(ssid='Home')])
+if request.get('action') == 'wifi-scan':
+    time.sleep(0.2)
+    state['wifiNetworks'] = [dict(ssid='Home'), dict(ssid='Nearby Cafe')]
+    statefile.write_text(json.dumps(state))
 if request.get('action') == 'wifi-connect':
     assert sys.argv[1:] == ['--stdin']
     assert request['value']['passphrase'] == 'test password'

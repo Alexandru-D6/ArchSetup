@@ -144,7 +144,9 @@ light, Proton VPN, and a color picker that
 copies the selected color. The volume slider and output selector control audio;
 the microphone arrow reveals input selection and the audio mixer. The main Wi-Fi
 tile toggles adapter power; its arrow opens a network list in the same panel,
-using NetworkManager through `nmcli`. Scan, choose an adapter or network,
+using NetworkManager through `nmcli`. Opening the Wi-Fi page requests a scan;
+**Scanning…** remains visible until fresh results arrive, which can take several
+seconds. Scan, choose an adapter or network,
 enter a password, connect, disconnect, or switch the adapter off from there. Saved networks reuse their
 stored credentials when the password field is empty. Passwords are cleared after
 submission and when leaving the Wi-Fi page, and are sent over stdin rather than

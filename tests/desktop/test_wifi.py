@@ -63,12 +63,55 @@ class WifiTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_radio_is_global_but_scan_and_disconnect_use_selected_adapter(self):
-        for action, extra, expected in [('wifi-scan', {}, ('device', 'wifi', 'rescan', 'ifname', 'wlan1')),
+        for action, extra, expected in [('wifi-scan', {}, ('--wait', '20', '-f', 'SSID', 'device', 'wifi', 'list', 'ifname', 'wlan1', '--rescan', 'yes')),
                 ('wifi-power', dict(enabled=False), ('radio', 'wifi', 'off')),
                 ('wifi-disconnect', {}, ('device', 'disconnect', 'wlan1'))]:
             with self.subTest(action=action), patch.object(wifi, 'devices', return_value=[dict(id='wlan1')]), patch.object(wifi, 'run') as run:
                 wifi.apply(action, dict(device='wlan1', **extra))
-                run.assert_called_once_with(*expected)
+                run.assert_called_once_with(*expected, **({'timeout': 25} if action == 'wifi-scan' else {}))
+
+    def test_scan_finishes_before_snapshot_reads_new_nearby_networks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / 'nmcli'
+            executable.write_text('''#!/usr/bin/env python3
+import os, sys, time
+from pathlib import Path
+args = sys.argv[1:]
+finished = Path(os.environ['WIFI_SCAN_FINISHED'])
+if 'radio' in args:
+    print('enabled')
+elif 'status' in args:
+    print('wlan0:wifi:connected\\nwlan1:wifi:disconnected')
+elif 'connection' in args:
+    pass
+elif 'rescan' in args:
+    pass  # Request accepted, but results have not arrived yet.
+elif 'list' in args:
+    assert args[args.index('ifname') + 1] == 'wlan1'
+    if args[args.index('--rescan') + 1] == 'yes':
+        if os.environ.get('WIFI_SCAN_FAIL') == '1':
+            print('Scan failed', file=sys.stderr)
+            sys.exit(1)
+        time.sleep(0.1)
+        finished.touch()
+    print('*:Home:WPA2:90')
+    if finished.exists(): print(':Nearby Cafe::60')
+else:
+    raise AssertionError(args)
+''')
+            executable.chmod(0o755)
+            marker = Path(directory) / 'finished'
+            with patch.dict(os.environ, {'PATH': directory + os.pathsep + os.environ['PATH'],
+                                         'WIFI_SCAN_FINISHED': str(marker)}):
+                before = wifi.snapshot('wlan1')
+                self.assertEqual(len(before['wifiNetworks']), 1)
+                wifi.apply('wifi-scan', dict(device='wlan1'))
+                after = wifi.snapshot('wlan1')
+                self.assertEqual([network['ssid'] for network in after['wifiNetworks']], ['Home', 'Nearby Cafe'])
+                self.assertEqual(after['wifiError'], '')
+                with patch.dict(os.environ, WIFI_SCAN_FAIL='1'):
+                    with self.assertRaisesRegex(ValueError, 'Scan failed'):
+                        wifi.apply('wifi-scan', dict(device='wlan1'))
 
     def test_enterprise_requires_a_saved_profile(self):
         with patch.object(wifi, 'saved_networks', return_value={}), patch.object(wifi, 'run') as run:

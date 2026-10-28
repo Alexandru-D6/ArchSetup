@@ -1,5 +1,24 @@
 # Desktop validation — 2026-10-10
 
+## Wi-Fi scan completion — 2026-10-28
+
+The scan action now waits for `nmcli device wifi list --rescan yes` before reading
+the access-point cache. Previously it used `wifi rescan`, which acknowledged the
+request immediately and let the panel display the old cache as a finished scan.
+The existing busy state now keeps **Scanning…** visible through scan completion.
+See the [nmcli scan reference](https://www.networkmanager.dev/docs/api/latest/nmcli.html).
+
+All 10 Wi-Fi backend tests and 7 control-source tests pass. Regression coverage
+starts with only the connected network cached, delays scan completion, and checks
+that a nearby unsaved network appears after the action. The real Quickshell
+source test also verifies the busy state while waiting for results.
+
+Deployed the helper to LittleArchy and exercised the installed desktop-controls
+JSON endpoint. The scan completed in 7.27 seconds, returned seven distinct networks
+with one connected, and reported no Wi-Fi error. Active connection UUIDs were
+unchanged before and after the scan. No shell or network-service restart was needed.
+
+
 ## Configuration reapplication with pending upgrades — 2026-10-28
 
 The desktop package guard now checks installed dependencies before requiring a

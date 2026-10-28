@@ -161,7 +161,10 @@ def apply(action, value):
         # NetworkManager's software Wi-Fi switch applies to every adapter.
         run('radio', 'wifi', 'on' if value['enabled'] else 'off')
     elif action == 'wifi-scan':
-        run('device', 'wifi', 'rescan', 'ifname', device)
+        # `wifi rescan` only queues a scan. Keep the UI busy until nmcli has
+        # fresh results, before desktop-controls reads the AP cache again.
+        run('--wait', '20', '-f', 'SSID', 'device', 'wifi', 'list',
+            'ifname', device, '--rescan', 'yes', timeout=25)
     elif action == 'wifi-disconnect':
         run('device', 'disconnect', device)
     else:
