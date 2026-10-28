@@ -17,6 +17,8 @@ spec = importlib.util.spec_from_loader(loader.name, loader)
 proton = importlib.util.module_from_spec(spec)
 loader.exec_module(proton)
 
+COUNTRIES = 'Country          Code\n---------------  ------\nUnited States    US\nSpain            ES\nSweden           SE'
+
 
 class ProtonTests(unittest.TestCase):
     def snapshot(self, responses):
@@ -34,10 +36,38 @@ class ProtonTests(unittest.TestCase):
     def test_signed_out_and_signed_in_disconnected_states(self):
         for account, status in [('None', 'signin'), ('', 'signin'), ('test-user', 'disconnected')]:
             with self.subTest(account=account):
-                state = self.snapshot(['running', 'Status: Disconnected', f"Account: '{account}'"])
+                responses = ['running', 'Status: Disconnected', f"Account: '{account}'"]
+                if status == 'disconnected':
+                    responses.append(COUNTRIES)
+                state = self.snapshot(responses)
                 self.assertEqual(state['vpnStatus'], status)
                 self.assertEqual(state['vpnReady'], status == 'disconnected')
                 self.assertFalse(state['vpnConnected'])
+                self.assertEqual(len(state['vpnCountries']), 3 if status == 'disconnected' else 0)
+
+    def test_country_table_preserves_codes_and_unicode_and_sorts_unique_results(self):
+        output = 'Refreshing server list…\n' + COUNTRIES + '\nSpain            ES\nÅland Islands    AX\nUnited Kingdom   UK\nKosovo           XK'
+        with patch.object(proton, 'command', return_value=output) as command:
+            self.assertEqual(proton.countries(), [dict(id='XK', name='Kosovo'), dict(id='ES', name='Spain'),
+                                                  dict(id='SE', name='Sweden'), dict(id='UK', name='United Kingdom'),
+                                                  dict(id='US', name='United States'), dict(id='AX', name='Åland Islands')])
+            command.assert_called_once_with('protonvpn', 'countries', 'list')
+
+    def test_country_discovery_failure_keeps_fastest_connection_available(self):
+        for response in ['Country  Code\n-------  ----', ValueError('Offline'), subprocess.TimeoutExpired(['protonvpn'], 15)]:
+            state = self.snapshot(['running', 'Status: Disconnected', "Account: 'test'", response])
+            self.assertTrue(state['vpnReady'])
+            self.assertEqual(state['vpnStatus'], 'disconnected')
+            self.assertEqual(state['vpnCountries'], [])
+            self.assertIn('fastest server', state['vpnCountriesError'])
+            self.assertEqual(state['vpnError'], '')
+
+    def test_action_status_check_does_not_fetch_unused_country_list(self):
+        with patch.object(proton.shutil, 'which', return_value='/usr/bin/protonvpn'), patch.object(proton, 'command', side_effect=[
+                'running', 'Status: Disconnected', "Account: 'test'", 'Connected']) as command:
+            proton.apply('connect', 'ES')
+            self.assertEqual(command.call_count, 4)
+            self.assertEqual(command.call_args.args, ('protonvpn', 'connect', '--country', 'ES'))
 
     def test_connected_server_and_protocol(self):
         state = self.snapshot(['running', 'Refreshing server list…\nStatus: Connected\nServer: ES#1 in Madrid, Spain\nLoad: 42%\nProtocol: wireguard'])
@@ -93,6 +123,7 @@ with Path(__file__).with_name('calls').open('a') as log: log.write(json.dumps(sy
 if sys.argv[1:] == ['status']:
     print('Status: Connected\\nServer: ES#1 in Madrid\\nProtocol: wireguard' if state.exists() else 'Status: Disconnected')
 elif sys.argv[1:] == ['info']: print("Account: 'test'")
+elif sys.argv[1:] == ['countries', 'list']: print('Country  Code\\n-------  ----\\nSpain    ES')
 elif sys.argv[1:] == ['connect', '--country', 'FAIL']:
     print('Error: Test connection failed', file=sys.stderr)
     sys.exit(1)
@@ -114,6 +145,7 @@ else: sys.exit(2)
             self.assertFalse(response['ok'])
             self.assertIn('Test connection failed', response['error'])
             self.assertEqual(response['state']['vpnStatus'], 'disconnected')
+            self.assertEqual(response['state']['vpnCountries'], [dict(id='ES', name='Spain')])
             self.assertTrue(request('connect', '')['state']['vpnConnected'])
             self.assertFalse(request('disconnect', None)['state']['vpnConnected'])
             calls = [json.loads(line) for line in (root / 'calls').read_text().splitlines()]

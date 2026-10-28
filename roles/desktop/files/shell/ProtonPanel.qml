@@ -38,25 +38,31 @@ ColumnLayout {
         Layout.fillWidth: true; wrapMode: Text.Wrap; textFormat: Text.PlainText
         font.family: vpn.theme.uiFont; font.pixelSize: 12; color: vpn.theme.accent
     }
-    SettingsField {
+    SettingsSearchBox {
         id: country
         objectName: "vpn-country"; theme: vpn.theme; Layout.fillWidth: true
         visible: vpn.ready && !vpn.connected; enabled: !vpn.busy
-        placeholderText: "Country (optional), e.g. ES"; maximumLength: 64
-        Accessible.name: "VPN country; leave empty for the fastest server"
-        onAccepted: if (connect.enabled) vpn.controlRequested("connect", text.trim())
+        options: [{id: "", name: "Fastest available"}].concat(vpn.snapshot.vpnCountries || [])
+        placeholderText: "Fastest available"
+        accessibleName: "Search VPN countries by name or code; leave empty for the fastest server"
+    }
+    Text {
+        objectName: "vpn-countries-error"
+        text: vpn.snapshot.vpnCountriesError || ""; visible: vpn.ready && !vpn.connected && text !== ""
+        Layout.fillWidth: true; wrapMode: Text.Wrap; textFormat: Text.PlainText
+        font.family: vpn.theme.uiFont; font.pixelSize: 12; color: vpn.theme.accent
     }
     Text {
         visible: vpn.ready && !vpn.connected; Layout.fillWidth: true; wrapMode: Text.Wrap
-        text: "Leave the country blank for the fastest server. Choosing a country requires a paid Proton plan."
+        text: "Type to filter countries, or leave blank for the fastest server. Choosing a country requires a paid Proton plan."
         font.family: vpn.theme.uiFont; font.pixelSize: 12; color: vpn.theme.textColor; opacity: 0.7
     }
     SettingsButton {
         id: connect
         objectName: "vpn-connect"; theme: vpn.theme; Layout.fillWidth: true; primary: true
-        visible: vpn.ready; enabled: vpn.ready && !vpn.busy && (vpn.connected || country.text.trim() === "" || /^[A-Za-z][A-Za-z -]{0,63}$/.test(country.text.trim()))
-        text: vpn.connected ? "Disconnect" : country.text.trim() ? "Connect to country" : "Connect to fastest server"
-        onClicked: vpn.controlRequested(vpn.connected ? "disconnect" : "connect", vpn.connected ? null : country.text.trim())
+        visible: vpn.ready; enabled: vpn.ready && !vpn.busy && (vpn.connected || country.valid)
+        text: vpn.connected ? "Disconnect" : country.value ? "Connect to country" : country.valid ? "Connect to fastest server" : "Choose a country"
+        onClicked: vpn.controlRequested(vpn.connected ? "disconnect" : "connect", vpn.connected ? null : country.value)
     }
     SettingsButton {
         objectName: "vpn-signin"; theme: vpn.theme; Layout.fillWidth: true

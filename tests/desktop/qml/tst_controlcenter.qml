@@ -101,6 +101,23 @@ Item {
             mouseClick(findChild(center, "vpn-signin")); compare(Array.from(launch.signalArguments[0]), ["proton-signin"]);
             center.openWifi(); verify(!center.vpnDetails); verify(center.wifiDetails);
         }
+        function test_vpn_search_escape_closes_menu_before_leaving_page() {
+            center.snapshot = {vpnReady: true, vpnStatus: "disconnected", vpnCountries: [{id: "ES", name: "Spain"}, {id: "SE", name: "Sweden"}]};
+            center.openVpn(); wait(10);
+            const input = findChild(center, "search-input");
+            input.text = "";
+            mouseClick(findChild(center, "search-toggle"));
+            const popup = findChild(center, "search-popup");
+            tryCompare(popup, "opened", true);
+            keyClick("s"); keyClick("p");
+            compare(findChild(center, "search-results").count, 1);
+            keyClick(Qt.Key_Escape);
+            tryCompare(popup, "opened", false);
+            verify(center.vpnDetails); compare(close.count, 0); compare(vpn.count, 0);
+            keyClick(Qt.Key_Escape);
+            verify(!center.vpnDetails); compare(close.count, 0);
+            input.text = "";
+        }
         function test_bluetooth_arrow_opens_inline_without_toggling_power() {
             const bluetooth = findChild(center, "bluetooth");
             mouseClick(bluetooth, bluetooth.width - 18, 30);

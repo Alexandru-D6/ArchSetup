@@ -166,8 +166,11 @@ The system's Bluetooth discoverability and default pairing agent are unchanged.
 
 The VPN tile connects to Proton's fastest available server or disconnects the
 current Proton connection. Its arrow opens an inline Proton VPN panel with
-connection status, server/protocol details, refresh, and an optional country
-choice. The default fastest-server choice works with free accounts; country
+connection status, server/protocol details, refresh, and a searchable country
+dropdown populated by Proton's CLI. Type a country name or code to narrow the
+list, then click a result or use Up/Down and Enter to select it. **Connect** starts
+the connection separately. Clear the field or select **Fastest available** for
+the default. The default fastest-server choice works with free accounts; country
 selection requires a paid plan. The desktop role installs the official
 `proton-vpn-cli` package. On first use, choose **Sign in** in the VPN panel; a
 terminal runs Proton's own password and two-factor prompts. Close that terminal

@@ -24,10 +24,25 @@ def command(*args, timeout=15):
 def empty_state():
     return dict(vpnAvailable=shutil.which('protonvpn') is not None, vpnReady=False,
                 vpnConnected=False, vpnSignedIn=False, vpnStatus='unknown',
-                vpnServer='', vpnProtocol='', vpnError='')
+                vpnServer='', vpnProtocol='', vpnError='', vpnCountries=[], vpnCountriesError='')
 
 
-def snapshot():
+def countries():
+    # The official CLI prints a two-column table. Keep its codes (including UK
+    # and XK), rather than substituting an unrelated ISO country catalogue.
+    output = command('protonvpn', 'countries', 'list')
+    locations = {}
+    for line in output.splitlines():
+        match = re.fullmatch(r'([^\x00-\x1f]+?)\s{2,}([A-Z]{2})\s*', line.strip())
+        if match:
+            name, code = match.groups()
+            locations[code] = dict(id=code, name=name.strip())
+    if not locations:
+        raise ValueError('Proton VPN returned no countries. Refresh to try again.')
+    return sorted(locations.values(), key=lambda country: country['name'].casefold())
+
+
+def snapshot(include_countries=True):
     state = empty_state()
     if not state['vpnAvailable']:
         state.update(vpnStatus='install', vpnError='Install the official Proton VPN CLI to use this control.')
@@ -56,6 +71,12 @@ def snapshot():
                      vpnServer=details.get('Server', ''), vpnProtocol=details.get('Protocol', ''))
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         state['vpnError'] = 'Proton VPN did not respond in time. Try again.' if isinstance(error, subprocess.TimeoutExpired) else str(error)
+    if include_countries and state['vpnReady'] and not state['vpnConnected']:
+        try:
+            state['vpnCountries'] = countries()
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            # Discovery failure must not prevent connecting to the fastest server.
+            state['vpnCountriesError'] = 'Could not load countries. Refresh to try again, or connect to the fastest server.'
     return state
 
 
@@ -67,7 +88,7 @@ def apply(action, value):
             raise ValueError('Enter a country name or two-letter code, or leave it blank for the fastest server.')
     elif value is not None:
         raise ValueError('Unexpected disconnect value.')
-    state = snapshot()
+    state = snapshot(include_countries=False)
     if not state['vpnReady']:
         raise ValueError(state['vpnError'] or 'Sign in to Proton VPN first.')
     if action == 'connect':

@@ -1,5 +1,27 @@
 # Desktop validation — 2026-10-10
 
+## Searchable VPN country dropdown — 2026-10-28
+
+The Proton VPN panel now lists countries from `protonvpn countries list`, with
+case-insensitive filtering by country name or code as the user types. Mouse clicks
+or Up/Down and Enter select a result; Connect submits its Proton country code.
+Clearing the field or selecting **Fastest available** uses the default server.
+Partial or unmatched text cannot connect. A failed country lookup leaves the
+fastest-server option available and displays a refresh message.
+
+All 13 Proton helper/source tests and the full QML suite pass. Additional control
+center integration coverage verifies that Escape closes the dropdown before
+leaving the VPN page. Tests cover discovery errors, Unicode names, Proton-specific
+country codes, filtering, keyboard and mouse selection, empty results, and busy
+states. Rendered and visually inspected the full and filtered menus in the
+control center using the live catalogue of 149 countries.
+
+Installed the helper and QML files on LittleArchy and reloaded Quickshell. Its
+status endpoint responded and the installed helper confirmed that the existing
+VPN connection remained active. Country discovery was checked separately while
+connected; no VPN connect or disconnect command was issued during validation.
+
+
 ## Wi-Fi scan completion — 2026-10-28
 
 The scan action now waits for `nmcli device wifi list --rescan yes` before reading
