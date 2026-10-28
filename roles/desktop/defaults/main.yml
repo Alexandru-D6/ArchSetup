@@ -7,6 +7,7 @@ archsetup_desktop_autologin_locked: true
 # Unlock first, then use the desktop session menu for shutdown/reboot.
 archsetup_desktop_lock_require_auth_for_power: true
 archsetup_desktop_manage_network: true
+archsetup_desktop_network_packages: [networkmanager, wpa_supplicant, iw, python]
 archsetup_desktop_browser: brave-browser.desktop
 # Existing Brave is retained; missing Brave uses reviewed AUR packaging.
 archsetup_desktop_install_brave: true
@@ -63,6 +64,8 @@ archsetup_desktop_packages:
   - pipewire-pulse
   - wireplumber
   - networkmanager
+  - wpa_supplicant
+  - proton-vpn-cli
   - bluez
   - bluez-utils
   - blueman

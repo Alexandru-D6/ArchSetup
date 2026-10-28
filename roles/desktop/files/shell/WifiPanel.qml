@@ -76,7 +76,7 @@ ColumnLayout {
         }
         Text {
             visible: wifi.selected?.security === "8021x" && !wifi.selected?.known
-            text: "Enterprise networks need an existing iwd configuration."
+            text: "Configure enterprise networks in NetworkManager settings first."
             font.family: wifi.theme.uiFont; font.pixelSize: 12; color: wifi.theme.textColor
             wrapMode: Text.Wrap; Layout.fillWidth: true
         }

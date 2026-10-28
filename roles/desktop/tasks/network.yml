@@ -1,0 +1,85 @@
+---
+- name: Detect installed network managers
+  ansible.builtin.package_facts:
+    manager: pacman
+
+- name: Find missing network dependencies
+  ansible.builtin.set_fact:
+    desktop_missing_network_packages: "{{ archsetup_desktop_network_packages | difference(ansible_facts.packages.keys() | list) | sort }}"
+
+- name: Check maintenance before installing network dependencies
+  ansible.builtin.import_tasks: package-maintenance.yml
+  when: desktop_missing_network_packages | length > 0
+
+- name: Report installed competing network managers
+  ansible.builtin.debug:
+    msg: >-
+      Installed competing managers: {{ ['iwd', 'connman', 'netctl', 'dhcpcd', 'wicd']
+      | intersect(ansible_facts.packages.keys() | list) }}.
+      Their services, standalone wpa_supplicant instances and systemd-networkd
+      will be disabled and masked. Packages and profiles remain available for recovery.
+
+- name: Install NetworkManager and its Wi-Fi backend before switching services
+  community.general.pacman:
+    name: "{{ desktop_missing_network_packages }}"
+    state: present
+  when: desktop_missing_network_packages | length > 0
+
+- name: Preview the network migration without changing the host
+  ansible.builtin.script: desktop-network-migrate --check
+  check_mode: false
+  register: desktop_network_preview
+  changed_when: (desktop_network_preview.stdout | from_json).changed | default(false)
+  when: ansible_check_mode
+
+- name: Create the system helper directory
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install the network migration helper
+  ansible.builtin.copy:
+    src: desktop-network-migrate
+    dest: /usr/local/libexec/archsetup-network-migrate
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Migrate connections and conflicting services with automatic rollback
+  ansible.builtin.command:
+    argv: [/usr/local/libexec/archsetup-network-migrate, --apply]
+  register: desktop_network_migration
+  changed_when: (desktop_network_migration.stdout | from_json).changed | default(false)
+  # Continue on the host if an SSH connection briefly drops during the switch.
+  async: 300
+  poll: 5
+  when: not ansible_check_mode
+
+- name: Report network migration results
+  ansible.builtin.debug:
+    msg: "{{ (desktop_network_preview if ansible_check_mode else desktop_network_migration).stdout }}"
+
+- name: Resolve the desktop account for Wi-Fi controls
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ archsetup_desktop_user }}"
+
+- name: Inspect the installed desktop profile
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][4] }}/.config/archsetup/.managed"
+  register: desktop_network_profile
+
+- name: Update existing desktop Wi-Fi controls to NetworkManager
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][4] }}/.config/archsetup/{{ item.dest }}"
+    owner: "{{ archsetup_desktop_user }}"
+    group: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][2] }}"
+    mode: '0644'
+  loop:
+    - {src: desktop_wifi.py, dest: bin/desktop_wifi.py}
+    - {src: shell/WifiPanel.qml, dest: shell/WifiPanel.qml}
+  when: desktop_network_profile.stat.exists

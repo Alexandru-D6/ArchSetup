@@ -1,0 +1,16 @@
+---
+- name: Check pending full system upgrades before package installation
+  ansible.builtin.command: pacman -Qu
+  register: desktop_upgrades
+  changed_when: false
+  failed_when: desktop_upgrades.rc not in [0, 1]
+  check_mode: false
+
+- name: Require full system maintenance before installing packages
+  ansible.builtin.assert:
+    that: desktop_upgrades.stdout | trim | length == 0
+    fail_msg: >-
+      Missing packages or application builds require installation, but the local
+      package metadata contains pending upgrades. Run
+      ./setup.sh upgrade --ask-become-pass, then repeat this command.
+      Configuration-only runs can proceed when all dependencies are already installed.

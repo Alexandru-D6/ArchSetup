@@ -23,33 +23,6 @@ def command(*args, optional=False):
         raise
 
 
-def fields(line):
-    # nmcli escapes colons and backslashes in connection/device names.
-    result, part, escaped = [], '', False
-    for char in line:
-        if escaped:
-            part += char
-            escaped = False
-        elif char == '\\':
-            escaped = True
-        elif char == ':':
-            result.append(part)
-            part = ''
-        else:
-            part += char
-    result.append(part)
-    return result
-
-
-def connections():
-    result = []
-    for line in command('nmcli', '-t', '-f', 'UUID,TYPE,NAME,ACTIVE', 'connection', 'show', optional=True).splitlines():
-        row = fields(line)
-        if len(row) == 4 and row[1] in ('vpn', 'wireguard'):
-            result.append(dict(id=row[0], name=row[2], active=row[3] == 'yes'))
-    return result
-
-
 def audio(kind):
     data = json.loads(command('pactl', '-f', 'json', 'list', kind, optional=True) or '[]')
     return [dict(id=item['name'], name=item.get('description') or item['name'],
@@ -66,7 +39,6 @@ def snapshot(device=''):
         'outputs': lambda: audio('sinks'), 'inputs': lambda: audio('sources'),
         'output': lambda: command('pactl', 'get-default-sink', optional=True),
         'input': lambda: command('pactl', 'get-default-source', optional=True),
-        'vpns': connections,
     }
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(probes)) as pool:
         tasks = {name: pool.submit(probe) for name, probe in probes.items()}
@@ -103,11 +75,6 @@ def apply(request):
             if value not in [item['id'] for item in audio('sinks' if action == 'output' else 'sources')]:
                 raise ValueError('This audio device is no longer available')
             command('pactl', 'set-default-sink' if action == 'output' else 'set-default-source', value)
-    elif action == 'vpn':
-        profile = next((item for item in connections() if item['id'] == value), None)
-        if profile is None:
-            raise ValueError('Select a configured VPN connection first')
-        command('nmcli', '--wait', '10', 'connection', 'down' if profile['active'] else 'up', 'uuid', value)
     else:
         raise ValueError('Unknown control action')
 

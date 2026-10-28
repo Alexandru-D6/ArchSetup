@@ -435,6 +435,7 @@ def main(action):
     elif action == 'dnd': shell_toggle('dnd')
     elif action == 'audio': run('pavucontrol')
     elif action == 'network': run('nm-connection-editor')
+    elif action == 'proton-signin': run('kitty', '--config', str(themed('kitty.conf')), '--title', 'Proton VPN sign in', '-e', str(ROOT / 'bin/desktop-protonvpn'), '--signin')
     elif action == 'bluetooth': run('blueman-manager')
     elif action == 'color': run('hyprpicker', '-a')
     elif action == 'clipboard':

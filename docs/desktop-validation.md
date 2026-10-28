@@ -1,5 +1,80 @@
 # Desktop validation — 2026-10-10
 
+## Configuration reapplication with pending upgrades — 2026-10-28
+
+The desktop package guard now checks installed dependencies before requiring a
+full system upgrade. When all desktop, enabled login/network dependencies and
+selected applications are present, package transactions and the upgrade guard
+are skipped. Missing repository dependencies or Brave/VSCodium builds retain the
+full-upgrade requirement. The standalone network playbook uses the same guard.
+
+All 21 Ansible regression scenarios pass across normal and check mode, including
+configuration-only runs, missing dependencies, disabled optional components,
+missing AUR applications, clean installations and failed package queries. Both
+desktop and standalone network playbooks pass syntax checks. A live check-mode
+run of the desktop package tasks on LittleArchy, with 95 pending upgrades and all
+required dependencies installed, finished with changed=0 and failed=0. No system
+upgrade or package installation was performed during this validation.
+
+
+## NetworkManager migration — 2026-10-23
+
+This supersedes the earlier iwd and VPN-only NetworkManager configuration below.
+Wi-Fi controls now use nmcli, including saved profiles, adapter selection, scanning,
+and passwords passed over stdin. Ansible imports supported iwd profiles, masks
+competing manager services and removes the VPN-only restriction. Migration checks
+previous uplinks and restores configuration and service states after failure.
+Packages and old credentials are retained for recovery.
+
+Migration tests cover installed/instantiated competing services, encoded SSIDs,
+existing-profile preservation, real libnm keyfile validation, unsupported active
+connections, static IPv4 protection, rollback, private backups and idempotence.
+They also exercise actual Ansible preview/async command execution, recreate Wi-Fi
+interfaces removed by iwd, follow udev renames and wait for NM device discovery.
+Wi-Fi backend tests cover nmcli escaping, SSIDs distinct from profile names,
+duplicate access points, enterprise profiles and password/error handling.
+
+
+The full desktop suite passed (134 tests); the final migration suite passed all
+13 tests after the live handover fixes. All three desktop/network/verification
+playbooks pass syntax checks. The disabled-desktop check produced zero changes.
+
+Applied successfully on LittleArchy. NetworkManager is enabled and owns the
+connected `wlan0` interface; iwd, systemd-networkd and its socket are inactive and
+masked. NetworkManager's wpa_supplicant backend and systemd-resolved are active.
+One saved iwd network was imported with no skipped profiles. A real DNS lookup
+through wlan0 succeeded. The installed panel helper reports available/enabled,
+connected Wi-Fi, one connected saved network and no error. A subsequent migration
+check reports `changed: false`, with no competing services or pending imports.
+The automatic recovery path was also exercised on the workstation before fixing
+iwd interface deletion and the supplicant startup race; it restored connectivity.
+
+## Proton VPN control center integration — 2026-10-21
+
+The VPN tile now connects or disconnects through the official Proton VPN CLI.
+Its arrow opens an inline submenu with status, server/protocol details, refresh,
+optional country selection and a first-use sign-in action. Sign-in delegates
+password and two-factor handling to Proton in a terminal; the panel stores no
+account credentials. Closing the panel preserves the VPN connection.
+
+All 10 Proton backend/source tests, 7 general control backend tests and the
+desktop QML interaction suite pass. Coverage includes fastest/country connection,
+disconnection, setup/account/error states, invalid inputs, a GUI conflict reported
+with exit status zero, serialized reads and writes, duplicate clicks and connection
+persistence when the panel closes. The fresh-install service preview regression,
+both desktop playbook syntax checks, component lint and whitespace checks pass.
+Sign-in and connection layouts were visually checked at 420×760.
+
+Proton VPN CLI 1.0.5-1 and its signed Arch dependencies are installed on the
+workstation. NetworkManager runs with only WireGuard, TUN and dummy interfaces
+eligible for management; the existing Wi-Fi interface remains unmanaged by it,
+and the previous default route is preserved. iwd/systemd-networkd still own the
+physical connection. The real helper correctly reports that Proton sign-in is
+required. The profile files were backed up and deployed. Quickshell's previously
+documented shutdown crash recurred during reload; the replacement loaded the
+configuration and answers IPC. Account authentication and a live VPN connection
+remain untested pending the user's sign-in.
+
 ## Inline Bluetooth connections — 2026-10-21
 
 The Bluetooth tile toggles adapter power; only its arrow opens the connections

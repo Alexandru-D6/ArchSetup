@@ -79,12 +79,42 @@ For configuration-only deployment with an existing login manager, set
 `archsetup_desktop_manage_login=false`. Start `/usr/local/bin/archsetup-session`
 from a TTY after logging out of the current graphical session.
 
-NetworkManager is enabled by default. If systemd-networkd, dhcpcd or ConnMan is
-running or enabled, preflight stops before changing configuration. Preserve your
-existing network service with `-e archsetup_desktop_manage_network=false`, or
-migrate it separately. The opt-out leaves existing service state unchanged; it
-does not undo a previous NetworkManager deployment. NetworkManager's settings
-button only manages interfaces owned by NetworkManager.
+NetworkManager manages Wi-Fi, Ethernet and Proton VPN by default. With
+`archsetup_desktop_manage_network=true`, Ansible detects installed competing
+managers and their systemd units: iwd, ConnMan, dhcpcd, netctl, Wicd,
+standalone per-interface wpa_supplicant instances and systemd-networkd (including
+its socket and wait-online service). It disables and masks those units, including
+installed inactive services and templates, so they cannot reclaim interfaces.
+NetworkManager uses wpa_supplicant as its Wi-Fi backend; its D-Bus service remains
+available. systemd-resolved continues to provide DNS under NetworkManager. See
+the [NetworkManager backend and DNS reference](https://www.networkmanager.dev/docs/api/latest/NetworkManager.conf.html).
+
+The migration installs dependencies before stopping any service, imports saved
+iwd personal/open networks into private NetworkManager keyfiles, and removes the
+old ArchSetup VPN-only restriction. If iwd removes its station interface on exit,
+the migration recreates it and follows any interface rename before reconnecting.
+Existing NetworkManager profiles are retained.
+Encrypted, enterprise and static-IP iwd profiles need a NetworkManager profile
+prepared separately; an unsupported active connection stops migration before
+services change. Unmanaged static IPv4 uplinks also stop migration for manual
+conversion. Other managers' Wi-Fi credentials are not automatically converted.
+Their packages and original profiles stay installed for recovery, with their
+services disabled. A brief Wi-Fi interruption is expected during the handover.
+
+The migration checks that the previous physical default-route interfaces reconnect.
+If activation fails, it restores the previous configuration, DNS link and service
+states. Private recovery copies are kept under `/var/lib/archsetup/network-backups`.
+Repeating the playbook does not restart networking when it is already configured.
+Check mode reports the planned migration without changing services or profiles.
+Set `archsetup_desktop_manage_network=false` to leave system networking untouched;
+the panel then works only if Wi-Fi is already managed by NetworkManager.
+
+To migrate just networking and update the installed Wi-Fi controls:
+
+```bash
+sudo ansible-playbook playbooks/desktop-network.yml -e @inventory/profiles/LittleArchy.yml --check
+sudo ansible-playbook playbooks/desktop-network.yml -e @inventory/profiles/LittleArchy.yml
+```
 
 For another account, supply `archsetup_desktop_enabled=true` and
 `archsetup_desktop_user=ACCOUNT`. Defaults use automatic monitor discovery.
@@ -93,8 +123,11 @@ exist and have a working login password before graphical login is tested.
 The role does not create users, reset passwords or install graphics drivers.
 
 Ordinary `apply` also supports the opt-in profile. Without the enablement variable,
-all desktop tasks are skipped. Package updates remain explicit: pending upgrades
-in local metadata cause provisioning to stop and request `./setup.sh upgrade`.
+all desktop tasks are skipped. Configuration-only reapplication can proceed while
+updates are pending when all required packages and selected applications are already
+installed. If desktop or network dependencies are missing, or Brave/VSCodium needs
+to be built, pending upgrades stop installation with the command
+`./setup.sh upgrade --ask-become-pass`. Package updates remain explicit.
 Never use `pacman -Sy` alone. Test a full upgrade before advancing beyond the
 validated Hyprland API series.
 
@@ -107,18 +140,18 @@ Super+Comma and Super+N both toggle this panel on the focused monitor. Escape or
 clicking outside dismisses it. Power opens the existing session menu.
 
 Quick actions include Wi-Fi, Bluetooth power, microphone mute, warm night
-light, saved NetworkManager VPN/WireGuard connections, and a color picker that
+light, Proton VPN, and a color picker that
 copies the selected color. The volume slider and output selector control audio;
 the microphone arrow reveals input selection and the audio mixer. The main Wi-Fi
 tile toggles adapter power; its arrow opens a network list in the same panel,
-using `iwctl` with the running iwd service. Scan, choose an adapter or network,
+using NetworkManager through `nmcli`. Scan, choose an adapter or network,
 enter a password, connect, disconnect, or switch the adapter off from there. Saved networks reuse their
 stored credentials when the password field is empty. Passwords are cleared after
 submission and when leaving the Wi-Fi page, and are sent over stdin rather than
-command arguments. Enterprise networks require an existing iwd configuration;
+command arguments. Enterprise networks require an existing NetworkManager profile;
 WEP is unsupported. Escape returns to quick actions before closing the panel.
-This does not change the machine's network service; the iwd package and a running
-iwd service are required.
+The power switch affects all Wi-Fi adapters. Scanning, connection and disconnection
+use the selected adapter. NetworkManager must be running and own that adapter.
 
 The main Bluetooth tile toggles power; its arrow opens Bluetooth connections in
 the same panel. Select an adapter, scan for devices, pair and connect, disconnect,
@@ -128,6 +161,23 @@ available. Leaving the submenu stops its discovery session and cancels pending
 pairing or connection attempts. The helper uses BlueZ with `python-gobject`,
 installed by the desktop role, and registers an agent only for its own requests.
 The system's Bluetooth discoverability and default pairing agent are unchanged.
+
+The VPN tile connects to Proton's fastest available server or disconnects the
+current Proton connection. Its arrow opens an inline Proton VPN panel with
+connection status, server/protocol details, refresh, and an optional country
+choice. The default fastest-server choice works with free accounts; country
+selection requires a paid plan. The desktop role installs the official
+`proton-vpn-cli` package. On first use, choose **Sign in** in the VPN panel; a
+terminal runs Proton's own password and two-factor prompts. Close that terminal
+when finished and reopen the panel. Account secrets remain with Proton and the
+system keyring. Closing the side panel leaves the VPN connection active.
+
+Missing dependencies, a stopped NetworkManager, unreadable status and failed
+connections appear in the panel. The Proton GUI must be closed while using its
+CLI. This control does not change Proton's kill-switch, DNS or other account
+settings, and it does not activate unrelated saved VPN profiles. See Proton's
+[CLI usage guide](https://protonvpn.com/support/use-linux-cli) and
+[Arch installation guide](https://protonvpn.com/support/linux-vpn-arch).
 
 Controls display unavailable hardware and report failed operations. Night light runs `hyprsunset` at 4000 K
 while enabled and restores normal color when switched off or the shell exits;

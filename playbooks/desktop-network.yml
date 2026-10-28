@@ -1,0 +1,13 @@
+---
+- name: Migrate desktop networking to NetworkManager
+  hosts: localhost
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Apply the desktop networking configuration
+      ansible.builtin.include_role:
+        name: desktop
+        tasks_from: network
+      when:
+        - archsetup_desktop_enabled | default(false) | bool
+        - archsetup_desktop_manage_network | default(true) | bool

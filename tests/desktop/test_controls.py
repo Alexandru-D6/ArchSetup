@@ -20,11 +20,6 @@ loader.exec_module(controls)
 
 
 class ControlTests(unittest.TestCase):
-    def test_nmcli_escaping_and_vpn_types(self):
-        output = 'uuid1:vpn:Work\\: Europe:yes\nuuid2:wireguard:Home\\\\:no\nuuid3:ethernet:Wired:yes'
-        with patch.object(controls, 'command', return_value=output):
-            self.assertEqual(controls.connections(), [dict(id='uuid1', name='Work: Europe', active=True), dict(id='uuid2', name='Home\\', active=False)])
-
     def test_audio_volume_and_monitor_filter(self):
         data = [dict(name='mic', description='USB microphone', mute=True, volume={'left': {'value': 32768}, 'right': {'value': 65536}}),
                 dict(name='sink.monitor', volume={})]
@@ -35,12 +30,6 @@ class ControlTests(unittest.TestCase):
         with patch.object(controls, 'audio', return_value=[]), patch.object(controls, 'command') as command:
             with self.assertRaises(ValueError): controls.apply(dict(action='output', value='disconnected'))
             command.assert_not_called()
-
-    def test_selected_vpn_is_connected_or_disconnected_by_uuid(self):
-        for active in (True, False):
-            with self.subTest(active=active), patch.object(controls, 'connections', return_value=[dict(id='abc', active=active)]), patch.object(controls, 'command') as command:
-                controls.apply(dict(action='vpn', value='abc'))
-                command.assert_called_once_with('nmcli', '--wait', '10', 'connection', 'down' if active else 'up', 'uuid', 'abc')
 
     def test_actions_validate_values_before_running_commands(self):
         for request in [dict(action='volume', value=-1), dict(action='volume', value=101), dict(action='volume', value=True),
@@ -61,10 +50,9 @@ class ControlTests(unittest.TestCase):
         self.assertFalse(state['bluetoothAvailable'])
         self.assertFalse(state['nightAvailable'])
         self.assertEqual(state['outputs'], [])
-        self.assertEqual(state['vpns'], [])
         self.assertGreater(state['uptime'], 0)
 
-    def test_wifi_actions_use_iwctl_backend(self):
+    def test_wifi_actions_use_networkmanager_backend(self):
         value = dict(device='wlan0', ssid='Home', security='psk')
         with patch.object(controls.desktop_wifi, 'apply') as wifi, patch.object(controls, 'command') as command:
             controls.apply(dict(action='wifi-connect', value=value))

@@ -20,22 +20,6 @@
     database: passwd
     key: "{{ archsetup_desktop_user }}"
 
-- name: Inspect network service ownership
-  ansible.builtin.service_facts:
-  when: archsetup_desktop_manage_network | bool
-
-- name: Require a separate migration from competing network managers
-  ansible.builtin.assert:
-    that:
-      - ansible_facts.services.get(item, {}).get('state', 'stopped') != 'running'
-      - ansible_facts.services.get(item, {}).get('status', 'disabled') != 'enabled'
-    fail_msg: >-
-      {{ item }} already manages networking. Set archsetup_desktop_manage_network=false
-      to preserve it, or migrate networking separately before enabling NetworkManager.
-      This role will not interrupt the current network connection.
-  loop: [systemd-networkd.service, dhcpcd.service, connman.service]
-  when: archsetup_desktop_manage_network | bool
-
 - name: Resolve account paths
   ansible.builtin.set_fact:
     desktop_home: "{{ ansible_facts.getent_passwd[archsetup_desktop_user][4] }}"

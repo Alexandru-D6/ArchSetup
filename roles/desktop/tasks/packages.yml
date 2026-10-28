@@ -1,20 +1,36 @@
 ---
-- name: Check pending full system upgrades
-  ansible.builtin.command: pacman -Qu
-  register: desktop_upgrades
-  changed_when: false
-  failed_when: desktop_upgrades.rc not in [0, 1]
-  check_mode: false
+- name: Inspect installed desktop dependencies
+  ansible.builtin.package_facts:
+    manager: pacman
 
-- name: Require explicit maintenance before desktop provisioning
-  ansible.builtin.assert:
-    that: desktop_upgrades.stdout | trim | length == 0
-    fail_msg: Pending upgrades exist in the local package metadata. Run the full upgrade workflow before desktop provisioning.
+- name: Determine required desktop packages and application builds
+  ansible.builtin.set_fact:
+    desktop_required_packages: >-
+      {{ (archsetup_desktop_packages
+      + (archsetup_desktop_login_packages if (archsetup_desktop_manage_login | bool) else [])
+      + (archsetup_desktop_network_packages if (archsetup_desktop_manage_network | bool) else [])) | unique | list }}
+    desktop_build_brave: >-
+      {{ archsetup_desktop_browser == 'brave-browser.desktop'
+      and (archsetup_desktop_install_brave | bool)
+      and (desktop_browser_entries.results | selectattr('stat.exists') | list | length == 0) }}
+    desktop_build_vscodium: >-
+      {{ archsetup_desktop_code_editor == 'codium.desktop'
+      and (archsetup_desktop_install_vscodium | bool)
+      and (desktop_code_editor_entries.results | selectattr('stat.exists') | list | length == 0) }}
+
+- name: Find missing desktop dependencies
+  ansible.builtin.set_fact:
+    desktop_missing_packages: "{{ desktop_required_packages | difference(ansible_facts.packages.keys() | list) | sort }}"
+
+- name: Check maintenance only when desktop packages need installation
+  ansible.builtin.import_tasks: package-maintenance.yml
+  when: desktop_missing_packages | length > 0 or desktop_build_brave | bool or desktop_build_vscodium | bool
 
 - name: Ensure desktop dependencies are present
   community.general.pacman:
-    name: "{{ archsetup_desktop_packages + (archsetup_desktop_login_packages if (archsetup_desktop_manage_login | bool) else []) }}"
+    name: "{{ desktop_missing_packages }}"
     state: present
+  when: desktop_missing_packages | length > 0
 
 - name: Inspect the installed compositor version
   ansible.builtin.command: pacman -Q hyprland
@@ -34,14 +50,8 @@
 
 - name: Install the selected Brave browser when missing
   ansible.builtin.import_tasks: brave.yml
-  when:
-    - archsetup_desktop_browser == 'brave-browser.desktop'
-    - archsetup_desktop_install_brave | bool
-    - desktop_browser_entries.results | selectattr('stat.exists') | list | length == 0
+  when: desktop_build_brave | bool
 
 - name: Install the selected VSCodium editor when missing
   ansible.builtin.import_tasks: vscodium.yml
-  when:
-    - archsetup_desktop_code_editor == 'codium.desktop'
-    - archsetup_desktop_install_vscodium | bool
-    - desktop_code_editor_entries.results | selectattr('stat.exists') | list | length == 0
+  when: desktop_build_vscodium | bool

@@ -6,6 +6,7 @@ Item {
     width: 440; height: 900
     ControlCenter { id: center; anchors.fill: parent }
     SignalSpy { id: control; target: center; signalName: "controlRequested" }
+    SignalSpy { id: vpn; target: center; signalName: "vpnRequested" }
     SignalSpy { id: launch; target: center; signalName: "launchRequested" }
     SignalSpy { id: power; target: center; signalName: "powerRequested" }
     SignalSpy { id: settings; target: center; signalName: "settingsRequested" }
@@ -21,8 +22,9 @@ Item {
                 bluetoothAvailable: true, bluetoothEnabled: false, nightAvailable: true,
                 output: "speakers", outputs: [{id: "speakers", name: "Speakers", volume: 42, muted: false}, {id: "headphones", name: "Headphones", volume: 50, muted: false}],
                 input: "mic", inputs: [{id: "mic", name: "Microphone", muted: true}],
-                vpns: [{id: "vpn-1", name: "Work", active: false}, {id: "vpn-2", name: "Home", active: true}]};
-            center.audioDetails = false; center.vpnDetails = false; center.wifiDetails = false; center.selectedVpn = "";
+                vpnReady: true, vpnConnected: true, vpnStatus: "connected", vpnServer: "ES#1"};
+            center.audioDetails = false; center.vpnDetails = false; center.wifiDetails = false;
+            center.vpnBusy = false; center.vpnError = ""; center.vpnOperation = ""; vpn.clear();
             center.bluetoothDetails = false; center.bluetoothReady = true; center.bluetoothBusy = false; center.bluetoothError = ""; center.bluetoothPrompt = null;
             center.busy = false; center.error = ""; center.notifications = []; center.nightEnabled = false;
             control.clear(); launch.clear(); power.clear(); settings.clear(); close.clear(); night.clear(); dnd.clear(); clear.clear();
@@ -38,8 +40,7 @@ Item {
             mouseClick(findChild(center, "bluetooth"), 60, 30); compare(Array.from(control.signalArguments[0]), ["bluetooth", true]);
             mouseClick(findChild(center, "mic"), 60, 30); compare(Array.from(control.signalArguments[1]), ["mic", false]);
             mouseClick(findChild(center, "audio-mute")); compare(Array.from(control.signalArguments[2]), ["mute", true]);
-            // Active VPN is selected before inactive profiles.
-            mouseClick(findChild(center, "vpn"), 60, 30); compare(Array.from(control.signalArguments[3]), ["vpn", "vpn-2"]);
+            mouseClick(findChild(center, "vpn"), 60, 30); compare(Array.from(vpn.signalArguments[0]), ["disconnect", null]);
             mouseClick(findChild(center, "night"), 60, 30); compare(night.count, 1);
         }
         function test_missing_hardware_cannot_toggle() {
@@ -47,7 +48,7 @@ Item {
             for (const name of ["wifi", "bluetooth", "mic", "night"]) mouseClick(findChild(center, name), 60, 30);
             compare(control.count, 0); compare(night.count, 0);
             verify(!findChild(center, "audio-output").enabled);
-            mouseClick(findChild(center, "vpn"), 60, 30); compare(Array.from(launch.signalArguments[0]), ["network"]);
+            mouseClick(findChild(center, "vpn"), 60, 30); verify(center.vpnDetails); compare(launch.count, 0); compare(vpn.count, 0);
         }
         function test_details_do_not_toggle_device() {
             const wifi = findChild(center, "wifi");
@@ -74,16 +75,31 @@ Item {
             verify(findChild(center, "wifi-panel").visible); compare(launch.count, 0); compare(close.count, 0);
             compare(control.count, 0);
             mouseClick(findChild(center, "wifi-back")); verify(!center.wifiDetails);
-            center.snapshot = {wifiError: "iwd is unavailable"}; control.clear(); wait(10);
+            center.snapshot = {wifiError: "NetworkManager is unavailable"}; control.clear(); wait(10);
             mouseClick(wifi, wifi.width - 18, 30); verify(center.wifiDetails);
-            compare(findChild(center, "wifi-error").text, "iwd is unavailable");
+            compare(findChild(center, "wifi-error").text, "NetworkManager is unavailable");
             verify(!findChild(center, "wifi-power").enabled); compare(control.count, 0);
         }
         function test_busy_prevents_duplicate_writes() {
             center.busy = true;
             mouseClick(findChild(center, "wifi"), 60, 30);
             mouseClick(findChild(center, "vpn"), 60, 30);
-            compare(control.count, 0);
+            compare(control.count, 0); compare(vpn.count, 0);
+        }
+        function test_vpn_arrow_opens_proton_and_body_toggles_connection() {
+            const tile = findChild(center, "vpn");
+            mouseClick(tile, tile.width - 18, 30);
+            verify(center.vpnDetails); verify(findChild(center, "vpn-panel").visible);
+            compare(vpn.count, 0); compare(launch.count, 0); compare(close.count, 0);
+            center.forceActiveFocus(); keyClick(Qt.Key_Escape); verify(!center.vpnDetails); compare(close.count, 0);
+            center.snapshot = Object.assign({}, center.snapshot, {vpnConnected: false, vpnStatus: "disconnected"}); wait(10);
+            mouseClick(tile, 60, 30); compare(Array.from(vpn.signalArguments[0]), ["connect", ""]); verify(!center.vpnDetails);
+            center.vpnBusy = true; vpn.clear(); mouseClick(tile, 60, 30); compare(vpn.count, 0);
+            center.vpnBusy = false;
+            center.snapshot = {vpnStatus: "signin"}; wait(10); mouseClick(tile, 60, 30);
+            verify(center.vpnDetails); compare(vpn.count, 0);
+            mouseClick(findChild(center, "vpn-signin")); compare(Array.from(launch.signalArguments[0]), ["proton-signin"]);
+            center.openWifi(); verify(!center.vpnDetails); verify(center.wifiDetails);
         }
         function test_bluetooth_arrow_opens_inline_without_toggling_power() {
             const bluetooth = findChild(center, "bluetooth");

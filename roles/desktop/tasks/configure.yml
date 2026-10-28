@@ -73,6 +73,7 @@
     - {src: desktop-controls, dest: bin/desktop-controls, mode: '0755'}
     - {src: desktop_wifi.py, dest: bin/desktop_wifi.py, mode: '0644'}
     - {src: desktop-bluetooth, dest: bin/desktop-bluetooth, mode: '0755'}
+    - {src: desktop-protonvpn, dest: bin/desktop-protonvpn, mode: '0755'}
     - {src: desktop-settings, dest: bin/desktop-settings, mode: '0755'}
     - {src: desktop_settings.py, dest: bin/desktop_settings.py, mode: '0644'}
     - {src: desktop_system.py, dest: bin/desktop_system.py, mode: '0644'}
@@ -296,14 +297,9 @@
     backup: true
   loop: [x-scheme-handler/http, x-scheme-handler/https, text/html]
 
-- name: Enable network management
-  ansible.builtin.systemd_service:
-    name: NetworkManager.service
-    enabled: true
-    state: started
-  when:
-    - archsetup_desktop_manage_network | bool
-    - not ansible_check_mode or 'NetworkManager.service' in ansible_facts.services
+- name: Make NetworkManager the sole network manager
+  ansible.builtin.import_tasks: network.yml
+  when: archsetup_desktop_manage_network | bool
 
 - name: Detect Bluetooth kernel support
   ansible.builtin.stat:

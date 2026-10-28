@@ -1,0 +1,385 @@
+#!/usr/bin/env python3
+"""Converge Arch networking on NetworkManager, restoring prior services on failure.
+
+Run as root from Ansible. --check only inspects state. Never prints credentials.
+Other managers' packages and profiles are retained for recovery, but their units
+are masked (including templates and sockets) to prevent a second owner.
+"""
+import configparser
+import io
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+NM_DIR = Path('/etc/NetworkManager')
+IWD_DIR = Path('/var/lib/iwd')
+SYS_NET = Path('/sys/class/net')
+RESOLV = Path('/etc/resolv.conf')
+BACKUP_ROOT = Path('/var/lib/archsetup/network-backups')
+CONFIG = '''# Managed by ArchSetup: NetworkManager owns physical and VPN interfaces.
+[main]
+dns=systemd-resolved
+rc-manager=auto
+no-auto-default=
+
+[keyfile]
+unmanaged-devices=
+
+[device-archsetup]
+match-device=type:wifi;type:ethernet
+managed=1
+wifi.backend=wpa_supplicant
+'''
+CONFLICT = re.compile(r'^(?:iwd|connman(?:-vpn)?|wicd|systemd-networkd(?:-wait-online(?:@.*)?)?|'
+                      r'dhcpcd(?:@.*)?|netctl(?:[-@].*)?|wpa_supplicant(?:-nl80211|-wired)?@.*)\.(?:service|socket)$')
+
+
+def command(*args, ok=(0,), timeout=30):
+    result = subprocess.run(args, capture_output=True, text=True, timeout=timeout,
+                            env=dict(os.environ, LC_ALL='C'))
+    if result.returncode not in ok:
+        # Do not include stdout/stderr: a configuration parser might print secrets.
+        raise RuntimeError(f'{args[0]} {args[1] if len(args) > 1 else ""} failed (exit {result.returncode}).')
+    return result.stdout.strip()
+
+
+def unit_state(unit):
+    return dict(enabled=command('systemctl', 'is-enabled', unit, ok=(0, 1, 3, 4)),
+                active='@.' not in unit and command('systemctl', 'is-active', unit, ok=(0, 3, 4)) == 'active')
+
+
+def competing_units():
+    names = set()
+    for verb in ('list-unit-files', 'list-units'):
+        output = command('systemctl', verb, '--all', '--no-legend', '--no-pager', '--plain')
+        names.update(line.split()[0] for line in output.splitlines() if line.split())
+    return {name: unit_state(name) for name in sorted(names) if CONFLICT.fullmatch(name)}
+
+
+def read_ini(path):
+    parser = configparser.ConfigParser(interpolation=None, strict=False)
+    parser.optionxform = str
+    parser.read(path)
+    return parser
+
+
+def keyfile_ssid(value):
+    if re.fullmatch(r'(?:\d{1,3};)+', value):
+        return bytes(int(part) for part in value.split(';') if part).decode('utf-8')
+    return unescape(value)
+
+
+def unescape(value):
+    return re.sub(r'\\([sntr\\])', lambda match: {'s': ' ', 'n': '\n', 't': '\t', 'r': '\r', '\\': '\\'}[match[1]], value)
+
+
+def escape(value):
+    return value.replace('\\', '\\\\').replace(' ', '\\s').replace('\t', '\\t').replace('\n', '\\n').replace('\r', '\\r')
+
+
+def existing_networks():
+    result = set()
+    for path in (NM_DIR / 'system-connections').glob('*'):
+        if not path.is_file():
+            continue
+        profile = read_ini(path)
+        for section in ('wifi', '802-11-wireless'):
+            if profile.has_option(section, 'ssid'):
+                result.add(keyfile_ssid(profile[section]['ssid']))
+    return result
+
+
+def iwd_profiles(existing):
+    """Import personal/open networks only. Never overwrite an NM connection."""
+    profiles, skipped = {}, []
+    for path in sorted(IWD_DIR.glob('*')):
+        if path.suffix not in ('.psk', '.open', '.8021x'):
+            continue
+        try:
+            ssid = bytes.fromhex(path.stem[1:]).decode('utf-8') if path.stem.startswith('=') else path.stem
+            if ssid in existing:
+                continue
+            profile = read_ini(path)
+            if path.suffix == '.8021x' or profile.has_section('IPv4') or profile.has_section('IPv6'):
+                raise ValueError('Enterprise/static profiles require an NM profile.')
+            security = {}
+            if path.suffix == '.psk':
+                password = unescape(profile.get('Security', 'Passphrase', fallback=''))
+                psk = profile.get('Security', 'PreSharedKey', fallback='')
+                if password and 8 <= len(password.encode()) <= 63:
+                    security = {'key-mgmt': 'wpa-psk', 'psk': escape(password)}
+                elif re.fullmatch(r'[0-9a-fA-F]{64}', psk):
+                    security = {'key-mgmt': 'wpa-psk', 'psk': psk}
+                else:
+                    raise ValueError('Encrypted or unsupported credentials.')
+            identifier = str(uuid.uuid5(uuid.NAMESPACE_URL, 'archsetup:iwd:' + ssid))
+            converted = configparser.ConfigParser(interpolation=None)
+            converted['connection'] = {'id': escape(ssid), 'uuid': identifier, 'type': 'wifi',
+                                       'autoconnect': str(profile.getboolean('Settings', 'AutoConnect', fallback=True)).lower()}
+            converted['wifi'] = {'ssid': ';'.join(str(byte) for byte in ssid.encode()) + ';', 'mode': 'infrastructure',
+                                 'hidden': str(profile.getboolean('Settings', 'Hidden', fallback=False)).lower()}
+            if security:
+                converted['wifi-security'] = security
+            converted['ipv4'] = {'method': 'auto'}
+            converted['ipv6'] = {'method': 'auto'}
+            output = io.StringIO()
+            converted.write(output, space_around_delimiters=False)
+            profiles[NM_DIR / 'system-connections' / f'archsetup-iwd-{identifier}.nmconnection'] = output.getvalue()
+            existing.add(ssid)
+        except (ValueError, configparser.Error, UnicodeError):
+            skipped.append(path.name)
+    return profiles, skipped
+
+
+def default_devices():
+    routes = json.loads(command('ip', '-j', '-4', 'route', 'show', 'default'))
+    routes += json.loads(command('ip', '-j', '-6', 'route', 'show', 'default'))
+    return sorted({route['dev'] for route in routes if 'dev' in route
+                   and (SYS_NET / route['dev'] / 'device').exists()})
+
+
+def wifi_interfaces():
+    return {path.name: (path / 'phy80211').resolve().name for path in SYS_NET.iterdir()
+            if (path / 'wireless').exists() and (path / 'phy80211').exists()}
+
+
+def restore_wifi_interfaces(radios):
+    """iwd can delete its station interfaces on exit; recreate them for NM."""
+    command('udevadm', 'settle', '--timeout=10')
+    mapping = {}
+    for previous, radio in radios.items():
+        present = wifi_interfaces()
+        matches = [device for device, phy in present.items() if phy == radio]
+        if not matches:
+            command('iw', 'phy', radio, 'interface', 'add', previous, 'type', 'managed')
+            command('udevadm', 'settle', '--timeout=10')
+            matches = [device for device, phy in wifi_interfaces().items() if phy == radio]
+        if not matches:
+            raise RuntimeError(f'Could not restore the Wi-Fi interface for {radio}.')
+        mapping[previous] = previous if previous in matches else matches[0]
+    return mapping
+
+
+def wait_for_devices(devices):
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        visible = command('nmcli', '-t', '-f', 'DEVICE', 'device', 'status').splitlines()
+        if set(devices).issubset(visible):
+            return
+        time.sleep(1)
+    raise RuntimeError('NetworkManager did not discover the previous network adapters.')
+
+
+def wait_for_wifi_ready(device):
+    # D-Bus exports the device before wpa_supplicant finishes initializing it.
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        state = command('nmcli', '-g', 'GENERAL.STATE', 'device', 'show', device, ok=(0, 10))
+        match = re.match(r'^(\d+)', state)
+        if match and int(match[1]) >= 30:
+            return
+        time.sleep(1)
+    raise RuntimeError(f'NetworkManager Wi-Fi backend did not become ready on {device}.')
+
+
+def validate_uplinks(devices, available, iwd_active=False):
+    """Do not disconnect a working uplink without usable replacement settings."""
+    wifi_uplinks = {}
+    for device in devices:
+        managed = command('nmcli', '-g', 'GENERAL.STATE', 'device', 'show', device, ok=(0, 10)) if shutil.which('nmcli') else ''
+        if managed.startswith('100'):
+            continue
+        if (SYS_NET / device / 'wireless').exists():
+            if shutil.which('iw'):
+                station = command('iw', 'dev', device, 'link')
+                match = re.search(r'^\s*SSID: (.+)$', station, re.MULTILINE)
+            elif iwd_active and shutil.which('iwctl'):
+                station = command('iwctl', 'station', device, 'show')
+                station = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', station)
+                match = re.search(r'Connected network\s{2,}(.+?)\s*$', station, re.MULTILINE)
+            else:
+                raise RuntimeError('Install iw to inspect the active Wi-Fi connection before migration.')
+            if not match or match[1] not in available:
+                raise RuntimeError(f'The active Wi-Fi connection on {device} needs a NetworkManager profile before migration.')
+            wifi_uplinks[device] = match[1]
+        addresses = json.loads(command('ip', '-j', 'address', 'show', 'dev', device))
+        for interface in addresses:
+            for address in interface.get('addr_info', []):
+                if address.get('scope') == 'global' and address.get('family') == 'inet' and not address.get('dynamic', False):
+                    raise RuntimeError(f'{device} has a static IPv4 address. Import its IP, route and DNS settings into NetworkManager before migration.')
+
+    return wifi_uplinks
+
+
+def wifi_profile_uuid(ssid):
+    for path in (NM_DIR / 'system-connections').glob('*'):
+        if not path.is_file():
+            continue
+        profile = read_ini(path)
+        for section in ('wifi', '802-11-wireless'):
+            if profile.has_option(section, 'ssid') and keyfile_ssid(profile[section]['ssid']) == ssid:
+                return profile['connection']['uuid']
+    raise RuntimeError('The replacement Wi-Fi profile could not be found.')
+
+
+def build_plan():
+    units = competing_units()
+    existing = existing_networks()
+    profiles, skipped = iwd_profiles(existing)
+    config = NM_DIR / 'conf.d/99-archsetup-network.conf'
+    legacy = NM_DIR / 'conf.d/90-archsetup-vpn-only.conf'
+    files = dict(profiles)
+    if not config.exists() or config.read_text() != CONFIG:
+        files[config] = CONFIG
+    if legacy.exists():
+        files[legacy] = None
+    services = {name: state for name, state in units.items() if state['enabled'] != 'masked' or state['active']}
+    nm = unit_state('NetworkManager.service')
+    resolved = unit_state('systemd-resolved.service')
+    resolv = RESOLV
+    dns_ok = resolv.is_symlink() and os.readlink(resolv) == '/run/systemd/resolve/stub-resolv.conf'
+    changed = bool(files or services or not dns_ok or not nm['active'] or nm['enabled'] != 'enabled'
+                   or not resolved['active'] or resolved['enabled'] != 'enabled')
+    devices = default_devices() if changed else []
+    wifi_uplinks = validate_uplinks(devices, existing, units.get('iwd.service', {}).get('active', False)) if changed else {}
+    return dict(files=files, services=services, nm=nm, resolved=resolved,
+                devices=devices, wifi_uplinks=wifi_uplinks, radios=wifi_interfaces(), changed=changed, skipped=skipped, dns_ok=dns_ok)
+
+
+def restore_unit(name, state, start=True):
+    command('systemctl', 'unmask', name)
+    if state['enabled'] in ('enabled', 'enabled-runtime'):
+        command('systemctl', 'enable', *(['--runtime'] if state['enabled'] == 'enabled-runtime' else []), name)
+    elif state['enabled'] in ('masked', 'masked-runtime'):
+        command('systemctl', 'mask', *(['--runtime'] if state['enabled'] == 'masked-runtime' else []), name)
+    elif state['enabled'] == 'disabled':
+        command('systemctl', 'disable', name)
+    if start and state['active']:
+        command('systemctl', 'start', name)
+
+
+def wait_for_uplinks(devices):
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        if all(command('nmcli', '-g', 'GENERAL.STATE', 'device', 'show', device, ok=(0, 10)).startswith('100')
+               for device in devices) and set(devices).issubset(default_devices()):
+            return
+        time.sleep(2)
+    raise RuntimeError('NetworkManager did not restore the previous uplinks within 60 seconds.')
+
+
+def apply(plan):
+    if not plan['changed']:
+        return
+    # Keep a private recovery copy outside /tmp so it survives a reboot.
+    backup_root = BACKUP_ROOT
+    backup_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    backup = Path(tempfile.mkdtemp(prefix='migration-', dir=backup_root))
+    paths = list(plan['files']) + [RESOLV]
+    saved = {}
+    for index, path in enumerate(paths):
+        copy = backup / str(index)
+        present = path.exists() or path.is_symlink()
+        saved[path] = copy if present else None
+        if present:
+            shutil.copy2(path, copy, follow_symlinks=False)
+    (backup / 'state.json').write_text(json.dumps({'files': {str(path): str(copy) if copy else None for path, copy in saved.items()},
+        'services': plan['services'], 'NetworkManager': plan['nm'], 'resolved': plan['resolved']}, indent=2))
+    try:
+        for path, content in plan['files'].items():
+            if content is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, 'w', opener=lambda name, flags: os.open(name, flags, 0o600)) as output:
+                    output.write(content)
+                path.chmod(0o600 if path.suffix == '.nmconnection' else 0o644)
+        for name in plan['services']:
+            # Stop socket activation first as well as masking all templates.
+            command('systemctl', 'disable', name)
+            command('systemctl', 'mask', name)
+        for name in sorted(plan['services'], key=lambda name: not name.endswith('.socket')):
+            if plan['services'][name]['active']:
+                command('systemctl', 'stop', name)
+        device_mapping = restore_wifi_interfaces(plan['radios'])
+        devices = [device_mapping.get(device, device) for device in plan['devices']]
+        command('systemctl', 'unmask', 'systemd-resolved.service', 'NetworkManager.service')
+        command('systemctl', 'enable', '--now', 'systemd-resolved.service')
+        resolv = RESOLV
+        if not plan['dns_ok']:
+            resolv.unlink(missing_ok=True)
+            resolv.symlink_to('/run/systemd/resolve/stub-resolv.conf')
+        command('systemctl', 'enable', 'NetworkManager.service')
+        # A backend change must restart NM; start alone would keep VPN-only mode.
+        command('systemctl', 'restart', 'NetworkManager.service')
+        command('nmcli', 'connection', 'reload')
+        wait_for_devices(devices)
+        for device in devices:
+            command('nmcli', 'device', 'set', device, 'managed', 'yes')
+            command('nmcli', 'device', 'set', device, 'autoconnect', 'yes')
+        for device, ssid in plan['wifi_uplinks'].items():
+            wait_for_wifi_ready(device_mapping.get(device, device))
+            command('nmcli', '--wait', '45', 'connection', 'up', 'uuid', wifi_profile_uuid(ssid),
+                    'ifname', device_mapping.get(device, device), timeout=50)
+        wait_for_uplinks(devices)
+    except Exception as error:
+        failures = []
+        def recover(function, *args):
+            try:
+                function(*args)
+            except Exception as restore_error:
+                failures.append(str(restore_error))
+        recover(command, 'systemctl', 'stop', 'NetworkManager.service')
+        for path, copy in saved.items():
+            recover(path.unlink, True)
+            if copy:
+                try:
+                    shutil.copy2(copy, path, follow_symlinks=False)
+                except OSError as restore_error:
+                    failures.append(str(restore_error))
+        for name, state in plan['services'].items():
+            recover(restore_unit, name, state, False)
+        for name in sorted(plan['services'], key=lambda unit: 'wait-online' in unit):
+            if plan['services'][name]['active']:
+                recover(command, 'systemctl', 'start', name)
+        for name, state in [('systemd-resolved.service', plan['resolved']), ('NetworkManager.service', plan['nm'])]:
+            if not state['active']:
+                recover(command, 'systemctl', 'stop', name)
+            recover(restore_unit, name, state)
+        suffix = 'Previous configuration and services restored.' if not failures else 'Rollback needs attention: ' + '; '.join(failures)
+        raise RuntimeError(f'{error} {suffix} Recovery copy: {backup}') from None
+
+
+def interrupted(signum, frame):
+    raise RuntimeError('Network migration was interrupted.')
+
+
+def main():
+    signal.signal(signal.SIGTERM, interrupted)
+    if os.geteuid() != 0:
+        raise RuntimeError('Run the network migration as root through Ansible.')
+    if sys.argv[1:] not in (['--check'], ['--apply']):
+        raise RuntimeError('Expected --check or --apply.')
+    plan = build_plan()
+    if sys.argv[1] == '--apply':
+        apply(plan)
+    print(json.dumps(dict(changed=plan['changed'], competing_services=list(plan['services']),
+                          imported_profiles=sum(path.suffix == '.nmconnection' for path in plan['files']),
+                          skipped_profiles=plan['skipped'])))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (RuntimeError, OSError, ValueError, configparser.Error, subprocess.TimeoutExpired) as error:
+        message = 'Could not parse a network profile. Check its format locally; credentials are not included in this error.' if isinstance(error, configparser.Error) else str(error)
+        print(json.dumps(dict(error=message)))
+        sys.exit(1)

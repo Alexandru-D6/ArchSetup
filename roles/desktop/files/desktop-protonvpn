@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Control the official Proton VPN CLI without shell evaluation or stored credentials."""
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+
+def command(*args, timeout=15):
+    result = subprocess.run(args, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                            timeout=timeout, env=dict(os.environ, LC_ALL='C', NO_COLOR='1'))
+    output = result.stdout.strip()
+    # Proton's CLI also reports a running GUI as an error with exit status zero.
+    errors = re.findall(r'^Error:.*(?:\n[^\n]+)?', output, re.MULTILINE)
+    if result.returncode or errors:
+        raise ValueError('\n'.join(errors) or result.stderr.strip() or output or 'Proton VPN command failed.')
+    return output
+
+
+def empty_state():
+    return dict(vpnAvailable=shutil.which('protonvpn') is not None, vpnReady=False,
+                vpnConnected=False, vpnSignedIn=False, vpnStatus='unknown',
+                vpnServer='', vpnProtocol='', vpnError='')
+
+
+def snapshot():
+    state = empty_state()
+    if not state['vpnAvailable']:
+        state.update(vpnStatus='install', vpnError='Install the official Proton VPN CLI to use this control.')
+        return state
+    try:
+        if command('nmcli', '-t', '-f', 'RUNNING', 'general', timeout=3) != 'running':
+            raise ValueError('NetworkManager is not running.')
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        state.update(vpnStatus='network', vpnError='Proton VPN needs NetworkManager. Configure its VPN support first.')
+        return state
+    try:
+        output = command('protonvpn', 'status')
+        details = dict(re.findall(r'^(Status|Server|Protocol):\s*(.+)$', output, re.MULTILINE))
+        status = details.get('Status')
+        if status not in ('Connected', 'Disconnected'):
+            raise ValueError('Could not read Proton VPN status. Check the installed CLI version.')
+        connected = status == 'Connected'
+        signed_in = connected
+        if not connected:
+            account = re.search(r"^Account: '(.*)'$", command('protonvpn', 'info'), re.MULTILINE)
+            if not account:
+                raise ValueError('Could not read Proton VPN account status.')
+            signed_in = account.group(1) not in ('', 'None')
+        state.update(vpnConnected=connected, vpnSignedIn=signed_in, vpnReady=signed_in,
+                     vpnStatus='connected' if connected else 'disconnected' if signed_in else 'signin',
+                     vpnServer=details.get('Server', ''), vpnProtocol=details.get('Protocol', ''))
+    except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+        state['vpnError'] = 'Proton VPN did not respond in time. Try again.' if isinstance(error, subprocess.TimeoutExpired) else str(error)
+    return state
+
+
+def apply(action, value):
+    if action not in ('connect', 'disconnect'):
+        raise ValueError('Unknown Proton VPN action.')
+    if action == 'connect':
+        if not isinstance(value, str) or (value and not re.fullmatch(r'[A-Za-z][A-Za-z -]{0,63}', value)):
+            raise ValueError('Enter a country name or two-letter code, or leave it blank for the fastest server.')
+    elif value is not None:
+        raise ValueError('Unexpected disconnect value.')
+    state = snapshot()
+    if not state['vpnReady']:
+        raise ValueError(state['vpnError'] or 'Sign in to Proton VPN first.')
+    if action == 'connect':
+        if state['vpnConnected']:
+            raise ValueError('Disconnect before choosing another VPN location.')
+        command('protonvpn', 'connect', *(['--country', value] if value else []), timeout=90)
+    else:
+        if not state['vpnConnected']:
+            return
+        command('protonvpn', 'disconnect', timeout=45)
+
+
+def signin():
+    if not shutil.which('protonvpn'):
+        raise ValueError('Install proton-vpn-cli first.')
+    username = input('Proton account username: ').strip()
+    if not username or len(username) > 254 or any(ord(char) < 32 for char in username):
+        raise ValueError('Enter your Proton account username.')
+    # Passwords, security keys and two-factor codes are handled by Proton itself.
+    return subprocess.call(['protonvpn', 'signin', '--', username])
+
+
+def main():
+    interactive = sys.argv[1:] == ['--signin']
+    try:
+        runtime = Path(os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}'))
+        with (runtime / 'archsetup-protonvpn.lock').open('a') as guard:
+            try:
+                fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise ValueError('Proton VPN is busy. Finish signing in or wait for the current operation.') from None
+            if interactive:
+                code = signin()
+                input('\nPress Enter to close. Then reopen the control center to refresh Proton VPN.')
+                return code
+            request = json.loads(sys.stdin.readline()) if sys.argv[1:] == ['--stdin'] else {}
+            if not isinstance(request, dict):
+                raise ValueError('Invalid Proton VPN request.')
+            error = ''
+            if request.get('action'):
+                try:
+                    apply(request['action'], request.get('value'))
+                except (OSError, ValueError, subprocess.TimeoutExpired) as exception:
+                    error = 'Proton VPN timed out. Check the current connection status before retrying.' if isinstance(exception, subprocess.TimeoutExpired) else str(exception)
+            state = snapshot()
+            if not error and request.get('action') in ('connect', 'disconnect'):
+                expected = 'connected' if request['action'] == 'connect' else 'disconnected'
+                if state['vpnStatus'] != expected:
+                    error = state['vpnError'] or 'Proton VPN did not confirm the requested connection state.'
+            print(json.dumps(dict(ok=not error, state=state, error=error)))
+    except (OSError, ValueError, EOFError) as error:
+        if interactive:
+            print(str(error), file=sys.stderr)
+            return 1
+        state = empty_state()
+        state['vpnError'] = str(error)
+        print(json.dumps(dict(ok=False, state=state, error=str(error))))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -27,38 +27,43 @@ FocusScope {
     property string bluetoothOperation: ""
     property string bluetoothError: ""
     property var bluetoothPrompt: null
-    property string selectedVpn: ""
+    property bool vpnBusy: false
+    property string vpnOperation: ""
+    property string vpnError: ""
     readonly property var output: (snapshot.outputs || []).find(device => device.id === snapshot.output)
     readonly property var input: (snapshot.inputs || []).find(device => device.id === snapshot.input)
-    readonly property var vpns: snapshot.vpns || []
-    readonly property var vpn: vpns.find(item => item.id === selectedVpn) || vpns.find(item => item.active) || vpns[0]
     signal closed()
     signal settingsRequested()
     signal powerRequested()
     signal controlRequested(string action, var value)
     signal wifiDeviceRequested(string device)
     signal bluetoothRequested(string action, var value)
+    signal vpnRequested(string action, var value)
+    signal vpnRefreshRequested()
     signal launchRequested(string action)
     signal nightRequested()
     signal dndRequested()
     signal clearRequested()
     implicitWidth: 420
     implicitHeight: 900
-    Keys.onEscapePressed: { if (wifiDetails) wifiDetails = false; else if (bluetoothDetails) bluetoothDetails = false; else closed(); }
-    onVisibleChanged: if (!visible) { wifiDetails = false; bluetoothDetails = false; }
+    Keys.onEscapePressed: { if (wifiDetails) wifiDetails = false; else if (bluetoothDetails) bluetoothDetails = false; else if (vpnDetails) vpnDetails = false; else closed(); }
+    onVisibleChanged: if (!visible) { wifiDetails = false; bluetoothDetails = false; vpnDetails = false; }
     onWifiDetailsChanged: Qt.callLater(scrollToTop)
     onBluetoothDetailsChanged: Qt.callLater(scrollToTop)
+    onVpnDetailsChanged: Qt.callLater(scrollToTop)
     function scrollToTop() {
         const view = actionScroll.contentItem as Flickable;
         if (view) view.contentY = 0;
     }
     function openWifi() {
+        vpnDetails = false;
         bluetoothDetails = false;
         wifiDetails = true;
         if (snapshot.wifiEnabled && !snapshot.wifiScanning && !busy)
             controlRequested("wifi-scan", {device: snapshot.wifiDevice});
     }
-    function openBluetooth() { wifiDetails = false; bluetoothDetails = true; }
+    function openBluetooth() { wifiDetails = false; vpnDetails = false; bluetoothDetails = true; }
+    function openVpn() { wifiDetails = false; bluetoothDetails = false; vpnDetails = true; vpnRefreshRequested(); }
     function uptime(seconds) {
         const minutes = Math.floor((seconds || 0) / 60);
         const hours = Math.floor(minutes / 60);
@@ -119,8 +124,16 @@ FocusScope {
                     onSelectedIdChanged: if (selectedId) Qt.callLater(center.scrollToTop)
                     onPromptChanged: if (prompt) Qt.callLater(center.scrollToTop)
                 }
+                ProtonPanel {
+                    objectName: "vpn-panel"; theme: center; Layout.fillWidth: true; visible: center.vpnDetails
+                    snapshot: center.snapshot; busy: center.vpnBusy; operation: center.vpnOperation; error: center.vpnError
+                    onBackRequested: center.vpnDetails = false
+                    onControlRequested: (action, value) => center.vpnRequested(action, value)
+                    onSigninRequested: center.launchRequested("proton-signin")
+                    onRefreshRequested: center.vpnRefreshRequested()
+                }
                 ColumnLayout {
-                    Layout.fillWidth: true; visible: !center.wifiDetails && !center.bluetoothDetails; spacing: 12
+                    Layout.fillWidth: true; visible: !center.wifiDetails && !center.bluetoothDetails && !center.vpnDetails; spacing: 12
                     GridLayout {
                         Layout.fillWidth: true; columns: 2; rowSpacing: 8; columnSpacing: 8
                         QuickTile {
@@ -157,28 +170,19 @@ FocusScope {
                         }
                         QuickTile {
                             objectName: "vpn"; theme: center; symbol: "vpn"; text: "VPN"; Layout.fillWidth: true
-                            available: !!center.vpn; selected: center.vpn?.active === true
-                            subtitle: !available ? "Add a connection" : selected ? center.vpn.name : "Off · " + center.vpn.name
-                            hasDetails: true; enabled: !center.busy
-                            onClicked: { if (available) center.controlRequested("vpn", center.vpn.id); else center.launchRequested("network"); }
-                            onDetailsRequested: center.vpnDetails = !center.vpnDetails
+                            available: center.snapshot.vpnReady === true; selected: center.snapshot.vpnConnected === true
+                            subtitle: center.vpnBusy ? center.vpnOperation === "disconnect" ? "Disconnecting…" : "Connecting…"
+                                : selected ? center.snapshot.vpnServer || "Proton VPN" : available ? "Off · Proton VPN"
+                                : ({signin: "Sign in · Proton VPN", install: "Install Proton VPN", network: "Setup Proton VPN", unknown: "Status unavailable"}[center.snapshot.vpnStatus] || "Checking Proton VPN…")
+                            hasDetails: true; enabled: !center.busy && !center.vpnBusy
+                            onClicked: { if (available) center.vpnRequested(selected ? "disconnect" : "connect", selected ? null : ""); else center.openVpn(); }
+                            onDetailsRequested: center.openVpn()
                         }
                         QuickTile {
                             objectName: "color"; theme: center; symbol: "color"; text: "Color picker"; Layout.fillWidth: true
                             subtitle: "Pick and copy"
                             onClicked: center.launchRequested("color")
                         }
-                    }
-                    ColumnLayout {
-                        visible: center.vpnDetails; Layout.fillWidth: true; spacing: 6
-                        SettingsComboBox {
-                            objectName: "vpn-choice"; theme: center; Layout.fillWidth: true
-                            model: center.vpns; currentIndex: center.vpns.findIndex(item => item.id === center.vpn?.id)
-                            displayText: center.vpn?.name || "No saved VPNs"; enabled: center.vpns.length > 0 && !center.busy
-                            Accessible.name: "VPN connection"
-                            onActivated: center.selectedVpn = currentValue
-                        }
-                        SettingsButton { theme: center; text: "Manage connections"; onClicked: center.launchRequested("network") }
                     }
                     RowLayout {
                         Layout.fillWidth: true

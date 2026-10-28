@@ -57,18 +57,19 @@ archsetup_desktop_quickshell_package: quickshell
 archsetup_desktop_manage_login: true
 archsetup_desktop_autologin_locked: true
 archsetup_desktop_lock_require_auth_for_power: true
-archsetup_desktop_manage_network: false
+archsetup_desktop_manage_network: true
 archsetup_desktop_reduced_motion: true
 archsetup_desktop_monitors:
   - {output: "", mode: preferred, position: auto, scale: auto}
 EOF
 ```
 
-This preserves your existing network service, detects monitors automatically,
-installs Brave when missing, and boots to Hyprlock. If NetworkManager should manage
-networking, set `archsetup_desktop_manage_network: true`; preflight rejects active
-or enabled competing network managers. With network management disabled, the
-panel's NetworkManager settings only work for interfaces it already manages.
+This uses NetworkManager for Wi-Fi, Ethernet and VPN, detects monitors automatically,
+installs Brave when missing, and boots to Hyprlock. Ansible installs NetworkManager
+before disabling competing managers, imports supported iwd Wi-Fi profiles, and
+restores the previous services if reconnection fails. See the
+[network migration details](docs/hyprland-desktop.md) for supported profiles and
+recovery. Set `archsetup_desktop_manage_network: false` to leave networking untouched.
 
 The supplied input defaults use US keyboard variants, Super+Space layout switching,
 and flat mouse acceleration. Review [desktop defaults](roles/desktop/defaults/main.yml)
@@ -121,8 +122,12 @@ configuration. Missing VSCodium uses the same reviewed, pinned AUR build workflo
 (`vscodium-bin`); existing installations are retained. Override
 `archsetup_desktop_code_editor` in your profile to select another installed editor.
 
-If package installation reports stale metadata or pending updates, run
+Reapplying configuration does not require an upgrade when all desktop/network
+dependencies and selected applications are already installed. If new packages or
+Brave/VSCodium builds are needed and updates are pending, run
 `./setup.sh upgrade --ask-become-pass`, then repeat the preview and installation.
+The same check protects the standalone network migration. See
+[Arch’s full-upgrade policy](https://wiki.archlinux.org/title/System_maintenance#Partial_upgrades_are_unsupported).
 
 ### 5. Verify and reboot
 

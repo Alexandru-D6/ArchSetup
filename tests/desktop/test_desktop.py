@@ -202,7 +202,7 @@ class DesktopTests(unittest.TestCase):
         for filename in ['configure.yml', 'login.yml']:
             tasks.extend(task for task in yaml.safe_load((ROLE / 'tasks' / filename).read_text())
                          if 'ansible.builtin.systemd_service' in task)
-        self.assertEqual(len(tasks), 3)
+        self.assertEqual(len(tasks), 2)
         playbook = Path(self.directory.name) / 'missing-services.yml'
         playbook.write_text(yaml.safe_dump([{
             'name': 'Fresh service preview regression',
@@ -219,7 +219,7 @@ class DesktopTests(unittest.TestCase):
                                  '--check', str(playbook)], env=environment,
                                 capture_output=True, text=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertRegex(result.stdout, r'changed=0\s+unreachable=0\s+failed=0\s+skipped=3')
+        self.assertRegex(result.stdout, r'changed=0\s+unreachable=0\s+failed=0\s+skipped=2')
 
     def test_cli_boolean_strings_render_as_booleans(self):
         for value, reduced in [('false', False), ('true', True)]:
