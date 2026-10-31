@@ -9,6 +9,7 @@ Rectangle {
     LockScreen {
         id: screen
         anchors.fill: parent
+        clockReady: true
     }
     TestCase {
         name: "LockClock"
@@ -17,6 +18,7 @@ Rectangle {
         function init() {
             fixture.width = 1024; fixture.height = 768;
             screen.clockPosition = null;
+            screen.clockReady = true;
             screen.dateCaption = "Thursday, October 15";
             screen.controls.clearPassword();
             screen.batteryPresent = false;
@@ -39,6 +41,34 @@ Rectangle {
             screen.batteryCharging = false;
             screen.powerConnected = false;
             compare(badge.label, "42%");
+        }
+        function test_delayed_settings_never_show_the_centered_clock() {
+            const group = findChild(screen, "lock-clock-group");
+            const input = findChild(screen, "lock-password");
+            screen.clockReady = false;
+            screen.clockPosition = null;
+            screen.controls.focusPassword();
+            for (let frame = 0; frame < 4; frame++) {
+                waitForRendering(screen);
+                compare(group.visible, false);
+                keyClick(Qt.Key_A);
+                wait(25);
+            }
+            compare(input.text, "aaaa");
+            screen.clockPosition = {x: 0.95, y: 0};
+            waitForRendering(screen);
+            compare(group.visible, false);
+            const savedX = group.x;
+            const savedY = group.y;
+            screen.clockReady = true;
+            waitForRendering(screen);
+            compare(group.visible, true);
+            compare(group.x, savedX);
+            compare(group.y, savedY);
+            compare(group.y, 64);
+            verify(group.x > (screen.width - group.width) / 2);
+            keyClick(Qt.Key_B);
+            compare(input.text, "aaaab");
         }
         function test_placement_stays_clear_of_password_controls_data() {
             return [

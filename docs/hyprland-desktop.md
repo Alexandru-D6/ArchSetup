@@ -431,6 +431,8 @@ Randomize. Randomize chooses a point now and Apply saves it. The complete clock
 and date group stays within each monitor's usable area, reserving the panel and
 password controls. Desktop placement updates immediately; both lock implementations
 use the new placement on the next lock. Default restores the original placement.
+The lock clock appears after its saved position is ready, avoiding a brief centered
+frame; the password controls remain available while those settings load.
 All clock images and date captions use the system timezone, including after a change.
 
 Apply saves changes and keeps the form open; Revert restores saved values. Close and Escape offer Apply,

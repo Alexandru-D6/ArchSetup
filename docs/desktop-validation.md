@@ -1,5 +1,20 @@
 # Desktop validation — 2026-10-10
 
+## Lock clock startup placement — 2026-10-31
+
+The animated lock holds the clock/date group until its saved settings resolve,
+preventing a centered frame before a custom placement. The secure lock surface
+and password controls start immediately. A temporarily busy settings reader is
+retried without queuing duplicate helper processes; a read error settles to the
+default placement once.
+
+The clock/frame regression now delays settings across several rendered frames
+and verifies that the first visible clock is at the saved position, with password
+typing responsive throughout. That fixture, production lock configuration loading
+and the settings-process integration test pass. Shared-reader lint and whitespace
+checks pass. Installed the three updated lock files for the next lock; no running
+lock or real authentication was exercised during deployment.
+
 ## Supplied wallpaper and charging badges — 2026-10-31
 
 The supplied sunset image is the default desktop and lock background. Wallpaper

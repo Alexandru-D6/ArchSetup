@@ -11,6 +11,7 @@ Item {
     property string error: ""
     property string errorCode: ""
     property bool pending: false
+    readonly property bool busy: reader.busy
     function refresh() {
         if (reader.busy) { pending = true; return; }
         reader.send({operation: "read"});

@@ -6,6 +6,7 @@ FocusScope {
     id: screen
     property string profile: ""
     property int clockRevision: 0
+    property bool clockReady: false
     property bool batteryPresent: false
     property bool batteryCharging: false
     property bool powerConnected: false
@@ -36,7 +37,7 @@ FocusScope {
         readonly property real dialSize: Math.max(1, Math.min(250, screen.width * 0.4, screen.height * 0.45,
             (screen.height - safeTop - safeBottom - captions.height - 20) * 250 / 260))
         readonly property real dialHeight: dialSize * 260 / 250
-        visible: screen.height - safeTop - safeBottom > captions.height + 24
+        visible: screen.clockReady && screen.height - safeTop - safeBottom > captions.height + 24
         width: Math.min(screen.width - 32, Math.max(300, dialSize))
         height: dialHeight + 20 + captions.height
         defaultX: (screen.width - width) / 2

@@ -14,6 +14,7 @@ ShellRoot {
     readonly property string profile: Quickshell.shellDir + "/.."
     readonly property string lockDirectory: Quickshell.env("ARCHSETUP_LOCK_DIR")
     property var preferences: ({})
+    readonly property bool clockReady: lockSettings.snapshot !== null || lockSettings.error !== ""
     property var palette: ({})
     Desktop.ClockSource { id: lockTime; path: root.profile + "/theme/lock-clock.json"; onSnapshotChanged: root.clockRevision++ }
     property string username: ""
@@ -36,9 +37,18 @@ ShellRoot {
         lock.locked = true;
     }
     Desktop.SettingsSource {
+        id: lockSettings
         profile: root.profile
         live: false
         onPreferencesChanged: root.preferences = preferences
+    }
+    // A settings Apply can briefly hold the reader's lock at startup. Retry
+    // without queuing duplicate reads or delaying the secure lock surface.
+    Timer {
+        interval: 250
+        running: !root.clockReady
+        repeat: true
+        onTriggered: if (!lockSettings.busy) lockSettings.refresh()
     }
     FileView {
         path: root.profile + "/theme/palette.json"
@@ -101,6 +111,7 @@ ShellRoot {
                 anchors.fill: parent
                 profile: root.profile
                 clockRevision: root.clockRevision
+                clockReady: root.clockReady
                 batteryPresent: UPower.displayDevice.ready && UPower.displayDevice.isPresent && UPower.displayDevice.isLaptopBattery
                 batteryCharging: UPower.displayDevice.state === UPowerDeviceState.Charging
                 powerConnected: !UPower.onBattery
