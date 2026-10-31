@@ -5,6 +5,7 @@
   "defaultTheme": {{ archsetup_desktop_theme | to_json }},
   "controlFontSize": {{ archsetup_desktop_control_font_size | int | to_json }},
   "lockPowerRequiresAuth": {{ archsetup_desktop_lock_require_auth_for_power | bool | to_json }},
+  "notifications": {"position": "top-right", "lowBatteryPercentage": 20, "criticalBatteryPercentage": 10, "suspendPercentage": 3},
   "keyboardLayouts": {{ archsetup_desktop_input.kb_layout | default('us') | to_json }},
   "keyboardVariants": {{ archsetup_desktop_input.kb_variant | default('') | to_json }},
   "keyboardOptions": {{ archsetup_desktop_input.kb_options | default('') | to_json }},

@@ -14,5 +14,7 @@ ShellRoot {
         function opened(enabled: bool): void { notifications.panelOpen = enabled; }
         function clear(): void { notifications.clear(); }
         function invoke(): void { notifications.notifications[0].actions[0].invoke(); }
+        function battery(level: string, percentage: int): void { notifications.notifyBattery(level, percentage, 3); }
+        function charged(): void { notifications.clearBattery(); }
     }
 }

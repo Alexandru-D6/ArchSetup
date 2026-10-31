@@ -254,6 +254,12 @@ ShellRoot {
                 selectedSessionAction: sessionMenu.selectedAction,
                 controlCenterOpen: root.controlCenterOpen, controlCenterScreen: root.controlCenterScreen,
                 notificationCount: notificationSource.notifications.length, dnd: notificationSource.dnd,
+                battery: {ready: batteryMonitor.ready, present: batteryMonitor.present, onBattery: batteryMonitor.onBattery,
+                    percentage: batteryMonitor.percentage, settings: batteryMonitor.settings,
+                    validSample: batteryMonitor.validSample, validSettings: batteryMonitor.validSettings,
+                    stage: batteryMonitor.alertedStage, suspendPending: batteryMonitor.suspendPending,
+                    suspendIssued: batteryMonitor.suspendIssued, notice: notificationSource.batteryNotice?.summary || "",
+                    popupVisible: notificationPopup.visible, popupWidth: notificationPopup.width, popupHeight: notificationPopup.height},
                 barVisible: root.barVisible, barBottom: root.barBottom,
                 widgetsVisible: root.desktopClockVisible, keyboardVisible: root.keyboardVisible,
                 toolsDetached: root.toolsDetached, idleInhibited: root.inhibitIdle});
@@ -440,6 +446,25 @@ ShellRoot {
         discovery: root.controlCenterOpen && controlCenter.bluetoothDetails
     }
     NotificationSource { id: notificationSource; profile: root.profile; active: false; panelOpen: root.controlCenterOpen }
+    BatteryMonitor {
+        id: batteryMonitor
+        ready: UPower.displayDevice.ready && UPower.displayDevice.state !== UPowerDeviceState.Unknown && settingsSource.snapshot !== null
+        present: UPower.displayDevice.isPresent && UPower.displayDevice.isLaptopBattery
+        onBattery: UPower.onBattery && UPower.displayDevice.state !== UPowerDeviceState.Charging
+        percentage: UPower.displayDevice.percentage * 100
+        settings: root.preferences.notifications || ({lowBatteryPercentage: 20, criticalBatteryPercentage: 10, suspendPercentage: 3})
+        onAlertRequested: (level, percentage) => {
+            console.info("Battery warning:", level, percentage);
+            notificationSource.notifyBattery(level, percentage, batteryMonitor.settings.suspendPercentage);
+        }
+        onCleared: notificationSource.clearBattery()
+        onSuspendRequested: if (!batterySuspend.running) batterySuspend.running = true
+    }
+    Process {
+        id: batterySuspend
+        command: [root.profile + "/bin/desktop-action", "suspend"]
+        onExited: (exitCode, exitStatus) => { if (exitCode !== 0 || exitStatus !== 0) batteryMonitor.suspendFailed(); }
+    }
     Process {
         command: [root.profile + "/bin/desktop-action", "retire-notifications"]
         running: true
@@ -488,19 +513,15 @@ ShellRoot {
             }
         }
     }
-    PanelWindow {
-        visible: notificationSource.toast !== null && !root.controlCenterOpen
+    NotificationPopup {
+        id: notificationPopup
+        visible: notificationSource.toast !== null
         screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) || Quickshell.screens[0]
-        anchors { top: true; right: true }
-        margins { top: root.barVisible && !root.barBottom ? 48 : 8; right: 8 }
-        implicitWidth: Math.min(380, (screen?.width || 400) - 16)
-        implicitHeight: toastCard.implicitHeight
-        exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.namespace: "archsetup-notification"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-        color: "transparent"
-        NotificationCard { id: toastCard; width: parent.width; theme: controlCenter; notification: notificationSource.toast; compact: true }
+        theme: controlCenter
+        notification: notificationSource.toast
+        position: root.preferences.notifications?.position || "top-right"
+        barVisible: root.barVisible
+        bottomBar: root.barBottom
     }
 
     FileView {

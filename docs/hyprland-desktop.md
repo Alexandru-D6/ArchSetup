@@ -191,6 +191,27 @@ the desktop role installs this dependency.
 Quickshell now serves notifications directly using its
 [notification service](https://quickshell.org/docs/v0.3.2/types/Quickshell.Services.Notifications/NotificationServer/).
 The panel supports notification actions, dismissal, Clear, and Do Not Disturb.
+Open **Configuration → Notifications** to place notification boxes at the top or
+bottom, aligned left, center or right on the focused screen. The placement takes
+effect when you Apply, and boxes leave room for the taskbar.
+
+The same page controls battery thresholds: low at **20%**, critical at **10%**,
+and automatic suspend **below 3%** by default. Use whole percentages with
+**suspend < critical < low**. Low alerts disappear after ten seconds; critical
+alerts use an emphasized card and remain until dismissed or the battery recovers.
+Battery alerts bypass Do Not Disturb and remain visible with Quick
+settings open. Connecting power clears battery alerts.
+
+Below the suspend threshold, a five-second warning appears before the normal
+system suspend action. Connecting power or recovering above the threshold during
+that warning cancels it. The shell requests suspend once until power returns or
+the charge recovers by at least two percentage points above the suspend threshold;
+resuming on the same depleted battery does not immediately suspend again. Failed
+suspend requests produce a persistent error notification. The existing Hypridle
+sleep inhibitor handles locking before sleep. Monitoring runs in the desktop
+shell and ignores absent batteries or invalid readings. Thresholds and placement
+are saved in user-owned `settings.json` and survive installation runs.
+
 Normal pop-ups disappear after their requested timeout but stay in the panel;
 transient notifications skip history. The latest 100 notifications are retained
 for the current shell session; restarting the process clears this history.

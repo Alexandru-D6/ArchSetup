@@ -1,5 +1,35 @@
 # Desktop validation — 2026-10-10
 
+## Battery notifications — 2026-10-31
+
+Configuration has a searchable Notifications page with six screen-edge placements
+and saved low, critical and automatic-suspend percentages. Defaults are 20%, 10%
+and below 3%. Battery cards remain visible with Do Not Disturb or Quick
+settings open. Pending suspend gives five seconds to connect power and rechecks
+the current reading before requesting the existing suspend action.
+
+All 30 settings tests and the complete Qt interaction suite pass. Simulated
+battery tests cover escalation, exact boundaries, custom thresholds, power and
+threshold-change cancellation, invalid/absent readings, suspend failures and
+avoiding repeated suspend requests after resume. Private D-Bus notification tests
+cover critical battery priority, Do Not Disturb, history and clearing on power
+connection. The settings page and critical card were rendered and inspected.
+Installation and verification playbook syntax checks pass.
+
+Follow-up: low warnings initially followed Do Not Disturb, suppressing the popup
+on the workstation. All battery warnings now bypass it, and toggling Do Not
+Disturb or Quick settings no longer hides a battery popup. The private D-Bus
+regression covers both cases. Installed the corrected source and shell wiring;
+the live shell reported a real 19% discharging battery, a matching low threshold,
+and a visible 380 × 101 top-right popup with Do Not Disturb still enabled.
+The status endpoint now includes battery readiness, thresholds, alert stage and
+popup visibility. Saved preferences were preserved.
+
+Core component lint passes. The extracted PanelWindow and dynamic notification
+model retain Quickshell's static-tooling warnings. Other screen-edge placements
+and actual suspend/lock/resume remain interactive acceptance checks. No real
+suspend was performed for these checks.
+
 ## Screen configuration — 2026-10-29
 
 Configuration now has a searchable Screen category with per-display resolution,

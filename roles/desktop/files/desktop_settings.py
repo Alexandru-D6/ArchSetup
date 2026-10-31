@@ -1,4 +1,4 @@
-"""Validated desktop settings and transactions for timezone, input and displays."""
+"""Validated settings for timezone, input, displays and battery notifications."""
 import fcntl
 import hashlib
 import json
@@ -24,6 +24,11 @@ LAYOUTS_FIELD = 'general.keyboard.layouts'
 DESKTOP_FIELD = 'general.clockPlacement.desktop'
 LOCK_FIELD = 'general.clockPlacement.lockScreen'
 FIELDS = {POWER_FIELD, TIMEZONE_FIELD, LAYOUTS_FIELD, DESKTOP_FIELD, LOCK_FIELD, screens.FIELD}
+NOTIFICATION_DEFAULTS = {'position': 'top-right', 'lowBatteryPercentage': 20,
+                         'criticalBatteryPercentage': 10, 'suspendPercentage': 3}
+NOTIFICATION_POSITIONS = ('top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right')
+NOTIFICATION_FIELDS = {'notifications.' + key: key for key in NOTIFICATION_DEFAULTS}
+FIELDS.update(NOTIFICATION_FIELDS)
 CLOCK_START = '# archsetup-lock-clock-start\n'
 CLOCK_END = '# archsetup-lock-clock-end\n'
 GENERATED = ['settings-input.lua', 'settings-screens.lua', 'lock-identity.conf', 'theme/lock-identity.conf']
@@ -92,7 +97,28 @@ def documents(root):
             screens.shape(saved['screen']['monitors'])
         except ValueError as error:
             raise SettingsError('schema', str(error)) from None
+    notification_preferences(preferences, saved)
     return preferences, saved
+
+
+def notification_preferences(preferences, saved):
+    defaults = preferences.get('notifications', {})
+    overrides = saved.get('notifications', {})
+    if (not isinstance(defaults, dict) or not isinstance(overrides, dict)
+            or set(overrides) - NOTIFICATION_DEFAULTS.keys()):
+        raise SettingsError('validation', 'Invalid notification settings.')
+    values = {**NOTIFICATION_DEFAULTS, **defaults, **overrides}
+    if values['position'] not in NOTIFICATION_POSITIONS:
+        raise SettingsError('validation', 'Choose a notification position.',
+                            {'notifications.position': 'Choose a screen edge position.'})
+    percentages = ('suspendPercentage', 'criticalBatteryPercentage', 'lowBatteryPercentage')
+    errors = {'notifications.' + key: 'Use a whole percentage between 1 and 100.'
+              for key in percentages if type(values[key]) is not int or not 1 <= values[key] <= 100}
+    if not errors and not values['suspendPercentage'] < values['criticalBatteryPercentage'] < values['lowBatteryPercentage']:
+        errors = {'notifications.' + key: 'Use suspend < critical < low battery.' for key in percentages}
+    if errors:
+        raise SettingsError('validation', 'Review the battery thresholds.', errors)
+    return values
 
 
 def default_layouts(preferences):
@@ -138,6 +164,7 @@ def resolve(preferences, saved):
     effective['keyboardLayouts'] = ','.join(item['layout'] for item in layouts)
     effective['keyboardVariants'] = ','.join(item['variant'] for item in layouts)
     effective['clockPlacement'] = {'desktop': None, 'lockScreen': None, **saved['general'].get('clockPlacement', {})}
+    effective['notifications'] = notification_preferences(preferences, saved)
     return effective
 
 
@@ -171,7 +198,8 @@ def snapshot_from(preferences, saved, observed=None):
             'values': {POWER_FIELD: effective['lockPowerRequiresAuth'], TIMEZONE_FIELD: observed['timezone'],
                        DESKTOP_FIELD: effective['clockPlacement']['desktop'], LOCK_FIELD: effective['clockPlacement']['lockScreen'],
                        LAYOUTS_FIELD: saved['general'].get('keyboard', {}).get('layouts', default_layouts(preferences)),
-                       screens.FIELD: screen_state['values']},
+                       screens.FIELD: screen_state['values'],
+                       **{field: effective['notifications'][key] for field, key in NOTIFICATION_FIELDS.items()}},
             'preferences': effective,
             'runtime': {'inSession': observed['keyboard'] is not None,
                         'screens': screen_state['catalog'], 'screenError': screen_state['error'],
@@ -364,6 +392,8 @@ def apply(root, revision, changes):
         for field, value in changes.items():
             if field == POWER_FIELD:
                 general['lockPowerRequiresAuth'] = value
+            elif field in NOTIFICATION_FIELDS:
+                updated.setdefault('notifications', {})[NOTIFICATION_FIELDS[field]] = value
             elif field in (DESKTOP_FIELD, LOCK_FIELD):
                 general.setdefault('clockPlacement', {})[field.rsplit('.', 1)[1]] = value
             elif field == LAYOUTS_FIELD:

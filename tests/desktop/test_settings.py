@@ -46,6 +46,38 @@ class SettingsTests(unittest.TestCase):
     def change(self, changes):
         return settings.apply(self.profile, settings.snapshot(self.profile)['revision'], changes)
 
+    def test_notification_settings_persist_and_survive_reapplying_defaults(self):
+        self.assertEqual(settings.snapshot(self.profile)['preferences']['notifications'], settings.NOTIFICATION_DEFAULTS)
+        changes = {'notifications.position': 'bottom-left', 'notifications.lowBatteryPercentage': 30,
+                   'notifications.criticalBatteryPercentage': 15, 'notifications.suspendPercentage': 5}
+        self.change(changes)
+        render(self.profile)
+        current = settings.snapshot(self.profile)
+        for key, value in changes.items():
+            self.assertEqual(current['values'][key], value)
+        self.assertEqual(current['preferences']['notifications']['suspendPercentage'], 5)
+
+    def test_invalid_battery_thresholds_and_positions_do_not_commit(self):
+        self.change({'notifications.position': 'bottom-center'})
+        before = (self.profile / 'settings.json').read_bytes()
+        for value in (True, None, '3', 0, -1, 2.5, 100, float('nan')):
+            with self.subTest(value=value), self.assertRaises(settings.SettingsError):
+                self.change({'notifications.suspendPercentage': value})
+            self.assertEqual((self.profile / 'settings.json').read_bytes(), before)
+        for changes in ({'notifications.position': 'middle'},
+                        {'notifications.lowBatteryPercentage': 10},
+                        {'notifications.criticalBatteryPercentage': 3}):
+            with self.subTest(changes=changes), self.assertRaises(settings.SettingsError):
+                self.change(changes)
+            self.assertEqual((self.profile / 'settings.json').read_bytes(), before)
+
+    def test_invalid_saved_notification_settings_are_rejected(self):
+        path = self.profile / 'settings.json'
+        for value in ([], {'suspendPercentage': True}, {'suspendPercentage': 20}, {'position': 'middle'}):
+            path.write_text(json.dumps({'schemaVersion': 1, 'revision': 1, 'general': {}, 'notifications': value}))
+            with self.subTest(value=value), self.assertRaises(settings.SettingsError):
+                settings.snapshot(self.profile)
+
     def test_clock_positions_are_independent_persistent_and_validated(self):
         first = settings.snapshot(self.profile)['values']
         self.assertIsNone(first[settings.DESKTOP_FIELD])

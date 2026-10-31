@@ -5,11 +5,20 @@ QtObject {
     id: registry
     property var categories: [
         {id: "general", title: "General", page: Qt.resolvedUrl("GeneralSettings.qml")},
-        {id: "screen", title: "Screen", page: Qt.resolvedUrl("ScreenSettings.qml")}
+        {id: "screen", title: "Screen", page: Qt.resolvedUrl("ScreenSettings.qml")},
+        {id: "notifications", title: "Notifications", page: Qt.resolvedUrl("NotificationSettings.qml")}
     ]
     // Register settings only when their controls and backend are implemented.
     // Forms and search share the same IDs, labels, descriptions and aliases.
     property var settings: [
+        {id: "notifications.position", category: "notifications", section: "Screen edge", label: "Notification position",
+            description: "Choose the edge and corner for notification boxes on the focused screen.", keywords: "notification toast popup box border corner top bottom left right center"},
+        {id: "notifications.lowBatteryPercentage", category: "notifications", section: "Battery", label: "Low battery warning (%)",
+            description: "Warn at or below this percentage while running on battery.", keywords: "battery charge energy low warning threshold percentage"},
+        {id: "notifications.criticalBatteryPercentage", category: "notifications", section: "Battery", label: "Critical battery warning (%)",
+            description: "Show a persistent, emphasized warning, even with Do Not Disturb enabled.", keywords: "battery charge energy critical urgent warning threshold percentage"},
+        {id: "notifications.suspendPercentage", category: "notifications", section: "Battery", label: "Suspend below (%)",
+            description: "Suspend below this percentage after a five-second warning. Connecting power cancels the pending suspend.", keywords: "battery charge energy automatic suspend sleep threshold percentage"},
         {id: "screen.monitors", category: "screen", section: "Displays", label: "Connected display",
             description: "Choose the monitor to configure.", keywords: "screen monitor output display external laptop"},
         {id: "screen.resolution", category: "screen", section: "Display mode", label: "Resolution",

@@ -80,6 +80,25 @@ with (fixture / 'log').open('w+') as log:
         ipc('clear')
         assert status()['count'] == 0
         assert status()['toast'] == ''
+        ipc('quiet', 'true')
+        ipc('opened', 'true')
+        ipc('battery', 'low', '20')
+        assert status()['count'] == 1 and status()['toast'] == 'Battery low', status()
+        ipc('quiet', 'false')
+        ipc('quiet', 'true')
+        ipc('opened', 'false')
+        ipc('opened', 'true')
+        assert status()['toast'] == 'Battery low', status()
+        ipc('battery', 'critical', '10')
+        assert status()['toast'] == 'Battery critically low', status()
+        notify('Ordinary notification during critical battery')
+        assert status()['toast'] == 'Battery critically low', status()
+        ipc('battery', 'suspend', '2')
+        assert status()['toast'] == 'Battery almost empty', status()
+        ipc('charged')
+        assert status()['toast'] == '', status()
+        ipc('clear')
+        assert status()['count'] == 0
         print('ARCHSETUP_NOTIFICATIONS_PASSED')
     finally:
         process.terminate()

@@ -10,13 +10,39 @@ Item {
     property bool panelOpen: false
     property bool dnd: false
     property bool loaded: false
-    property var toast: null
-    readonly property var notifications: serverLoader.item ? serverLoader.item.trackedNotifications.values.slice().reverse().filter(n => !n.transient) : []
+    property var applicationToast: null
+    property var batteryNotice: null
+    property bool batteryVisible: false
+    readonly property var toast: batteryVisible ? batteryNotice : applicationToast
+    readonly property var notifications: (batteryNotice ? [batteryNotice] : []).concat(serverLoader.item ? serverLoader.item.trackedNotifications.values.slice().reverse().filter(n => !n.transient) : [])
+    function notifyBattery(level, percentage, threshold) {
+        const critical = level !== "low";
+        const titles = {low: "Battery low", critical: "Battery critically low", suspend: "Battery almost empty",
+            suspending: "Suspending for low battery", failed: "Automatic suspend failed"};
+        const messages = {
+            low: "Connect your charger soon.",
+            critical: "Connect your charger now. The computer will suspend below " + threshold + "%.",
+            suspend: "Suspending in 5 seconds. Connect power to cancel.",
+            suspending: "Connect power before resuming your work.",
+            failed: "Save your work and connect power immediately. Suspend manually from the session menu."
+        };
+        batteryNotice = {appName: "Battery", summary: titles[level], body: percentage + "% remaining. " + messages[level],
+            urgency: critical ? NotificationUrgency.Critical : NotificationUrgency.Normal, actions: [],
+            dismiss: () => clearBattery()};
+        // Power warnings must remain visible even while ordinary alerts are quiet.
+        batteryVisible = true;
+        batteryTimeout.stop();
+        if (!critical && batteryVisible) batteryTimeout.restart();
+    }
+    function clearBattery() { batteryTimeout.stop(); batteryVisible = false; batteryNotice = null; }
     function clear() { for (const item of notifications.slice()) item.dismiss(); }
-    function hideToast() {
-        const previous = toast;
-        toast = null;
+    function hideApplicationToast() {
+        const previous = applicationToast;
+        applicationToast = null;
         if (previous?.transient) previous.expire();
+    }
+    function hideToast() {
+        hideApplicationToast();
     }
     onPanelOpenChanged: if (panelOpen) hideToast()
     onDndChanged: {
@@ -48,8 +74,8 @@ Item {
             onNotification: notification => {
                 notification.tracked = true;
                 if (!notification.lastGeneration && !service.dnd && !service.panelOpen) {
-                    if (service.toast !== notification) service.hideToast();
-                    service.toast = notification;
+                    if (service.applicationToast !== notification) service.hideApplicationToast();
+                    service.applicationToast = notification;
                     timeout.stop();
                     // The installed notification API preserves the D-Bus timeout in milliseconds.
                     timeout.interval = notification.expireTimeout > 0 ? notification.expireTimeout : 6000;
@@ -62,8 +88,9 @@ Item {
         }
     }
     Connections {
-        target: service.toast
-        function onClosed(reason) { service.toast = null; }
+        target: service.applicationToast
+        function onClosed(reason) { service.applicationToast = null; }
     }
-    Timer { id: timeout; onTriggered: service.hideToast() }
+    Timer { id: timeout; onTriggered: service.hideApplicationToast() }
+    Timer { id: batteryTimeout; interval: 10000; onTriggered: service.batteryVisible = false }
 }

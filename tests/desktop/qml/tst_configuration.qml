@@ -40,6 +40,10 @@ Rectangle {
                 "general.keyboard.layouts": [{layout: "us", variant: ""}],
                 "general.clockPlacement.desktop": null,
                 "general.clockPlacement.lockScreen": null,
+                "notifications.position": "top-right",
+                "notifications.lowBatteryPercentage": 20,
+                "notifications.criticalBatteryPercentage": 10,
+                "notifications.suspendPercentage": 3,
                 "screen.monitors": [{name: "DP-1", mode: "1920x1080@60.00", scale: 1, transform: 0, x: 0, y: 0},
                     {name: "HDMI-A-1", mode: "1920x1080@60.00", scale: 1, transform: 0, x: 1920, y: 0}]
             }, runtime: {activeLayout: "English (US)", screenError: "", screens: [
@@ -118,6 +122,35 @@ Rectangle {
             compare(control("settings-search-empty").visible, configuration.searching && data.count === 0);
             compare(store.dirty, false);
         }
+        function test_notification_settings_search_edit_validation_and_revert() {
+            configuration.query = "suspend below";
+            compare(configuration.results.length, 1);
+            configuration.activateResult(0);
+            tryCompare(store, "selectedCategory", "notifications");
+            tryVerify(() => control("settings-notifications.suspendPercentage") !== null);
+            const suspendControl = control("settings-notifications.suspendPercentage");
+            tryCompare(suspendControl, "activeFocus", true);
+            keyClick(Qt.Key_Up);
+            compare(store.draft["notifications.suspendPercentage"], 4);
+            compare(store.canApply, true);
+            store.edit("notifications.suspendPercentage", 10);
+            compare(store.canApply, false);
+            verify(store.fieldErrors["notifications.criticalBatteryPercentage"].length > 0);
+            store.edit("notifications.criticalBatteryPercentage", 15);
+            compare(store.canApply, true);
+            configuration.loadedPage.revealSetting("notifications.position");
+            const position = control("settings-notification-position");
+            tryCompare(position, "activeFocus", true);
+            keyClick(Qt.Key_End);
+            compare(store.draft["notifications.position"], "bottom-right");
+            configuration.clearSearch();
+            waitForRendering(configuration);
+            grabImage(fixture).save("/tmp/archsetup-notification-settings.png");
+            store.revert();
+            compare(store.draft["notifications.position"], "top-right");
+            compare(store.draft["notifications.suspendPercentage"], 3);
+            compare(store.dirty, false);
+        }
         function test_typed_search_enter_reveals_and_focuses_control() {
             keyClick(Qt.Key_P); keyClick(Qt.Key_O); keyClick(Qt.Key_W); keyClick(Qt.Key_E); keyClick(Qt.Key_R);
             compare(configuration.query, "power");
@@ -148,7 +181,7 @@ Rectangle {
                 {id: "test.setting", category: "general", label: "Power test", description: "Test result", keywords: "power"}
             ]);
             configuration.query = "power";
-            compare(configuration.results.length, 2);
+            compare(configuration.results.length, 3);
             configuration.focusSearch();
             keyClick(Qt.Key_Down);
             compare(configuration.selectedResult, 1);

@@ -77,6 +77,18 @@ QtObject {
             !item || !isFinite(item.scale) || item.scale < 1 || item.scale > 4 ||
             ![item.x, item.y].every(number => typeof number === "number" && Number.isInteger(number) && Math.abs(number) <= 65535)))) errors[id] = "Choose a valid scale and whole-pixel monitor positions.";
         else delete errors[id];
+        if (id === "notifications.position" && !["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"].includes(value))
+            errors[id] = "Choose a screen edge position.";
+        if (id.startsWith("notifications.") && id !== "notifications.position") {
+            const keys = ["notifications.suspendPercentage", "notifications.criticalBatteryPercentage", "notifications.lowBatteryPercentage"];
+            for (const key of keys) delete errors[key];
+            const values = keys.map(key => draft[key]);
+            if (!values.every(number => Number.isInteger(number) && number >= 1 && number <= 100)) {
+                keys.forEach((key, index) => { if (!Number.isInteger(values[index]) || values[index] < 1 || values[index] > 100) errors[key] = "Use a whole percentage between 1 and 100."; });
+            } else if (!(values[0] < values[1] && values[1] < values[2])) {
+                for (const key of keys) errors[key] = "Use suspend < critical < low battery.";
+            }
+        }
         fieldErrors = errors;
         error = "";
         notice = "";
