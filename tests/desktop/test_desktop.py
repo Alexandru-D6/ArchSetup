@@ -371,6 +371,42 @@ else:
         self.assertTrue(all(sum(field in item for field in ['action', 'dispatcher', 'callback']) == 1 for item in bindings))
         self.assertTrue(all(not item.get('locked') for item in bindings if 'action' in item))
 
+    def test_close_shortcuts_route_to_shell_before_the_application(self):
+        bindings = json.loads((self.profile / 'shortcuts.json').read_text())
+        for key in ('SUPER + Q', 'ALT + F4'):
+            binding = next(item for item in bindings if item['key'] == key)
+            self.assertEqual(binding['action'], 'close-window')
+        for handled in (True, False):
+            response = subprocess.CompletedProcess([], 0, 'true\n' if handled else 'false\n', '')
+            with self.subTest(handled=handled), patch.object(self.actions.subprocess, 'run', return_value=response) as ipc, \
+                    patch.object(self.actions, 'run') as dispatch:
+                self.actions.main('close-window')
+                self.assertEqual(ipc.call_args.args[0][-2:], ['desktop', 'closeActive'])
+                if handled:
+                    dispatch.assert_not_called()
+                else:
+                    dispatch.assert_called_once_with('hyprctl', 'dispatch', 'hl.dsp.window.close()')
+
+    def test_close_shortcut_leaves_application_alone_on_shell_errors(self):
+        for response in (subprocess.CompletedProcess([], 1, '', 'IPC connection denied'),
+                         subprocess.CompletedProcess([], 0, 'unexpected output', '')):
+            with self.subTest(response=response), patch.object(self.actions.subprocess, 'run', return_value=response), \
+                    patch.object(self.actions, 'run') as dispatch:
+                with self.assertRaises(ValueError):
+                    self.actions.main('close-window')
+                dispatch.assert_not_called()
+        with patch.object(self.actions.subprocess, 'run', side_effect=subprocess.TimeoutExpired('qs', 3)), \
+                patch.object(self.actions, 'run') as dispatch:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                self.actions.main('close-window')
+            dispatch.assert_not_called()
+
+    def test_close_shortcut_closes_application_when_shell_is_not_running(self):
+        response = subprocess.CompletedProcess([], 1, '', 'No running instances for "' + str(self.profile / 'shell/shell.qml') + '"')
+        with patch.object(self.actions.subprocess, 'run', return_value=response), patch.object(self.actions, 'run') as dispatch:
+            self.actions.main('close-window')
+            dispatch.assert_called_once_with('hyprctl', 'dispatch', 'hl.dsp.window.close()')
+
     def test_cancelled_capture_aliases_do_not_run_ocr_or_save(self):
         for action in ['screenshot-region-save', 'ocr']:
             with self.subTest(action=action), patch.object(self.actions.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '')), patch.object(self.actions, 'run') as run:

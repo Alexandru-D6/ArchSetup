@@ -310,6 +310,19 @@ def screenshot(action):
 def shell_toggle(name):
     run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'control', name)
 
+def close_window():
+    result = subprocess.run(['qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'closeActive'],
+                            capture_output=True, text=True, timeout=3)
+    if result.returncode == 0:
+        response = result.stdout.strip()
+        if response == 'true':
+            return
+        if response != 'false':
+            raise ValueError('Could not determine whether a desktop menu is open; leaving the application untouched.')
+    elif 'No running instances for "' + str(ROOT / 'shell/shell.qml') + '"' not in result.stdout + result.stderr:
+        raise ValueError('Could not close the desktop menu; leaving the application untouched.')
+    run('hyprctl', 'dispatch', 'hl.dsp.window.close()')
+
 def stop_recording_for_lock():
     # Region selection can hold the recorder's guard indefinitely. Cleanup must
     # neither delay the locker/fallback nor leave a waiting helper behind.
@@ -430,6 +443,7 @@ def main(action):
         run('qs', '-p', str(ROOT / 'shell'), 'kill')
         # session-services supervises only this profile's qs instance and restarts it.
     elif action == 'kill-window': run('hyprctl', 'kill')
+    elif action == 'close-window': close_window()
     elif action.startswith('record-'):
         run(str(ROOT / 'bin/desktop-record'), action)
     elif action == 'dnd': shell_toggle('dnd')

@@ -99,7 +99,7 @@
   },
   {
     "key": "SUPER + Q",
-    "dispatcher": "hl.dsp.window.close()",
+    "action": "close-window",
     "description": "Close window",
     "category": "Windows"
   },
@@ -738,7 +738,7 @@
     "category": "Windows",
     "repeating": false,
     "mouse": false,
-    "dispatcher": "hl.dsp.window.close()"
+    "action": "close-window"
   },
   {
     "key": "SUPER + ALT + D",

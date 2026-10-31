@@ -16,6 +16,11 @@ picker keys dismisses that menu; choosing a different launcher menu replaces the
 current one. Overview, settings, utilities, media, shortcut help and the on-screen
 keyboard also toggle with their opening shortcuts.
 
+Super+Q and Alt+F4 close the open desktop menu on the focused screen before
+closing an application. Configuration uses its normal Apply/Discard/Stay prompt
+when there are unsaved changes; applying settings consumes the shortcut without
+closing the application behind it.
+
 Super+/ opens a centered shortcut window with category headings and keycap labels.
 Its search field receives keyboard focus immediately. Search matches keys, action
 descriptions and categories without regard to case; multiple words must all match.

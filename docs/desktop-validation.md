@@ -1,5 +1,20 @@
 # Desktop validation — 2026-10-10
 
+## Close shortcuts — 2026-10-31
+
+Super+Q and Alt+F4 now ask the shell to close the visible menu on the focused
+screen before closing an application. Configuration uses its existing
+Apply/Discard/Stay prompt; a busy Apply consumes the shortcut without forwarding
+it to the application behind the panel. Failed or malformed shell replies also
+leave the application untouched.
+
+All five focused action/binding/parser tests and 35 Configuration Qt checks pass.
+Installed the helper, shell and shortcut map, validated the updated native Lua
+and reloaded the compositor bindings. Live checks closed Configuration, Quick
+settings and shortcut help through the production helper, preserving every
+existing application. The checks blocked native application-close commands;
+normal application fallback is covered by the isolated action tests.
+
 ## Battery notifications — 2026-10-31
 
 Configuration has a searchable Notifications page with six screen-edge placements

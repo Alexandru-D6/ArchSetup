@@ -103,6 +103,23 @@ ShellRoot {
         page = "session";
         sessionMenu.forceActiveFocus();
     }
+    function closeActiveSurface() {
+        const monitor = Hyprland.focusedMonitor?.name || "";
+        if (page !== "") { page = ""; return true; }
+        if (controlCenterOpen && (!monitor || controlPanel.screen?.name === monitor)) {
+            controlCenterOpen = false;
+            return true;
+        }
+        if (timeCenterOpen && (!monitor || timePanel.screen?.name === monitor)) {
+            timeCenter.closed();
+            return true;
+        }
+        if (configurationOpen && (!monitor || configurationPanel.screen?.name === monitor)) {
+            configurationWindow.requestClose();
+            return true;
+        }
+        return false;
+    }
     function workspace(number) { Hyprland.dispatch("hl.dsp.focus({workspace=" + number + "})"); }
     function workspaceStart(active, count) { return Math.floor((Math.max(1, active || 1) - 1) / count) * count + 1; }
     function control(name) {
@@ -240,6 +257,7 @@ ShellRoot {
         function key(key: string): void { root.typeKey(key); }
         function awake(active: bool): void { root.inhibitIdle = active; }
         function shutdown(): void { root.shutdown(); }
+        function closeActive(): bool { return root.closeActiveSurface(); }
         function status(): string {
             return JSON.stringify({page: root.page, windows: ToplevelManager.toplevels.values.length,
                 configurationOpen: root.configurationOpen, configurationScreen: root.configurationScreenName,
