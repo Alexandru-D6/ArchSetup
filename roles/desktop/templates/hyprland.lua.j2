@@ -8,6 +8,10 @@ hl.monitor({
 {% endfor %}
 })
 {% endfor %}
+-- Interactive display overrides follow managed monitor defaults.
+local settings_screens = root .. "/settings-screens.lua"
+local screen_file = io.open(settings_screens, "r")
+if screen_file then screen_file:close(); dofile(settings_screens) end
 hl.config({
     input = {
 {% for key, value in archsetup_desktop_input.items() if key != 'touchpad' %}

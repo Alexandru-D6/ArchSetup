@@ -36,7 +36,7 @@ Item {
         onExited: exitCode => {
             try {
                 const response = JSON.parse(output.text);
-                if (typeof response.ok !== "boolean" || (response.ok && (exitCode !== 0 || (!response.snapshot && !response.catalog && !response.clock))))
+                if (typeof response.ok !== "boolean" || (response.ok && (exitCode !== 0 || (!response.snapshot && !response.catalog && !response.clock && !("screenTest" in response)))))
                     throw new Error("Invalid settings response");
                 backend.complete(response);
             } catch (error) {

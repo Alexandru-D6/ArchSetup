@@ -94,7 +94,7 @@ ShellRoot {
         focusTimer.restart();
     }
     function focusConfiguration() {
-        if (settingsStore.busy) return;
+        if (settingsStore.busy && !settingsStore.screenTest) return;
         configurationWindow.focusForm();
         configurationFocus.active = true;
     }
@@ -141,12 +141,19 @@ ShellRoot {
     SettingsStore {
         id: settingsStore
         onApplyRequested: request => { configurationFocus.active = false; settingsWriter.send(request); }
+        onScreenDecisionRequested: (token, keep) => screenDecision.send({operation: "screen-decision", token: token, keep: keep})
+        onScreenTestChanged: {
+            const token = screenTest ? screenTest.token : "";
+            if (token && token !== root.screenConfirmationToken) configurationFocus.active = true;
+            root.screenConfirmationToken = token;
+        }
         onPreviewRequested: zone => {
             root.previewZone = zone;
             if (!previewReader.busy) previewReader.send({operation: "preview", timezone: zone});
         }
     }
     property string previewZone: ""
+    property string screenConfirmationToken: ""
     SettingsBackend {
         id: catalogReader
         profile: root.profile
@@ -169,6 +176,25 @@ ShellRoot {
         id: settingsWriter
         profile: root.profile
         onFinished: response => { settingsStore.finish(response, request.operation); settingsSource.refresh(); focusTimer.restart(); }
+    }
+    SettingsBackend {
+        id: screenStatus
+        profile: root.profile
+        onFinished: response => { if (response.ok) settingsStore.screenTest = response.screenTest; }
+    }
+    SettingsBackend {
+        id: screenDecision
+        profile: root.profile
+        onFinished: response => {
+            if (!response.ok) settingsStore.error = response.message;
+            if (!screenStatus.busy) screenStatus.send({operation: "screen-status"});
+        }
+    }
+    Timer {
+        interval: 500
+        running: settingsStore.busy || settingsStore.screenTest !== null
+        repeat: true
+        onTriggered: if (!screenStatus.busy) screenStatus.send({operation: "screen-status"})
     }
     FileView {
         path: root.profile + "/state.json"
@@ -580,8 +606,8 @@ ShellRoot {
         implicitHeight: Math.min(840, (screen?.height || 840) - ((screen?.height || 840) < 400 ? 16 : 80))
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.namespace: "archsetup-configuration"
-        WlrLayershell.layer: settingsStore.busy ? WlrLayer.Bottom : WlrLayer.Top
-        WlrLayershell.keyboardFocus: root.page === "" && !root.controlCenterOpen && !root.timeCenterOpen && !settingsStore.busy ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.layer: settingsStore.busy && !settingsStore.screenTest ? WlrLayer.Bottom : WlrLayer.Top
+        WlrLayershell.keyboardFocus: root.page === "" && !root.controlCenterOpen && !root.timeCenterOpen && (!settingsStore.busy || settingsStore.screenTest) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         color: "transparent"
         ConfigurationWindow {
             id: configurationWindow

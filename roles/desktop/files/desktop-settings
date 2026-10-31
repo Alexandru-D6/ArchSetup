@@ -4,13 +4,19 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 from desktop_settings import SettingsError, apply, catalog, clock_snapshot, parse_json, recover, snapshot, sync
 import desktop_system as system
+import desktop_screens as screens
 
 
 def main():
     root = Path(__file__).resolve().parent.parent
+    if sys.argv[1:] == ['screen-watch']:
+        time.sleep(screens.TEST_SECONDS + 10)
+        recover(root)
+        return 0
     if sys.argv[1:] == ['date']:
         current = clock_snapshot()
         try:
@@ -43,6 +49,11 @@ def main():
             if not isinstance(zone, str) or zone not in system.timezone_catalog():
                 raise SettingsError('validation', 'Choose an installed timezone.')
             print(json.dumps({'ok': True, 'clock': clock_snapshot(zone)}))
+            return 0
+        elif operation in ('screen-status', 'screen-decision'):
+            if operation == 'screen-decision':
+                screens.decide(root, request.get('token'), request.get('keep'))
+            print(json.dumps({'ok': True, 'screenTest': screens.status(root)}))
             return 0
         else:
             raise SettingsError('request', 'Unknown settings operation.')

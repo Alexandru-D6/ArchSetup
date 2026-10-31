@@ -77,6 +77,7 @@
     - {src: desktop-settings, dest: bin/desktop-settings, mode: '0755'}
     - {src: desktop_settings.py, dest: bin/desktop_settings.py, mode: '0644'}
     - {src: desktop_system.py, dest: bin/desktop_system.py, mode: '0644'}
+    - {src: desktop_screens.py, dest: bin/desktop_screens.py, mode: '0644'}
     - {src: desktop-record, dest: bin/desktop-record, mode: '0755'}
     - {src: lock-visuals, dest: bin/lock-visuals, mode: '0755'}
     - {src: session-services, dest: bin/session-services, mode: '0755'}

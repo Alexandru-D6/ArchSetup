@@ -4,11 +4,24 @@ import QtQml
 QtObject {
     id: registry
     property var categories: [
-        {id: "general", title: "General", page: Qt.resolvedUrl("GeneralSettings.qml")}
+        {id: "general", title: "General", page: Qt.resolvedUrl("GeneralSettings.qml")},
+        {id: "screen", title: "Screen", page: Qt.resolvedUrl("ScreenSettings.qml")}
     ]
     // Register settings only when their controls and backend are implemented.
     // Forms and search share the same IDs, labels, descriptions and aliases.
     property var settings: [
+        {id: "screen.monitors", category: "screen", section: "Displays", label: "Connected display",
+            description: "Choose the monitor to configure.", keywords: "screen monitor output display external laptop"},
+        {id: "screen.resolution", category: "screen", section: "Display mode", label: "Resolution",
+            description: "Choose a resolution supported by this display.", keywords: "screen display monitor size pixels mode"},
+        {id: "screen.refreshRate", category: "screen", section: "Display mode", label: "Refresh rate",
+            description: "Choose how often the display updates each second.", keywords: "screen display monitor refresh frequency hz hertz fps"},
+        {id: "screen.scale", category: "screen", section: "Display mode", label: "Scale",
+            description: "Adjust the size of text and interface elements.", keywords: "screen display monitor scaling zoom hidpi dpi text size"},
+        {id: "screen.rotation", category: "screen", section: "Arrangement", label: "Rotation",
+            description: "Rotate or flip this display.", keywords: "screen display monitor orientation portrait landscape transform"},
+        {id: "screen.position", category: "screen", section: "Arrangement", label: "Position",
+            description: "Place this display in the desktop layout, in logical pixels. Displays must not overlap.", keywords: "screen display monitor arrangement layout position left right above below coordinates"},
         {id: "general.timezone", category: "general", section: "Date and time", label: "Timezone",
             description: "Choose the system timezone. Authorization may be required when applying.", keywords: "time zone city region country clock daylight saving"},
         {id: "general.utcOffset", category: "general", section: "Date and time", label: "UTC offset",

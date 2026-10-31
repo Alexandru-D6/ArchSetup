@@ -9,6 +9,7 @@ ShellRoot {
     id: root
     property int stage: 0
     property bool failed: false
+    property bool screenStatusReceived: false
     readonly property string field: "general.lockPowerRequiresAuth"
     function check(condition, description) {
         if (!condition) { failed = true; console.error("Settings fixture failed: " + description); Qt.quit(); }
@@ -30,6 +31,11 @@ ShellRoot {
         profile: source.profile
         onFinished: response => store.finish(response)
     }
+    Shared.SettingsBackend {
+        profile: source.profile
+        Component.onCompleted: send({operation: "screen-status"})
+        onFinished: response => root.screenStatusReceived = root.check(response.ok && response.screenTest === null, "idle screen confirmation response")
+    }
     FileView { id: writer; path: source.profile + "/settings.json"; printErrors: false }
     Item {
         width: 1280; height: 800
@@ -39,7 +45,7 @@ ShellRoot {
         interval: 40; repeat: true; running: true
         onTriggered: {
             if (root.failed) return;
-            if (root.stage === 0 && store.loaded) {
+            if (root.stage === 0 && store.loaded && root.screenStatusReceived) {
                 if (!root.check(store.draft[root.field] === true, "initial defaults")) return;
                 store.edit(root.field, false);
                 configuration.query = "LOGIN password";

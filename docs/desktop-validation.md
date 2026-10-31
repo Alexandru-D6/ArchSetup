@@ -1,5 +1,31 @@
 # Desktop validation — 2026-10-10
 
+## Screen configuration — 2026-10-29
+
+Configuration now has a searchable Screen category with per-display resolution,
+refresh rate, scale, rotation and logical-pixel position, plus a selectable layout
+preview. Apply waits for Keep changes for 20 seconds before committing settings;
+Restore previous, timeout or an interrupted helper restores the prior layout.
+Display rules follow managed monitor defaults and survive repeat Ansible runs.
+
+All 11 screen backend tests and 27 existing settings tests pass. Coverage includes
+supported modes, invalid scale/geometry, overlap, external changes, confirmation
+tokens, timeout, compositor rejection, interrupted recovery, disconnected display
+overrides, a separate recovery-helper process and regeneration from saved settings. The 34 Configuration Qt checks
+pass, including screen search/focus, keyboard editing, retained drafts, confirmation
+choices, Escape and a narrow window. The real Quickshell settings-process fixture
+also accepts the idle screen-confirmation response. The screen form was rendered
+and visually inspected. Desktop playbook syntax and Python syntax checks pass;
+QML lint reports only the existing registry ID warning.
+All 71 desktop regressions also pass, including the complete Qt interaction suite
+and shell deployment/restart checks; local-socket tests ran outside the sandbox.
+
+Installed the helpers, QML and native configuration hook into the current desktop
+profile and restarted its shell. The installed helper detected one configurable
+display; the restarted shell's status endpoint reported no settings errors,
+conflicts or pending recovery. No physical display mode, scale or rotation was
+changed during these checks.
+
 ## Searchable VPN country dropdown — 2026-10-28
 
 The Proton VPN panel now lists countries from `protonvpn countries list`, with

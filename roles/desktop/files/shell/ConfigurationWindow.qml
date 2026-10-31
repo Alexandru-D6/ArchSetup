@@ -60,7 +60,8 @@ FocusScope {
         else closed();
     }
     function handleEscape() {
-        if (closeDialog.visible) closeDialog.reject();
+        if (configuration.store.screenTest) configuration.store.decideScreen(false);
+        else if (closeDialog.visible) closeDialog.reject();
         else if (query.length) clearSearch();
         else requestClose();
     }
@@ -266,6 +267,58 @@ FocusScope {
                     primary: true
                     enabled: configuration.store.canApply
                     onClicked: configuration.store.apply()
+                }
+            }
+        }
+    }
+    Dialog {
+        id: screenDialog
+        objectName: "settings-screen-confirmation"
+        parent: configuration
+        anchors.centerIn: parent
+        width: Math.min(450, configuration.width - 24)
+        padding: 20
+        modal: true
+        focus: true
+        visible: configuration.store.screenTest !== null
+        closePolicy: Popup.NoAutoClose
+        background: Rectangle { color: configuration.surface; radius: 20; border.width: 1; border.color: configuration.accent }
+        onOpened: keepScreen.forceActiveFocus()
+        contentItem: ColumnLayout {
+            Keys.onEscapePressed: configuration.store.decideScreen(false)
+            spacing: 16
+            Text {
+                text: "Keep this screen configuration?"
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: configuration.textColor
+                font.family: configuration.uiFont
+                font.pixelSize: 18
+            }
+            Text {
+                text: "Restoring the previous configuration in " + (configuration.store.screenTest ? configuration.store.screenTest.seconds : 0) + " seconds."
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: configuration.textColor
+                font.family: configuration.uiFont
+                font.pixelSize: 13
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: 8
+                SettingsButton {
+                    objectName: "settings-screen-restore"
+                    theme: configuration
+                    text: "Restore previous"
+                    onClicked: configuration.store.decideScreen(false)
+                }
+                SettingsButton {
+                    id: keepScreen
+                    objectName: "settings-screen-keep"
+                    theme: configuration
+                    text: "Keep changes"
+                    primary: true
+                    onClicked: configuration.store.decideScreen(true)
                 }
             }
         }

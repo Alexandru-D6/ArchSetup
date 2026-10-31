@@ -389,6 +389,16 @@ retain the active layout if it is still available; Super+Space switches layouts.
 Up to four installed layout/variant pairs are supported. Personal or device-specific
 input overrides are reported if they prevent the selected layouts from taking effect.
 
+Screen configures each active, independent display: resolution, refresh rate,
+scale, rotation/flip and position in logical pixels. Its layout preview selects
+displays; position shortcuts place one to the right of or below another. Modes
+come from the connected display, and scale choices produce whole logical pixels.
+Overlapping layouts are rejected. Apply tests the configuration for 20 seconds;
+choose Keep changes to save it or Restore previous to undo it. Timeout restores
+the previous layout, and a detached recovery helper also handles a shell/helper
+exit during the test. Existing disabled and mirrored outputs retain their rules.
+Saved overrides for disconnected displays are retained for their next connection.
+
 Clock controls offer Default, nine presets, horizontal/vertical percentages and
 Randomize. Randomize chooses a point now and Apply saves it. The complete clock
 and date group stays within each monitor's usable area, reserving the panel and
@@ -409,7 +419,7 @@ requires Revert to load the external values. Invalid or unreadable settings
 disable Apply until repaired and require unlocking for lock-screen power requests.
 Failed system changes roll back without discarding your edits. If Apply is
 interrupted or rollback cannot finish, Recover reconciles the saved and system
-state before another Apply. Ansible rebuilds generated input from saved overrides.
+state before another Apply. Ansible rebuilds generated input and display rules from saved overrides.
 See the [window preview](images/desktop-configuration.png) and
 [settings architecture and remaining date-format presets](desktop-settings-plan.md).
 

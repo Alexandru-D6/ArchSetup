@@ -4,6 +4,12 @@ Status: General timezone, keyboard layouts and clock placement implemented,
 2026-10-16; architecture agreed 2026-10-14. Date-format presets remain planned.
 The architecture below describes the full target.
 
+Screen added 2026-10-29: per-display resolution/refresh, scale, rotation and layout
+position, backed by connected-monitor discovery. The shared draft, search and
+Apply/Revert flows include screen settings. A 20-second Keep/Restore confirmation
+precedes the settings commit; a detached helper recovers interrupted tests.
+Ansible preserves saved display overrides and rebuilds `settings-screens.lua`.
+
 Implemented: shared centered frame, persistent Configuration window, search and
 category registry, queued reveal/focus navigation, drafts outside the page loader,
 Apply/Revert, unsaved-close choices and both entry points. The backend supports

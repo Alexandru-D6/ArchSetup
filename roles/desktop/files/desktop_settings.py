@@ -1,4 +1,4 @@
-"""Validated desktop settings and transactions for system timezone and input."""
+"""Validated desktop settings and transactions for timezone, input and displays."""
 import fcntl
 import hashlib
 import json
@@ -13,6 +13,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import desktop_system as system
+import desktop_screens as screens
 
 
 POWER_FIELD = 'general.lockPowerRequiresAuth'
@@ -22,10 +23,10 @@ TIMEZONE_FIELD = 'general.timezone'
 LAYOUTS_FIELD = 'general.keyboard.layouts'
 DESKTOP_FIELD = 'general.clockPlacement.desktop'
 LOCK_FIELD = 'general.clockPlacement.lockScreen'
-FIELDS = {POWER_FIELD, TIMEZONE_FIELD, LAYOUTS_FIELD, DESKTOP_FIELD, LOCK_FIELD}
+FIELDS = {POWER_FIELD, TIMEZONE_FIELD, LAYOUTS_FIELD, DESKTOP_FIELD, LOCK_FIELD, screens.FIELD}
 CLOCK_START = '# archsetup-lock-clock-start\n'
 CLOCK_END = '# archsetup-lock-clock-end\n'
-GENERATED = ['settings-input.lua', 'lock-identity.conf', 'theme/lock-identity.conf']
+GENERATED = ['settings-input.lua', 'settings-screens.lua', 'lock-identity.conf', 'theme/lock-identity.conf']
 
 
 class SettingsError(ValueError):
@@ -84,6 +85,13 @@ def documents(root):
         if not isinstance(general['keyboard'], dict) or 'layouts' not in general['keyboard']:
             raise SettingsError('schema', 'Invalid keyboard settings in settings.json.')
         validate_layout_shape(general['keyboard']['layouts'])
+    if 'screen' in saved:
+        try:
+            if not isinstance(saved['screen'], dict) or set(saved['screen']) != {'monitors'}:
+                raise ValueError('Invalid screen settings in settings.json.')
+            screens.shape(saved['screen']['monitors'])
+        except ValueError as error:
+            raise SettingsError('schema', str(error)) from None
     return preferences, saved
 
 
@@ -143,12 +151,14 @@ def effective_preferences(root):
 
 
 def observed_state():
-    return {'timezone': system.timezone_name(), 'keyboard': system.observe_keyboard()}
+    return {'timezone': system.timezone_name(), 'keyboard': system.observe_keyboard(), 'screens': screens.observe()}
 
 
 def snapshot_from(preferences, saved, observed=None):
     observed = observed if observed is not None else observed_state()
     fingerprint = {'timezone': observed['timezone'], 'keyboard': None}
+    screen_state = observed.get('screens', {'values': [], 'catalog': [], 'error': ''})
+    fingerprint['screens'] = screen_state['values']
     if observed['keyboard']:
         keyboard = observed['keyboard']
         fingerprint['keyboard'] = {key: keyboard[key] for key in ('layout', 'variant', 'file')}
@@ -160,9 +170,11 @@ def snapshot_from(preferences, saved, observed=None):
     return {'revision': hashlib.sha256(encoded.encode()).hexdigest(),
             'values': {POWER_FIELD: effective['lockPowerRequiresAuth'], TIMEZONE_FIELD: observed['timezone'],
                        DESKTOP_FIELD: effective['clockPlacement']['desktop'], LOCK_FIELD: effective['clockPlacement']['lockScreen'],
-                       LAYOUTS_FIELD: saved['general'].get('keyboard', {}).get('layouts', default_layouts(preferences))},
+                       LAYOUTS_FIELD: saved['general'].get('keyboard', {}).get('layouts', default_layouts(preferences)),
+                       screens.FIELD: screen_state['values']},
             'preferences': effective,
             'runtime': {'inSession': observed['keyboard'] is not None,
+                        'screens': screen_state['catalog'], 'screenError': screen_state['error'],
                         'activeLayout': next((item.get('active_keymap', '') for item in (observed['keyboard'] or {}).get('keyboards', []) if item.get('main')), '')}}
 
 
@@ -326,6 +338,11 @@ def apply(root, revision, changes):
     for field in (DESKTOP_FIELD, LOCK_FIELD):
         if field in changes:
             validate_position(changes[field], field)
+    if screens.FIELD in changes:
+        try:
+            screens.shape(changes[screens.FIELD])
+        except ValueError as error:
+            raise SettingsError('validation', str(error), {screens.FIELD: str(error)}) from None
     if TIMEZONE_FIELD in changes and (not isinstance(changes[TIMEZONE_FIELD], str) or changes[TIMEZONE_FIELD] not in system.timezone_catalog()):
         raise SettingsError('validation', 'Choose an installed timezone.', {TIMEZONE_FIELD: 'Choose a timezone from the installed catalog.'})
     # All writers use this same lock, including separate Configuration processes.
@@ -351,6 +368,14 @@ def apply(root, revision, changes):
                 general.setdefault('clockPlacement', {})[field.rsplit('.', 1)[1]] = value
             elif field == LAYOUTS_FIELD:
                 general['keyboard'] = {'layouts': value}
+            elif field == screens.FIELD:
+                try:
+                    screens.validate(value, observed['screens'])
+                except ValueError as error:
+                    raise SettingsError('validation', str(error), {screens.FIELD: str(error)}) from None
+                connected = {item['name'] for item in value}
+                retained = [item for item in saved.get('screen', {}).get('monitors', []) if item['name'] not in connected]
+                updated['screen'] = {'monitors': sorted(retained + value, key=lambda item: item['name'])}
         layouts = general.get('keyboard', {}).get('layouts', default_layouts(preferences))
         validate_layouts(layouts, preferences)
         effective = resolve(preferences, updated)
@@ -361,6 +386,13 @@ def apply(root, revision, changes):
         timezone = changes.get(TIMEZONE_FIELD, observed['timezone'])
         timezone_changed = timezone != observed['timezone']
         staged = {}
+        screen_changed = screens.FIELD in changes and changes[screens.FIELD] != current['values'][screens.FIELD]
+        if screen_changed:
+            staged['settings-screens.lua'] = screens.text(updated['screen']['monitors'])
+            try:
+                screens.prepare(root, staged['settings-screens.lua'])
+            except (RuntimeError, subprocess.SubprocessError) as error:
+                raise SettingsError('system', str(error), {screens.FIELD: str(error)}) from None
         if keyboard_changed:
             if observed['keyboard'] and observed['keyboard']['file']:
                 raise SettingsError('system', 'A custom keyboard keymap overrides layout selection. Review your input configuration.')
@@ -377,17 +409,24 @@ def apply(root, revision, changes):
             raise SettingsError('conflict', 'Settings changed elsewhere. Revert to reload the current values.', snapshot=snapshot(root))
         journal = {'oldSaved': saved, 'newSaved': updated, 'oldTimezone': observed['timezone'], 'newTimezone': timezone,
                    'oldKeyboard': observed['keyboard'], 'oldFiles': {name: (root / name).read_text() if (root / name).exists() else None for name in staged}}
-        external = keyboard_changed or timezone_changed
+        if screen_changed:
+            journal['oldScreens'] = observed['screens']['values']
+        external = keyboard_changed or timezone_changed or screen_changed
         if external:
             atomic_save(root / '.settings-recovery.json', journal)
         try:
             if timezone_changed:
                 system.set_timezone(timezone)
+            if screen_changed:
+                screens.start_guard(root)
             for name, content in staged.items():
                 (root / name).parent.mkdir(exist_ok=True)
                 atomic_text(root / name, content)
             if keyboard_changed:
                 system.reload_keyboard(layouts, observed['keyboard'])
+            if screen_changed:
+                screens.reload(changes[screens.FIELD])
+                screens.confirm(root)
             atomic_save(root / 'settings.json', updated)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             failures = rollback(root, journal) if external else []
@@ -428,7 +467,7 @@ def rollback(root, journal, interactive=False):
                 atomic_text(root / name, content)
         except (OSError, ValueError) as error:
             failures.append('Cannot restore ' + name + ': ' + str(error))
-    if journal['oldFiles'] and system.in_session():
+    if 'settings-input.lua' in journal['oldFiles'] and system.in_session():
         try:
             old = journal.get('oldKeyboard')
             layouts = default_layouts({'keyboardLayouts': old['layout'], 'keyboardVariants': old['variant']}) if old else default_layouts(
@@ -436,6 +475,11 @@ def rollback(root, journal, interactive=False):
             system.reload_keyboard(layouts, old)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             failures.append('Cannot restore keyboard configuration: ' + str(error))
+    if 'oldScreens' in journal and system.in_session():
+        try:
+            screens.restore(journal['oldScreens'])
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
+            failures.append('Cannot restore screen configuration: ' + str(error))
     if journal['newTimezone'] != journal['oldTimezone']:
         current = system.timezone_name()
         if current == journal['newTimezone']:
@@ -467,6 +511,11 @@ def recover_locked(root):
             or any(content is not None and not isinstance(content, str) for content in journal['oldFiles'].values())):
         raise SettingsError('recovery', 'Invalid recovery record; repair .settings-recovery.json before applying settings.')
     old = journal.get('oldKeyboard')
+    if 'oldScreens' in journal:
+        try:
+            screens.shape(journal['oldScreens'])
+        except ValueError as error:
+            raise SettingsError('recovery', 'Invalid screen recovery record: ' + str(error)) from None
     if old is not None and (not isinstance(old, dict) or not all(isinstance(old.get(key), str) for key in ('layout', 'variant'))
                             or not isinstance(old.get('keyboards'), list)):
         raise SettingsError('recovery', 'Invalid keyboard recovery record.')
@@ -480,6 +529,8 @@ def recover_locked(root):
         if failures:
             raise SettingsError('recovery', '; '.join(failures))
     path.unlink()
+    (root / '.screen-test.json').unlink(missing_ok=True)
+    (root / '.screen-decision.json').unlink(missing_ok=True)
 
 
 def sync(root):
@@ -497,4 +548,10 @@ def sync(root):
         if changed:
             system.validate_input(root, content)
             atomic_text(path, content)
+        screen_content = screens.text(saved.get('screen', {}).get('monitors', []))
+        screen_path = root / 'settings-screens.lua'
+        if ('screen' in saved or screen_path.exists()) and (not screen_path.exists() or screen_path.read_text() != screen_content):
+            screens.prepare(root, screen_content)
+            atomic_text(screen_path, screen_content)
+            changed = True
         return changed

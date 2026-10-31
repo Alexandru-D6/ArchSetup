@@ -22,6 +22,7 @@ Rectangle {
     SignalSpy { id: closed; target: configuration; signalName: "closed" }
     SignalSpy { id: applyRequest; target: store; signalName: "applyRequested" }
     SignalSpy { id: previewRequest; target: store; signalName: "previewRequested" }
+    SignalSpy { id: screenDecision; target: store; signalName: "screenDecisionRequested" }
 
     TestCase {
         name: "Configuration"
@@ -38,8 +39,13 @@ Rectangle {
                 "general.timezone": "Europe/Madrid",
                 "general.keyboard.layouts": [{layout: "us", variant: ""}],
                 "general.clockPlacement.desktop": null,
-                "general.clockPlacement.lockScreen": null
-            }, runtime: {activeLayout: "English (US)"}};
+                "general.clockPlacement.lockScreen": null,
+                "screen.monitors": [{name: "DP-1", mode: "1920x1080@60.00", scale: 1, transform: 0, x: 0, y: 0},
+                    {name: "HDMI-A-1", mode: "1920x1080@60.00", scale: 1, transform: 0, x: 1920, y: 0}]
+            }, runtime: {activeLayout: "English (US)", screenError: "", screens: [
+                {name: "DP-1", description: "Main display", modes: ["1920x1080@60.00", "1920x1080@144.00", "1280x720@60.00"]},
+                {name: "HDMI-A-1", description: "External display", modes: ["1920x1080@60.00"]}
+            ]}};
         }
         function change() {
             configuration.loadedPage.revealSetting(fixture.field);
@@ -55,6 +61,7 @@ Rectangle {
         function init() {
             fixture.width = 1280; fixture.height = 800;
             store.busy = false;
+            store.screenTest = null;
             store.loaded = false;
             store.sourceError = "";
             store.recoveryNeeded = false;
@@ -83,7 +90,7 @@ Rectangle {
             configuration.accentText = "#ffffff";
             configuration.visible = true;
             configuration.clearSearch();
-            closed.clear(); applyRequest.clear(); previewRequest.clear();
+            closed.clear(); applyRequest.clear(); previewRequest.clear(); screenDecision.clear();
             tryVerify(() => control("settings-lock-power") !== null);
             control("settings-general-scroll").highlightedSetting = "";
             control("settings-general-scroll").contentY = 0;
@@ -91,6 +98,7 @@ Rectangle {
             waitForRendering(configuration);
         }
         function cleanup() {
+            store.screenTest = null;
             if (configuration.confirmingClose) configuration.handleEscape();
             configuration.visible = false;
         }
@@ -266,6 +274,81 @@ Rectangle {
             configuration.query = "UTC";
             configuration.activateResult(0);
             compare(control("settings-utc-offset").activeFocus, true);
+        }
+        function openScreen(id) {
+            configuration.query = "screen " + id;
+            verify(configuration.results.length > 0);
+            configuration.activateResult(0);
+            tryCompare(store, "selectedCategory", "screen");
+            tryCompare(configuration, "pendingSetting", "");
+        }
+        function test_screen_search_edits_and_category_switch_preserve_draft() {
+            openScreen("resolution");
+            const picker = control("settings-screen-resolution");
+            verify(picker !== null);
+            compare(picker.activeFocus, true);
+            keyClick(Qt.Key_Down);
+            compare(store.draft["screen.monitors"][0].mode, "1280x720@60.00");
+            compare(store.applied["screen.monitors"][0].mode, "1920x1080@60.00");
+            compare(store.draft["screen.monitors"][1].mode, "1920x1080@60.00");
+            verify(store.canApply);
+            store.selectedCategory = "general";
+            store.selectedCategory = "screen";
+            compare(control("settings-screen-resolution").currentValue, "1280x720");
+            click("settings-revert");
+            compare(control("settings-screen-resolution").currentValue, "1920x1080");
+            compare(store.dirty, false);
+        }
+        function test_screen_refresh_scale_rotation_and_position() {
+            openScreen("hertz");
+            keyClick(Qt.Key_Down);
+            compare(store.draft["screen.monitors"][0].mode, "1920x1080@144.00");
+            configuration.loadedPage.revealSetting("screen.scale");
+            keyClick(Qt.Key_Down);
+            compare(store.draft["screen.monitors"][0].scale, 1.25);
+            verify(control("settings-screen-scale").model.every(item => item.id !== 1.75));
+            configuration.loadedPage.revealSetting("screen.rotation");
+            keyClick(Qt.Key_Down);
+            compare(store.draft["screen.monitors"][0].transform, 1);
+            configuration.loadedPage.revealSetting("screen.position");
+            const x = control("settings-screen-x");
+            x.selectAll(); keyClick(Qt.Key_Minus); keyClick(Qt.Key_1); keyClick(Qt.Key_0); keyClick(Qt.Key_0);
+            keyClick(Qt.Key_Tab);
+            compare(store.draft["screen.monitors"][0].x, -100);
+            click("settings-apply");
+            compare(applyRequest.count, 1);
+            compare(applyRequest.signalArguments[0][0].changes["screen.monitors"][0].x, -100);
+        }
+        function test_screen_confirmation_keep_restore_and_escape() {
+            store.busy = true;
+            store.screenTest = {token: "test-token", seconds: 19};
+            tryCompare(control("settings-screen-confirmation"), "visible", true);
+            click("settings-screen-keep");
+            compare(screenDecision.signalArguments[0][0], "test-token");
+            compare(screenDecision.signalArguments[0][1], true);
+            click("settings-screen-restore");
+            compare(screenDecision.signalArguments[1][1], false);
+            keyClick(Qt.Key_Escape);
+            compare(screenDecision.signalArguments[2][1], false);
+            compare(closed.count, 0);
+            store.screenTest = null;
+            tryCompare(control("settings-screen-confirmation"), "visible", false);
+        }
+        function test_screen_unavailable_and_narrow_layout() {
+            openScreen("resolution");
+            fixture.width = 480; fixture.height = 360;
+            waitForRendering(configuration);
+            const form = control("settings-screen-scroll");
+            verify(form.contentHeight > form.height);
+            store.runtime = {screens: [], screenError: "No Hyprland session"};
+            compare(control("settings-screen-resolution").enabled, false);
+            compare(store.dirty, false);
+        }
+        function test_screen_rendering() {
+            openScreen("display");
+            configuration.clearSearch();
+            waitForRendering(configuration);
+            grabImage(fixture).save("/tmp/archsetup-screen-configuration.png");
         }
         function test_clock_default_presets_and_random_positions_are_independent() {
             configuration.loadedPage.revealSetting("general.clockPlacement.desktop");

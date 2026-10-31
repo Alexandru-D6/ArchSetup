@@ -21,6 +21,8 @@ QtObject {
     property string previewError: ""
     property var runtime: ({})
     property bool recoveryNeeded: false
+    property var screenTest: null
+    signal screenDecisionRequested(string token, bool keep)
     readonly property var dirtyFields: Object.keys(draft).filter(key => JSON.stringify(draft[key]) !== JSON.stringify(applied[key]))
     readonly property bool dirty: dirtyFields.length > 0
     readonly property bool valid: Object.keys(fieldErrors).length === 0
@@ -33,6 +35,9 @@ QtObject {
         return Array.isArray(value) && value.length >= 1 && value.length <= catalog.maxLayouts && value.every((item, index) =>
             item && catalog.layouts.some(layout => layout.id === item.layout && layout.variants.some(variant => variant.id === item.variant)) &&
             value.findIndex(pair => pair.layout === item.layout && pair.variant === item.variant) === index);
+    }
+    function decideScreen(keep) {
+        if (screenTest) screenDecisionRequested(screenTest.token, keep);
     }
 
     function adopt(snapshot) {
@@ -68,6 +73,9 @@ QtObject {
         else if (id === "general.timezone" && (!value || !catalog.timezones.some(item => item.id === value))) errors[id] = "Choose an installed timezone.";
         else if (id.indexOf("general.clockPlacement.") === 0 && value !== null && (!value || ![value.x, value.y].every(number => typeof number === "number" && isFinite(number) && number >= 0 && number <= 1))) errors[id] = "Choose a position between 0% and 100%.";
         else if (id === "general.keyboard.layouts" && !validLayouts(value)) errors[id] = "Choose one to four installed, unique layout/variant pairs.";
+        else if (id === "screen.monitors" && (!Array.isArray(value) || !value.length || value.some(item =>
+            !item || !isFinite(item.scale) || item.scale < 1 || item.scale > 4 ||
+            ![item.x, item.y].every(number => typeof number === "number" && Number.isInteger(number) && Math.abs(number) <= 65535)))) errors[id] = "Choose a valid scale and whole-pixel monitor positions.";
         else delete errors[id];
         fieldErrors = errors;
         error = "";
