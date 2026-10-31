@@ -98,9 +98,9 @@ def atomic_write(path, text):
     os.replace(temporary.name, path)
 
 def write_wallpaper(folder, state, palette):
-    """Use a personal image, or draw an original gradient without bundled artwork."""
+    """Use the selected image, the bundled wallpaper, or a fallback gradient."""
     from PIL import Image, ImageColor, ImageDraw
-    wallpaper = Path(state['wallpaper']) if state.get('wallpaper') else None
+    wallpaper = Path(state['wallpaper']) if state.get('wallpaper') else ROOT / 'assets/desktop-wallpaper.jpg'
     with tempfile.NamedTemporaryFile(dir=folder, suffix='.png', delete=False) as temporary:
         path = Path(temporary.name)
     try:

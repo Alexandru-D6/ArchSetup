@@ -1,5 +1,26 @@
 # Desktop validation — 2026-10-10
 
+## Supplied wallpaper and charging badges — 2026-10-31
+
+The supplied sunset image is the default desktop and lock background. Wallpaper
+installation now regenerates the managed theme when only an asset changes, while
+later personal desktop choices remain independent of the lock background.
+
+Desktop and animated lock use one shared battery badge with a lightning icon and
+Charging/Plugged in/Charged labels. UPower updates both directly; the native lock
+fallback reports the corresponding text from sysfs. Six badge Qt checks, three
+wallpaper/native-status tests and both lock configuration/frame regressions pass.
+Coverage includes plugged-in and fully charged states, missing batteries,
+untruncated labels, keyboard activation and uninterrupted lock-screen typing.
+Component lint and both Ansible playbook syntax checks pass.
+
+Installed the images, helper and shared badge in the workstation profile. The
+desktop and installed lock image match the supplied asset byte-for-byte. The
+running shell reported 59% and charging; a cropped taskbar capture confirms the
+visible lightning badge and complete Charging · 59% label. The installed lock
+changes take effect on the next lock. No real locking or authentication was
+performed during deployment.
+
 ## Close shortcuts — 2026-10-31
 
 Super+Q and Alt+F4 now ask the shell to close the visible menu on the focused

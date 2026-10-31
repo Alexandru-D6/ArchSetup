@@ -17,13 +17,16 @@
     mode: '0755'
   loop: ['', shell, lock, bin, assets]
 
-- name: Install the requested lock-screen wallpaper
+- name: Install the requested desktop and lock-screen wallpapers
   ansible.builtin.copy:
-    src: assets/lock-wallpaper.jpg
-    dest: "{{ desktop_root }}/assets/lock-wallpaper.jpg"
+    src: "assets/{{ item }}"
+    dest: "{{ desktop_root }}/assets/{{ item }}"
     owner: "{{ archsetup_desktop_user }}"
     group: "{{ desktop_group }}"
     mode: '0644'
+  loop: [desktop-wallpaper.jpg, lock-wallpaper.jpg]
+  register: desktop_wallpapers
+  notify: Refresh running ArchSetup shell
 
 - name: Create private configuration-validation runtime directory
   ansible.builtin.file:
@@ -227,6 +230,7 @@
     - not ansible_check_mode
     - >-
       desktop_rendered_configuration.changed or desktop_rendered_preferences.changed
+      or desktop_wallpapers.changed
       or desktop_installed_helpers.changed or desktop_lock_identity.changed
       or not desktop_kitty_existing.results[1].stat.exists
   changed_when: true

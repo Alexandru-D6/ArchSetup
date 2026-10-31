@@ -19,6 +19,26 @@ Rectangle {
             screen.clockPosition = null;
             screen.dateCaption = "Thursday, October 15";
             screen.controls.clearPassword();
+            screen.batteryPresent = false;
+            screen.batteryCharging = false;
+            screen.powerConnected = false;
+        }
+        function test_lock_battery_tracks_charging_without_affecting_typing() {
+            const badge = findChild(screen, "lock-battery");
+            const input = findChild(screen, "lock-password");
+            screen.controls.focusPassword();
+            keyClick(Qt.Key_A);
+            screen.batteryPresent = true;
+            screen.batteryPercentage = 42;
+            screen.batteryCharging = true;
+            screen.powerConnected = true;
+            compare(badge.visible, true);
+            compare(badge.label, "Charging · 42%");
+            keyClick(Qt.Key_B);
+            compare(input.text, "ab");
+            screen.batteryCharging = false;
+            screen.powerConnected = false;
+            compare(badge.label, "42%");
         }
         function test_placement_stays_clear_of_password_controls_data() {
             return [

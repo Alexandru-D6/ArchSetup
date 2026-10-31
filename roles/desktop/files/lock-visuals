@@ -444,15 +444,27 @@ def clock_image():
     print(output)
 
 
-def status():
-    batteries = [p for p in Path('/sys/class/power_supply').glob('*')
-                 if (p / 'type').exists() and (p / 'type').read_text().strip() == 'Battery']
+def battery_status(power_supply=Path('/sys/class/power_supply')):
+    supplies = list(power_supply.glob('*'))
+    connected = any((p / 'online').exists() and (p / 'online').read_text().strip() == '1' for p in supplies)
+    batteries = [p for p in supplies if (p / 'type').exists() and (p / 'type').read_text().strip() == 'Battery']
     for battery in batteries:
-        if (battery / 'capacity').exists():
-            charging = (battery / 'status').exists() and (battery / 'status').read_text().strip() == 'Charging'
-            print(('Charging · ' if charging else '') + (battery / 'capacity').read_text().strip() + '%')
-            return
-    print('')
+        if (battery / 'present').exists() and (battery / 'present').read_text().strip() != '1':
+            continue
+        try:
+            percentage = int((battery / 'capacity').read_text().strip())
+        except (FileNotFoundError, ValueError):
+            continue
+        if not 0 <= percentage <= 100:
+            continue
+        state = (battery / 'status').read_text().strip() if (battery / 'status').exists() else ''
+        label = 'Charging' if state == 'Charging' else 'Charged' if state == 'Full' else 'Plugged in' if connected else ''
+        return (label + ' · ' if label else '') + str(percentage) + '%'
+    return ''
+
+
+def status():
+    print(battery_status())
 
 
 def capslock():

@@ -273,6 +273,7 @@ ShellRoot {
                 controlCenterOpen: root.controlCenterOpen, controlCenterScreen: root.controlCenterScreen,
                 notificationCount: notificationSource.notifications.length, dnd: notificationSource.dnd,
                 battery: {ready: batteryMonitor.ready, present: batteryMonitor.present, onBattery: batteryMonitor.onBattery,
+                    charging: UPower.displayDevice.state === UPowerDeviceState.Charging, powerConnected: !UPower.onBattery,
                     percentage: batteryMonitor.percentage, settings: batteryMonitor.settings,
                     validSample: batteryMonitor.validSample, validSettings: batteryMonitor.validSettings,
                     stage: batteryMonitor.alertedStage, suspendPending: batteryMonitor.suspendPending,
@@ -423,11 +424,17 @@ ShellRoot {
                     }
                 }
             }
-            Chip {
+            BatteryIndicator {
+                objectName: "desktop-battery"
                 anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
-                visible: UPower.displayDevice.isLaptopBattery
-                text: Math.round(UPower.displayDevice.percentage * 100) + "%"
-                Accessible.name: "Battery " + text
+                present: UPower.displayDevice.ready && UPower.displayDevice.isPresent && UPower.displayDevice.isLaptopBattery
+                charging: UPower.displayDevice.state === UPowerDeviceState.Charging
+                pluggedIn: !UPower.onBattery
+                fullyCharged: UPower.displayDevice.state === UPowerDeviceState.FullyCharged
+                percentage: UPower.displayDevice.percentage * 100
+                interactive: true
+                uiFont: root.uiFont
+                surface: root.raised; textColor: root.ink; accent: root.accent; accentText: root.onAccent
                 onClicked: root.toggle("settings")
             }
             RowLayout {

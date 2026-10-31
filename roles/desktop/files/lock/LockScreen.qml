@@ -6,7 +6,13 @@ FocusScope {
     id: screen
     property string profile: ""
     property int clockRevision: 0
-    property string status: ""
+    property bool batteryPresent: false
+    property bool batteryCharging: false
+    property bool powerConnected: false
+    property bool batteryFull: false
+    property real batteryPercentage: NaN
+    property color accent: "#ffb1c8"
+    property color accentText: "#56122e"
     property date date: new Date()
     property string dateCaption: ""
     property var clockPosition: null
@@ -71,15 +77,23 @@ FocusScope {
             }
         }
     }
-    Text {
+    BatteryIndicator {
+        objectName: "lock-battery"
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.margins: 24
-        text: screen.status
-        textFormat: Text.PlainText
-        color: "#f0eaff"
-        font.family: controls.uiFont
-        font.pointSize: controls.fontSize
+        width: Math.min(implicitWidth, screen.width - 48)
+        present: screen.batteryPresent
+        charging: screen.batteryCharging
+        pluggedIn: screen.powerConnected
+        fullyCharged: screen.batteryFull
+        percentage: screen.batteryPercentage
+        uiFont: controls.uiFont
+        fontSize: Math.round(controls.fontSize * 4 / 3)
+        surface: "#cc0b1422"
+        textColor: "#f0eaff"
+        accent: screen.accent
+        accentText: screen.accentText
     }
     LockControls {
         id: controls

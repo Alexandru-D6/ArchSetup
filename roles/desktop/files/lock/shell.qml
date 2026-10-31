@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Services.UPower
 import "shared" as Desktop
 
 ShellRoot {
@@ -24,7 +25,6 @@ ShellRoot {
     property int clockRevision: 0
     property string poweroffLabel: "Power off"
     property string rebootLabel: "Reboot"
-    property string status: ""
 
     function authenticate(response) {
         if (lock.secure) auth.submit(response);
@@ -77,12 +77,6 @@ ShellRoot {
             if (event.name === "activelayout") root.rawLayout = event.data.slice(event.data.indexOf(",") + 1);
         }
     }
-    Process {
-        id: statusProcess
-        command: [root.profile + "/bin/lock-visuals", "status"]
-        stdout: StdioCollector { onStreamFinished: root.status = text.trim() }
-    }
-    Timer { interval: 5000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!statusProcess.running) statusProcess.running = true }
     LockAuth {
         id: auth
         onCleared: root.clearRevision++
@@ -107,7 +101,13 @@ ShellRoot {
                 anchors.fill: parent
                 profile: root.profile
                 clockRevision: root.clockRevision
-                status: root.status
+                batteryPresent: UPower.displayDevice.ready && UPower.displayDevice.isPresent && UPower.displayDevice.isLaptopBattery
+                batteryCharging: UPower.displayDevice.state === UPowerDeviceState.Charging
+                powerConnected: !UPower.onBattery
+                batteryFull: UPower.displayDevice.state === UPowerDeviceState.FullyCharged
+                batteryPercentage: UPower.displayDevice.percentage * 100
+                accent: root.palette.accent || "#ffb1c8"
+                accentText: root.palette.onAccent || "#56122e"
                 clockPosition: root.preferences.clockPlacement?.lockScreen || null
                 dateCaption: lockTime.snapshot.date || ""
                 controls.username: root.username

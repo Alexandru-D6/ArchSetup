@@ -24,6 +24,13 @@
   },
   "bundled_assets": [
     {
+      "path": "roles/desktop/files/assets/desktop-wallpaper.jpg",
+      "source": "User-provided Image #1 (2026-10-31)",
+      "original_filename": "desktop-wallpaper.jpg",
+      "sha256": "b78db90e09dd4c766ee39798f6148f17cfb5ee77a8a48fefd5b53d3ba1dc0e01",
+      "usage": "Default desktop background"
+    },
+    {
       "path": "roles/desktop/files/assets/lock-wallpaper.jpg",
       "source": "User-provided Image #1",
       "original_filename": "wp5493855-4k-scenery-sunset-anime-wallpapers.jpg",
@@ -31,7 +38,7 @@
       "usage": "Lock screen only; desktop wallpaper remains user-owned"
     }
   ],
-  "theme": "Original desktop gradient and system typography; ii-inspired top bar and desktop clock; native Hyprlock with the user-provided sunset wallpaper, blue reference clock, adaptive keyboard-layout pill and power/reboot controls",
+  "theme": "Rose palette and system typography with the user-provided sunset wallpaper on desktop and lock screen; ii-inspired top bar, scalloped clocks and shared charging indicators",
   "third_party_assets_included": true,
   "font_policy": "Uses installed system fonts; no font files are distributed by this repository",
   "shortcuts": {

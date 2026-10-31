@@ -191,6 +191,12 @@ the desktop role installs this dependency.
 Quickshell now serves notifications directly using its
 [notification service](https://quickshell.org/docs/v0.3.2/types/Quickshell.Services.Notifications/NotificationServer/).
 The panel supports notification actions, dismissal, Clear, and Do Not Disturb.
+
+The battery badge highlights external power with a lightning icon and an explicit
+**Charging**, **Plugged in** or **Charged** label beside the percentage. The lock
+screen uses the same badge and updates through UPower without interrupting typing;
+the native Hyprlock fallback displays the corresponding text status.
+
 Open **Configuration → Notifications** to place notification boxes at the top or
 bottom, aligned left, center or right on the focused screen. The placement takes
 effect when you Apply, and boxes leave room for the taskbar.
@@ -222,15 +228,15 @@ The warm-display control follows [hyprsunset's CLI](https://wiki.hypr.land/hypr-
 
 The default **Rose** color theme follows the supplied reference with warm white
 surfaces, blush and peach-pink controls, raspberry accents and dark rose-brown text.
-It has an original pink gradient background, installed system typography and a
+It uses the supplied sunset wallpaper, installed system typography and a
 40-pixel top bar with grouped workspace/clock controls, thin window borders,
 5-pixel outer gaps and 18-pixel window corners. A static scalloped clock sits on the desktop and updates
 once per minute. Existing user-selected wallpapers and light/dark choices remain
-in `state.json`; selecting the default background restores the generated gradient.
+in `state.json`; selecting the default background restores the supplied image.
 The [session preview](images/desktop-session.png) shows the default Rose palette.
 
-The lock screen uses the supplied sunset/anime wallpaper independently of the
-desktop wallpaper. Its blue scalloped clock has dot markers, stacked hour/minute
+The lock screen uses the same supplied sunset image by default. Later personal
+desktop wallpaper choices leave the lock background unchanged. Its blue scalloped clock has dot markers, stacked hour/minute
 digits, an outlined hour hand, a pink minute hand, a thin second hand, and separate
 day/month badges. A background helper updates it once a second and caches font
 lookups. Quickshell reloads that image asynchronously once per second and keeps

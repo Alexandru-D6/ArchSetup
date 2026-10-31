@@ -608,6 +608,32 @@ else:
         visuals.ROOT = self.profile
         return visuals
 
+    def test_native_lock_battery_status_tracks_charging_and_external_power(self):
+        visuals = self.lock_visuals()
+        supplies = self.profile / 'power-supply'
+        battery = supplies / 'BAT1'
+        adapter = supplies / 'AC'
+        battery.mkdir(parents=True); adapter.mkdir()
+        (battery / 'type').write_text('Battery')
+        (battery / 'capacity').write_text('42')
+        (battery / 'present').write_text('1')
+        (adapter / 'online').write_text('0')
+        for state, online, capacity, expected in [
+            ('Discharging', '0', '42', '42%'),
+            ('Charging', '1', '42', 'Charging · 42%'),
+            ('Not charging', '1', '80', 'Plugged in · 80%'),
+            ('Full', '1', '100', 'Charged · 100%'),
+            ('Charging', '1', 'invalid', ''),
+        ]:
+            with self.subTest(state=state, capacity=capacity):
+                (battery / 'status').write_text(state)
+                (battery / 'capacity').write_text(capacity)
+                (adapter / 'online').write_text(online)
+                self.assertEqual(visuals.battery_status(supplies), expected)
+        (battery / 'capacity').write_text('42')
+        (battery / 'present').write_text('0')
+        self.assertEqual(visuals.battery_status(supplies), '')
+
     def native_lock_only(self):
         # Exercise the compatibility path independently of the animated UI.
         (self.profile / 'lock/shell.qml').unlink()
@@ -1553,6 +1579,8 @@ else:
         lock_wallpaper = (self.profile / 'assets/lock-wallpaper.jpg').read_bytes()
         self.actions.refresh_theme({})
         generated = self.profile / 'theme/wallpaper.png'
+        self.assertEqual(generated.read_bytes(), (self.profile / 'assets/desktop-wallpaper.jpg').read_bytes())
+        self.assertEqual(generated.read_bytes(), lock_wallpaper)
         with Image.open(generated) as image:
             image.load()
             self.assertNotEqual(image.getpixel((0, 0)), image.getpixel((0, image.height - 1)))

@@ -3,8 +3,9 @@
 Ansible setup for an installed Arch Linux system: Hyprland, a Quickshell taskbar
 and window overview, Brave, VSCodium, notifications, shortcuts, themes, and Hyprlock.
 The default Rose theme uses warm white surfaces, blush pink controls and raspberry
-accents, with a top bar, rounded windows, system typography and an original pink
-gradient background. Quick settings offers Light / dark and a Color theme selector.
+accents, with a top bar, rounded windows, system typography and the supplied
+sunset wallpaper on the desktop and lock screen. Quick settings offers Light / dark
+and a Color theme selector.
 Hyprlock uses a centered scalloped clock and
 a bottom password toolbar. Desktop animations are disabled by default. The custom desktop shell has no AI
 integrations.
