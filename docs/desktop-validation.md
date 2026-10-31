@@ -78,7 +78,7 @@ full-upgrade requirement. The standalone network playbook uses the same guard.
 All 21 Ansible regression scenarios pass across normal and check mode, including
 configuration-only runs, missing dependencies, disabled optional components,
 missing AUR applications, clean installations and failed package queries. Both
-desktop and standalone network playbooks pass syntax checks. A live check-mode
+installation and standalone network playbooks pass syntax checks. A live check-mode
 run of the desktop package tasks on LittleArchy, with 95 pending upgrades and all
 required dependencies installed, finished with changed=0 and failed=0. No system
 upgrade or package installation was performed during this validation.
@@ -129,7 +129,7 @@ desktop QML interaction suite pass. Coverage includes fastest/country connection
 disconnection, setup/account/error states, invalid inputs, a GUI conflict reported
 with exit status zero, serialized reads and writes, duplicate clicks and connection
 persistence when the panel closes. The fresh-install service preview regression,
-both desktop playbook syntax checks, component lint and whitespace checks pass.
+Ansible playbook syntax checks, component lint and whitespace checks pass.
 Sign-in and connection layouts were visually checked at 420×760.
 
 Proton VPN CLI 1.0.5-1 and its signed Arch dependencies are installed on the
@@ -226,7 +226,7 @@ midnight and fractional offsets, cancelled authorization, atomic failures, exter
 revisions, rollback/recovery and busy-writer detection. Scaled, rotated, portrait
 and small-screen placement checks keep clock groups clear of password controls.
 The real Ansible initialization and input-sync tasks preserve saved layouts on
-repeat runs with `changed=0`. Component/locker lint, both desktop playbook syntax
+repeat runs with `changed=0`. Component/locker lint, Ansible playbook syntax
 checks, native Lua parsing and whitespace checks pass.
 
 Actual keyboard/pointer events in a disposable graphical VM verified timezone
@@ -320,7 +320,7 @@ in General and its search metadata.
 
 All 66 desktop regressions pass. New checks cover both policies, native template rendering, direct helper
 and socket requests, confirmation cancellation and QML button visibility/layout
-while retaining password focus. Component/test lint, both desktop playbook syntax
+while retaining password focus. Component/test lint, Ansible playbook syntax
 checks and whitespace checks pass. Tests use isolated processes, synthetic PAM
 policies and offscreen Qt rendering; no real power action or authentication was
 performed. Workstation deployment and a complete Wayland lock cycle were not run.
@@ -394,7 +394,7 @@ Launcher tests cover authenticated exit, crash/early-exit fallback, a missing
 Quickshell runtime, updater cleanup and the native refresh-signal mask.
 Component lint and whitespace checks pass. The
 [rendered control preview](images/desktop-lock-controls.png) was visually inspected.
-Both desktop playbook syntax checks pass.
+Ansible playbook syntax checks pass.
 
 Rendering and PAM checks use the offscreen backend and synthetic policies.
 A complete Wayland lock/unlock cycle and workstation deployment were not performed.
@@ -414,7 +414,7 @@ copy; substitutions leave identity text and file paths intact.
 
 All 50 desktop regressions and 20 Qt checks pass, including theme persistence,
 mode toggling, personal wallpaper preservation and session interaction/rendering.
-Both desktop playbook syntax checks pass. A focused three-test rerun passes after
+Ansible playbook syntax checks pass. A focused three-test rerun passes after
 the final substitution adjustment. Generated configuration checks and native
 compositor parsing pass for Rose light/dark. Measured ordinary text contrast is
 at least 4.56:1 in light mode and 5.55:1 in dark mode, with large clock text and
@@ -448,7 +448,7 @@ Static icons and the clock remain asynchronous decorations. Each button has
 exactly one clickable widget because Hyprlock dispatches clicks to all overlapping
 widgets. SIGUSR2 remains blocked, and no refresh signals are sent.
 
-All 50 regressions and both desktop playbook syntax checks pass. The process/socket
+All 50 regressions and Ansible playbook syntax checks pass. The process/socket
 tests keep the real helpers and stub only systemctl/Quickshell, verifying shutdown
 and reboot reach the power command rather than opening a session menu. Both
 confirmed commands are recorded within one second of an immediate second click;
@@ -473,7 +473,7 @@ The rendered password field remains 320 x 50 pixels, with `halign = center`,
 the bottom edge. The decorative clock is centered vertically and horizontally.
 
 All 49 Python regressions and 20 Qt checks pass, including label fitting,
-confirmation hit areas, small screens and rendering. Both desktop playbook syntax
+confirmation hit areas, small screens and rendering. Ansible playbook syntax
 checks and whitespace checks pass. Rendered label/prompt sizes and button spacing
 were inspected, as were the session snapshot and generated lock buttons.
 Component qmllint passes; the shell retains its existing dynamic import/type
@@ -528,7 +528,7 @@ the new entries appear in generated Hyprland configuration and shortcut help.
 
 All 46 existing tests pass, including the native Hyprland 0.56.2 parser and
 shortcut conflict checks. The full suite requires access outside the sandbox
-for Ansible RPC and the temporary popup sockets. Both desktop playbook syntax
+for Ansible RPC and the temporary popup sockets. Ansible playbook syntax
 checks, resize reference/metadata checks and whitespace checks pass. Interactive
 mouse/key acceptance and workstation deployment were not performed.
 
@@ -554,7 +554,7 @@ not perform font measurement.
 All 45 regressions pass, including layout/variant order, empty variant slots,
 bounded badge sizing, preserved variant names, markup/argument quoting, cached
 and uncached lock startup, updater ownership and the refresh-signal guard.
-Desktop, desktop-verify and site syntax checks pass.
+Ansible syntax checks pass.
 
 Eight settled native VM layout switches measured 41.45 ms median and 53.4 ms
 maximum visible feedback, including screenshot polling. Nine rapid switches
@@ -604,8 +604,8 @@ preserve fast locking and immediate password feedback.
 All 44 regressions pass, including a real child receiving a blocked refresh
 signal, parent-mask restoration on both successful and failed spawn, image
 updates with a retired locker descriptor, controller messages and cleanup.
-The two mask tests explicitly start with SIGUSR2 unblocked. Desktop,
-desktop-verify and site syntax checks pass; repeat apply:
+The two mask tests explicitly start with SIGUSR2 unblocked.
+Ansible syntax checks pass; repeat apply:
 ok=45 changed=0 failed=0.
 
 An uninterrupted 20-minute native VM lock passed 267 visible clock-update
@@ -643,7 +643,7 @@ across display-off/wake transitions. Setting
 `archsetup_desktop_software_cursor: false` selects Hyprland's automatic mode (`2`).
 Both generated modes pass native Hyprland configuration validation.
 
-All 42 regressions and the desktop, desktop-verify and site syntax checks pass.
+All 42 regressions and Ansible syntax checks pass.
 The Ansible-managed VM profile reloads without configuration errors and reports
 `hardwareCursorsInUse: false`. A temporary three-second idle listener exercised
 five real display-blank/wake cycles: three woke by keyboard and two by mouse.
@@ -679,7 +679,7 @@ showed a lock frame in 203 ms and the clock in 279 ms. Later screenshots confirm
 the wallpaper, identity pill and Confirm/Cancel controls rendered normally.
 These timings include screenshot polling overhead and describe the VM, not
 LittleArchy hardware. No password was submitted or workstation deployment made.
-Desktop, desktop-verify and site syntax checks pass. Repeated Ansible apply:
+Ansible syntax checks pass. Repeated Ansible apply:
 `ok=45 changed=0 failed=0`.
 
 ## Lock-screen power confirmation — 2026-10-12
@@ -698,9 +698,8 @@ It cleans up on termination; PAM/keyring policy is unchanged.
 
 All 41 regressions pass, covering both actions, cancellation, duplicate presses,
 failed action recovery, fixed image sizes, message validation, live control
-delivery, private configuration paths and cleanup. Desktop, desktop-verify and
-site syntax checks pass. Native VM mouse tests verified both Confirm/Cancel
-arrangements, cancellation without a power action, reset on reopening the lock,
+delivery, private configuration paths and cleanup. Ansible syntax checks pass.
+Native VM mouse tests verified both Confirm/Cancel arrangements, cancellation without a power action, reset on reopening the lock,
 confirmed reboot with a new boot ID, and confirmed power off shutting down QEMU.
 Repeated Ansible apply: `ok=45 changed=0 failed=0`.
 
@@ -733,7 +732,7 @@ overhead and describe the VM, not LittleArchy hardware.
 The Reboot button returned to the updated boot lock screen, whose layout badge
 also refreshed after switching. Closing the lock screen removed its updater.
 
-Desktop, desktop-verify and site syntax checks pass. Repeated Ansible apply:
+Ansible syntax checks pass. Repeated Ansible apply:
 `ok=45 changed=0 failed=0`. Apply the desktop profile and reopen the lock screen
 to load the changed helper and image configuration. No workstation deployment
 was made.
@@ -752,8 +751,7 @@ color effects remain enabled.
 
 All 33 regressions pass, covering live clock/layout file updates, unchanged
 identity images, cleanup after normal/failed locks and an already-exited updater
-owner. Desktop, desktop-verify and site syntax checks pass in the Arch VM. A
-20-keystroke QEMU trial measured visible dummy-input feedback at 76 ms median /
+owner. Ansible syntax checks pass in the Arch VM. A 20-keystroke QEMU trial measured visible dummy-input feedback at 76 ms median /
 331 ms maximum with the previous lock configuration, and 41 ms median / 42 ms
 maximum with the updated one. These include screenshot polling overhead and
 are VM measurements, not LittleArchy hardware measurements; no password was
@@ -776,7 +774,7 @@ images provide clickable Power off/Reboot controls; PAM/keyring authentication
 is unchanged. The lock launcher prepares assets before starting Hyprlock and
 honors the configured short fades.
 
-All 31 regressions and the desktop/desktop-verify/site syntax checks pass. Live
+All 31 regressions and Ansible syntax checks pass. Live
 VM testing confirmed the lock wallpaper, clock, password field and controls
 render at boot, and Super+Space switches the compact layout label while locked.
 The Reboot button changed the VM boot ID and returned to the updated locked
@@ -795,8 +793,8 @@ the restart; unexpected command/startup failures remain Ansible errors.
 
 All 28 regressions pass, including real Ansible notification coalescing, unchanged
 applies, previews, missing runtime directories, inactive profiles, delayed
-readiness and failure handling. Desktop, desktop-verify and site syntax checks
-pass. In the graphical VM, repairing shell/preference drift produced
+readiness and failure handling. Ansible syntax checks pass. In the graphical VM,
+repairing shell/preference drift produced
 `ok=48 changed=3 failed=0`; the shell PID changed once, open terminal windows
 survived, and workspace 11 remained active. The repeated apply reported
 `ok=44 changed=0 failed=0` and retained the shell PID. Preview also retained it.
@@ -988,7 +986,7 @@ The VM also exposed competing NetworkManager/systemd-networkd ownership of eth0.
 Added a preflight guard against active or enabled competing network services and
 an explicit `archsetup_desktop_manage_network=false` opt-out. The real VM conflict
 is rejected before changes (`ok=9 changed=0 failed=1`, expected). Local Python
-tests remain 10/10; the updated desktop playbook passes syntax validation.
+tests remain 10/10; the updated installation playbook passes syntax validation.
 With the network opt-out, VM apply passes (`ok=37 changed=0 failed=0 skipped=4`)
 and verification passes (`ok=18 changed=0 failed=0 skipped=2`). The opt-out leaves
 previously started services unchanged; it does not migrate the VM's networking.
@@ -1003,7 +1001,7 @@ the personal profile retains Brave.
 | Check | Result |
 | --- | --- |
 | Python tests | 10 pass: compositor parsing, invalid-candidate rejection, boolean CLI values, unique shortcuts, reserved layout switch, clipboard command safety, screenshot cancellation, power confirmation, theme state, bounded calculator and AI provider exclusion |
-| Ansible syntax | Desktop, desktop-verify and site playbooks pass |
+| Ansible syntax | Playbook syntax checks pass |
 | Disabled desktop | `changed=0`, `failed=0`; desktop tasks skipped |
 | Fresh provisioning | Passed in the VM, including package install and session registration |
 | Repeat apply | `ok=38 changed=0 failed=0` |

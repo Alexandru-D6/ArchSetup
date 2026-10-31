@@ -49,9 +49,9 @@ and `~/.vscode-oss/argv.json` are preserved; changed flag files receive timestam
 backups. Fully quit and reopen VSCodium after applying the setting.
 
 ```bash
-./setup.sh desktop-check -e @inventory/profiles/alex-desktop.yml --ask-become-pass
-./setup.sh desktop-apply -e @inventory/profiles/alex-desktop.yml --ask-become-pass
-./setup.sh desktop-verify -e @inventory/profiles/alex-desktop.yml --ask-become-pass
+./setup.sh check -e @inventory/profiles/alex-desktop.yml --ask-become-pass
+./setup.sh install -e @inventory/profiles/alex-desktop.yml --ask-become-pass
+./setup.sh verify -e @inventory/profiles/alex-desktop.yml --ask-become-pass
 ```
 
 An existing unmanaged Greetd configuration or profile requires explicit adoption:
@@ -472,7 +472,8 @@ system snapshot for stack rollback.
 Lua candidates are parsed before replacing the managed compositor file; invalid
 candidates leave the existing file intact.
 
-`desktop-verify` is read-only and checks package presence, required files,
+`verify` checks the base packages and, with an enabled desktop profile, performs
+read-only desktop checks for package presence, required files,
 the selected VSCodium keyring backend, compositor parsing and login-manager
 enablement. It does not authenticate on your behalf or prove suspend/resume
 behavior. Session processes are launched once per
@@ -500,8 +501,8 @@ python tests/desktop/test_desktop.py
 python tests/desktop/test_settings.py
 python tests/desktop/render.py /tmp/archsetup-preview
 Hyprland --verify-config --config /tmp/archsetup-preview/hyprland.lua
-ansible-playbook playbooks/desktop.yml --syntax-check
-ansible-playbook playbooks/desktop-verify.yml --syntax-check
+ansible-playbook playbooks/site.yml --syntax-check
+ansible-playbook playbooks/verify.yml --syntax-check
 ansible-playbook tests/desktop/disabled.yml --check
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_QUICK_CONTROLS_STYLE=Basic \
   /usr/lib/qt6/bin/qmltestrunner -input tests/desktop/qml -o -,txt

@@ -18,7 +18,7 @@ idempotently. Qt signal containers are normalized to JSON values before draft
 validation, including on the older Qt version in the VM.
 
 Validation: 27 settings regressions, 67 desktop tests and 86 Qt interaction checks
-pass. Native parsing, component/locker lint, desktop/verify playbook syntax and
+pass. Native parsing, component/locker lint, Ansible playbook syntax and
 whitespace checks pass. A disposable graphical VM verified authorized/cancelled
 timezone Apply, focus return, midnight after UTC→Kathmandu, live four-layout Apply,
 active-pair retention, Super+Space and independent saved random clock positions.
@@ -72,7 +72,7 @@ Configuration window plan includes the policy under General and in settings sear
 Validation: all 66 desktop regressions pass. New process tests reproduce the pending region-selection race,
 recorder errors and timeouts, both power policies, direct helper/socket requests,
 confirmation cancellation and hidden QML buttons without breaking password input.
-Component/test lint, both desktop playbook syntax checks and whitespace checks
+Component/test lint, Ansible playbook syntax checks and whitespace checks
 pass. No workstation deployment or full Wayland lock cycle was performed; reapply
 the desktop profile and start a new lock session.
 
@@ -131,7 +131,7 @@ background handles clicks, avoiding duplicate callbacks from overlapping labels
 or icons. Private default captions exist before Hyprlock starts, while static
 icons/clock are generated afterward. SIGUSR2 remains blocked.
 
-Validation: all 50 regressions, both desktop playbook syntax checks and whitespace
+Validation: all 50 regressions, Ansible playbook syntax checks and whitespace
 checks pass. Process/socket tests keep the real helpers while mocking only the
 final systemctl/Quickshell commands. Immediate confirmation reaches both poweroff
 and reboot within one second; cancellation, repeated execution, failure recovery
@@ -189,9 +189,8 @@ shrink/grow height in 40-pixel steps. Super+right-drag remains available. The sh
 shortcut map, help reference, README and source count now cover 228 bindings.
 
 Validation: all 46 existing tests pass with the approved socket access, including
-native Hyprland 0.56.2 configuration parsing and shortcut uniqueness. Desktop and
-desktop-verify syntax checks, resize reference/metadata checks and whitespace
-checks pass. No workstation deployment or interactive resize acceptance was
+native Hyprland 0.56.2 configuration parsing and shortcut uniqueness. Ansible
+syntax checks, resize reference/metadata checks and whitespace checks pass. No workstation deployment or interactive resize acceptance was
 performed. Reapply the desktop profile, then run `hyprctl reload` to activate.
 
 Previous task: emptied the left side of the taskbar. Removed the complete left row:
@@ -265,7 +264,7 @@ or if the generated Kitty theme is missing. Verification checks this link.
 `confirm_os_window_close` is now zero, disabling window/tab close confirmation.
 README and ownership/recovery documentation reflect the managed default config.
 
-Validation: all 20 local tests, both desktop playbook syntax checks and a fresh
+Validation: all 20 local tests, Ansible playbook syntax checks and a fresh
 Kitty check-mode preview pass. Real Kitty parsing in the VM confirms matching
 default/shortcut settings and disabled confirmation; the original backup hash is
 unchanged. CLI, shortcut helper and `gtk-launch kitty` each opened and closed after
@@ -306,7 +305,7 @@ tests pass, including the native compositor parser; the reference matches every
 changed binding and whitespace checks pass. This change was first deployed to the
 saved VM during the terminal fix above; the older silent-move acceptance below is
 historical. No workstation deployment was made.
-Apply using `./setup.sh desktop-apply -e @inventory/profiles/LittleArchy.yml
+Apply using `./setup.sh install -e @inventory/profiles/LittleArchy.yml
 --ask-become-pass`, then run `hyprctl reload` in the managed desktop session.
 
 Previous task: expanded the single-source shortcut map to **224 bindings**, including
@@ -460,7 +459,7 @@ tree; no commit was made. The workstation's desktop/packages/login were untouche
 
 Implementation is present and substantially VM-tested. Primary entry points:
 `docs/hyprland-desktop.md`, `docs/desktop-validation.md`, `roles/desktop`, and
-`playbooks/desktop.yml`. The user permits Lua and requires no AI integrations.
+`playbooks/site.yml`. The user permits Lua and requires no AI integrations.
 
 Since the earlier checkpoint:
 
@@ -550,8 +549,8 @@ autologin. Workstation deployment has not been performed.
 
 - Optional `roles/desktop` with defaults, preflight/adoption guards, official
   package installation, configuration, Greetd and read-only verification.
-- `playbooks/desktop.yml`, `desktop-verify.yml`, optional role in `site.yml`,
-  `desktop-check`, `desktop-apply`, `desktop-verify` wrapper commands.
+- `playbooks/site.yml` and `playbooks/verify.yml` include the optional desktop
+  role; `check`, `install` and `verify` are the wrapper commands.
 - `inventory/profiles/alex-desktop.yml`: Brave, existing Quickshell package,
   DP-2 at 144 Hz and HDMI-A-1 disabled; default role uses automatic monitors.
 - Isolated profile under `~/.config/archsetup`, separate session entry; original
@@ -574,13 +573,13 @@ autologin. Workstation deployment has not been performed.
   confirmation, theme-state preservation, calculator bounds/code rejection,
   and absence of AI provider references in deployment payload.
 - Hyprland 0.56.2 accepts rendered Lua (`config ok`).
-- Ansible syntax checks pass for desktop, desktop-verify and site playbooks.
+- Ansible syntax checks pass.
 - Disabled role check: changed=0, failed=0; all desktop tasks skipped.
 - Qt qmllint: only the expected PanelWindow dynamic-platform uncreatable-type
   warning remains. Runtime compositor testing is required for that type.
 - Disposable VM first apply succeeded. Second apply after fixes:
   ok=38 changed=0 failed=0 skipped=1.
-- VM desktop-verify passed with changed=0.
+- VM desktop verification passed with changed=0.
 - VM native Hyprland/Quickshell session launched successfully; shell log says
   `Configuration Loaded`, with no QML errors. Portal registration warnings under
   the systemd-run test harness remain to investigate in a normal Greetd session.
@@ -638,7 +637,7 @@ Run checks with:
 /tmp/archsetup-validation/bin/python tests/desktop/test_desktop.py
 ANSIBLE_HOME=/tmp/archsetup-ansible ANSIBLE_LOCAL_TEMP=/tmp/archsetup-ansible/tmp \
 ANSIBLE_COLLECTIONS_PATH=/tmp/archsetup-collections \
-/tmp/archsetup-validation/bin/ansible-playbook playbooks/desktop.yml --syntax-check
+/tmp/archsetup-validation/bin/ansible-playbook playbooks/site.yml --syntax-check
 ```
 
 ## VM checkpoint and resume
@@ -678,8 +677,7 @@ VM repo is `/home/archsetup/desktop-test`. Apply options:
 `-e archsetup_desktop_enabled=true -e archsetup_desktop_user=archsetup
 -e archsetup_desktop_browser=firefox.desktop`.
 Login management is enabled; Greetd is enabled for next boot, no autologin.
-Logs: /tmp/desktop-apply.log, /tmp/desktop-second.log, /tmp/desktop-verify.log,
-/tmp/hyprland-test.log. Installed test stack:
+Logs include /tmp/desktop-second.log and /tmp/hyprland-test.log. Installed test stack:
 Hyprland 0.56.2-4, Quickshell 0.3.2-1, Hyprlock 0.9.6-3, Hypridle 0.1.8-2.
 The VM was fully upgraded before installing desktop packages.
 

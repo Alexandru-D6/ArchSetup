@@ -64,8 +64,8 @@ examples, not commands that exist in the repository yet.
 | --- | --- |
 | `./setup.sh bootstrap` | Install missing execution prerequisites and declared Ansible collections. |
 | `./setup.sh check` | Preview configuration changes with Ansible check and diff modes. |
-| `./setup.sh apply` | Install missing declared packages and converge configuration. |
-| `./setup.sh apply --tags dotfiles` | Apply a documented subset with its prerequisites checked. |
+| `./setup.sh install` | Install missing declared packages and converge configuration. |
+| `./setup.sh install --tags dotfiles` | Apply a documented subset with its prerequisites checked. |
 | `./setup.sh upgrade` | Perform an explicitly requested full Arch system upgrade. |
 | `./setup.sh verify` | Check managed packages, files, and services without changing them. |
 

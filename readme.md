@@ -11,12 +11,10 @@ integrations.
 
 ## Install the desktop after cloning
 
-For the full environment, use `check` and `apply` with your desktop profile:
-they cover both the base command-line tools and the desktop. `desktop-check`
-and `desktop-apply` are shortcuts for updating only the desktop and include its
-dependencies. Verification is separate: `verify` checks the base tools and
-`desktop-verify` checks the desktop. Only bootstrap/apply/upgrade install packages;
-check previews changes and verify inspects the installed state.
+Use **check → install → verify** with the same desktop profile for all three
+commands. Each covers the base command-line tools and the enabled desktop profile.
+`check` previews changes; `install` applies them; `verify` inspects the installed
+state. Only bootstrap/install/upgrade install packages.
 
 ### 1. Prepare the computer
 
@@ -98,7 +96,7 @@ will not stop your current graphical session.
 ### 4. Install
 
 ```bash
-./setup.sh apply \
+./setup.sh install \
   -e @inventory/profiles/my-desktop.yml --ask-become-pass
 ```
 
@@ -132,8 +130,7 @@ The same check protects the standalone network migration. See
 ### 5. Verify and reboot
 
 ```bash
-./setup.sh verify --ask-become-pass
-./setup.sh desktop-verify \
+./setup.sh verify \
   -e @inventory/profiles/my-desktop.yml --ask-become-pass
 ```
 
@@ -228,9 +225,8 @@ the recorded Greetd configuration backup if needed. See
 ## Apply later changes
 
 Update this repository on the target computer, retain your machine profile, then
-repeat **check → apply → verify → desktop-verify** with the same profile on check,
-apply and desktop-verify. For desktop-only changes, use **desktop-check →
-desktop-apply → desktop-verify** instead; these still install desktop dependencies.
+repeat **check → install → verify** with the same profile on all three commands.
+Installation includes desktop dependencies.
 Log out and back in to refresh all desktop components; reboot for changes to the
 boot login flow. Reapplying an unchanged installation should report `changed=0`.
 
@@ -247,26 +243,26 @@ To install the additional command-line tool set without enabling the desktop, ru
 ```bash
 ./setup.sh bootstrap
 ./setup.sh check
-./setup.sh apply
+./setup.sh install
 ./setup.sh verify
 ```
 
 `bootstrap` installs Git, Python, Ansible, and sudo if missing. Because Arch only
 supports full upgrades, that initial prerequisite installation uses `pacman -Syu`.
-`apply` does not refresh package databases or upgrade packages; it only ensures the
+`install` does not refresh package databases or upgrade packages; it only ensures the
 declared tools are present. Use `./setup.sh upgrade` separately for a deliberate
 full system upgrade. Supply normal Ansible options after each command, such as
-`./setup.sh apply --ask-become-pass`.
+`./setup.sh install --ask-become-pass`.
 
 Run bootstrap as root when sudo is not yet installed. Later commands can run as a
-regular sudo-enabled user. The first `apply` needs current package metadata; if
+regular sudo-enabled user. The first `install` needs current package metadata; if
 pacman cannot install a missing tool because the local metadata is stale, run the
 explicit upgrade command and retry.
 
 To change the tool set, edit
 [inventory/group_vars/all.yml](inventory/group_vars/all.yml). Removing a name from
 the installation list leaves an already installed package in place. To uninstall a
-package, add it to `archsetup_cli_packages_absent` and run `./setup.sh apply`.
+package, add it to `archsetup_cli_packages_absent` and run `./setup.sh install`.
 The removal list takes precedence, so adding `zip` there removes it even if it is
 also included in the default installation list. Removal uses pacman's normal
 dependency checks and preserves modified package configuration as `.pacsave`.

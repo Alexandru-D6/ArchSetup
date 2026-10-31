@@ -1,5 +1,5 @@
 ---
-# Explicit profile: ./setup.sh desktop-check -e @inventory/profiles/alex-desktop.yml
+# Explicit profile: ./setup.sh check -e @inventory/profiles/alex-desktop.yml
 archsetup_desktop_enabled: true
 archsetup_desktop_user: alex
 # Preserve the currently installed provider instead of replacing it implicitly.

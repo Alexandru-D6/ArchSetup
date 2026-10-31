@@ -1,7 +1,7 @@
 Test them in stages. Your installed helpers still predate the fixes, so first reapply your profile:
 
-./setup.sh desktop-apply -e @inventory/profiles/LittleArchy.yml --ask-become-pass
-./setup.sh desktop-verify -e @inventory/profiles/LittleArchy.yml --ask-become-pass
+./setup.sh install -e @inventory/profiles/LittleArchy.yml --ask-become-pass
+./setup.sh verify -e @inventory/profiles/LittleArchy.yml --ask-become-pass
 
 Substitute your usual profile if different. Save your work and confirm you can log in through Ctrl+Alt+F3 before testing.
 

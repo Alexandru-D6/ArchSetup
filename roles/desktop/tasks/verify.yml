@@ -90,7 +90,7 @@
           - desktop_kitty_configuration.stat.exists
           - desktop_kitty_configuration.stat.islnk | default(false)
           - desktop_kitty_configuration.stat.lnk_source | default('') == desktop_root + '/theme/kitty.conf'
-        fail_msg: Run desktop-apply to normalize the default Kitty configuration.
+        fail_msg: Run ./setup.sh install with your desktop profile to normalize the default Kitty configuration.
 
     - name: Read the VSCodium launcher flags
       ansible.builtin.slurp:
@@ -102,7 +102,7 @@
       ansible.builtin.assert:
         that:
           - "'--password-store=gnome-libsecret' in (desktop_vscodium_flags.content | b64decode).splitlines()"
-        fail_msg: Run desktop-apply to configure VSCodium's GNOME Keyring backend.
+        fail_msg: Run ./setup.sh install with your desktop profile to configure VSCodium's GNOME Keyring backend.
       when: archsetup_desktop_code_editor == 'codium.desktop'
 
     - name: Validate the installed Lua configuration

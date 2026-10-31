@@ -175,7 +175,7 @@ opt-in, disabled by default; the existing CLI playbook behavior must remain inta
 | `roles/desktop_shell` | Curated Quickshell files, assets, theme tokens and required services |
 | `roles/session_security` | Hyprlock, Hypridle, PAM integration checks and suspend/lock orchestration |
 | `roles/display_manager` | Greetd and a greeter, session entry, authentication default and boot enablement |
-| `playbooks/desktop-verify.yml` | Read-only package/configuration/service checks and session diagnostics |
+| `playbooks/verify.yml` | Read-only package/configuration/service checks and session diagnostics |
 | `inventory/host_vars/` | Explicit personal input/browser values and machine-specific display overrides |
 
 Expose variables for enablement, target user, source revision, browser desktop ID,

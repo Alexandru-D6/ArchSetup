@@ -1,5 +1,5 @@
 ---
-- name: Verify local Arch Linux command-line environment
+- name: Verify local Arch Linux environment and enabled desktop profile
   hosts: localhost
   gather_facts: true
   become: true
@@ -14,7 +14,7 @@
     - name: Confirm declared command-line packages are installed
       ansible.builtin.assert:
         that: item in ansible_facts.packages
-        fail_msg: "Required package '{{ item }}' is not installed. Run ./setup.sh apply."
+        fail_msg: "Required package '{{ item }}' is not installed. Run ./setup.sh install."
         success_msg: "Required package '{{ item }}' is installed."
       loop: "{{ archsetup_cli_packages | difference(archsetup_cli_packages_absent) }}"
       loop_control:
@@ -23,8 +23,16 @@
     - name: Confirm explicitly undesired packages are absent
       ansible.builtin.assert:
         that: item not in ansible_facts.packages
-        fail_msg: "Package '{{ item }}' is still installed. Run ./setup.sh apply."
+        fail_msg: "Package '{{ item }}' is still installed. Run ./setup.sh install."
         success_msg: "Package '{{ item }}' is absent."
       loop: "{{ archsetup_cli_packages_absent }}"
       loop_control:
         label: "{{ item }}"
+
+    - name: Check desktop installation
+      ansible.builtin.include_role:
+        name: desktop
+        tasks_from: verify
+        apply:
+          tags: [desktop]
+      tags: [desktop]
