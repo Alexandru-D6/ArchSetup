@@ -57,6 +57,8 @@ archsetup_desktop_packages:
   - kitty
   - mousepad
   - libreoffice-fresh
+  - vlc
+  - vlc-plugin-ffmpeg
   - btop
   - thunar
   - fuzzel
