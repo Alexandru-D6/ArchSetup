@@ -372,7 +372,7 @@ ShellRoot {
             visible: root.barVisible
             anchors { top: !root.barBottom; bottom: root.barBottom; left: true; right: true }
             implicitHeight: 40
-            color: root.surface
+            color: Qt.alpha(root.surface, 0.5)
             WlrLayershell.namespace: "archsetup-panel"
             Row {
                 id: barCenter
@@ -411,6 +411,7 @@ ShellRoot {
                         Chip {
                             hoverColor: Qt.tint(root.raised, Qt.alpha(root.accent, 0.18))
                             selectedHoverColor: Qt.tint(root.accent, Qt.alpha(root.onAccent, 0.16))
+                            implicitWidth: Math.max(26, contentItem.implicitWidth + 10); implicitHeight: 26
                             text: (desktopTime.snapshot.time || Qt.formatDateTime(clock.date, "HH:mm")) + (panel.width > 1100 ? " · " + (desktopTime.snapshot.shortDate || Qt.formatDateTime(clock.date, "d MMM")) : "")
                             selected: root.timeCenterOpen && root.timeCenterScreen === panel.screen.name
                             Accessible.name: "Calendar and time tools"
@@ -432,10 +433,8 @@ ShellRoot {
                 pluggedIn: !UPower.onBattery
                 fullyCharged: UPower.displayDevice.state === UPowerDeviceState.FullyCharged
                 percentage: UPower.displayDevice.percentage * 100
-                interactive: true
                 uiFont: root.uiFont
                 surface: root.raised; textColor: root.ink; accent: root.accent; accentText: root.onAccent
-                onClicked: root.toggle("settings")
             }
             RowLayout {
                 anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: 12 }
@@ -452,13 +451,21 @@ ShellRoot {
                         TapHandler { acceptedButtons: Qt.RightButton; onTapped: trayButton.modelData.display(panel, trayButton.x, trayButton.y) }
                     }
                 }
-                Chip {
-                    implicitWidth: 44
-                    selected: root.controlCenterOpen && root.controlCenterScreen === panel.screen.name
-                    Accessible.name: "Control center" + (notificationSource.notifications.length ? ", " + notificationSource.notifications.length + " notifications" : "")
-                    onClicked: root.toggleControlCenter(panel.screen.name)
-                    SessionIcon { anchors.centerIn: parent; name: "controls"; width: 20; height: 20; color: parent.selected ? root.onAccent : root.ink }
-                    Rectangle { visible: notificationSource.notifications.length > 0; anchors { right: parent.right; top: parent.top; margins: 4 } width: 6; height: 6; radius: 3; color: root.accent }
+                Rectangle {
+                    implicitWidth: controlCenterButton.implicitWidth + 12; implicitHeight: 32; radius: 16; color: root.raised
+                    Layout.alignment: Qt.AlignVCenter
+                    Chip {
+                        id: controlCenterButton
+                        anchors.centerIn: parent
+                        implicitWidth: 44; implicitHeight: 26
+                        hoverColor: Qt.tint(root.raised, Qt.alpha(root.accent, 0.18))
+                        selectedHoverColor: Qt.tint(root.accent, Qt.alpha(root.onAccent, 0.16))
+                        selected: root.controlCenterOpen && root.controlCenterScreen === panel.screen.name
+                        Accessible.name: "Control center" + (notificationSource.notifications.length ? ", " + notificationSource.notifications.length + " notifications" : "")
+                        onClicked: root.toggleControlCenter(panel.screen.name)
+                        SessionIcon { anchors.centerIn: parent; name: "controls"; width: 20; height: 20; color: parent.selected ? root.onAccent : root.ink }
+                        Rectangle { visible: notificationSource.notifications.length > 0; anchors { right: parent.right; top: parent.top; margins: 4 } width: 6; height: 6; radius: 3; color: root.accent }
+                    }
                 }
             }
         }
