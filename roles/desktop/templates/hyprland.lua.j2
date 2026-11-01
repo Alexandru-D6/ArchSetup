@@ -41,6 +41,28 @@ hl.config({
 local settings_input = root .. "/settings-input.lua"
 local settings_file = io.open(settings_input, "r")
 if settings_file then settings_file:close(); dofile(settings_input) end
+-- Three-finger touchpad gestures.
+hl.config({ gestures = { workspace_swipe_use_r = true, workspace_swipe_create_new = true } })
+hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+local volumeSwipeRemainder = 0
+local function swipeVolume(event)
+    -- Accumulate motion into 5% steps instead of spawning a process for every sample.
+    volumeSwipeRemainder = volumeSwipeRemainder - event.delta.y
+    local steps = math.modf(volumeSwipeRemainder / 20)
+    if steps == 0 then return end
+    volumeSwipeRemainder = volumeSwipeRemainder - steps * 20
+    local change = math.max(-100, math.min(100, steps * 5))
+    hl.exec_cmd("qs -p " .. string.format("%q", root .. "/shell") .. " ipc call desktop changeVolume " .. change)
+end
+hl.gesture({
+    fingers = 3,
+    direction = "vertical",
+    action = {
+        start = function(event) volumeSwipeRemainder = 0; swipeVolume(event) end,
+        update = swipeVolume,
+        finish = function() volumeSwipeRemainder = 0 end,
+    },
+})
 -- Speeds are deciseconds: 80–140 ms, with a sharp ease-out and no overshoot.
 hl.curve("archsetupSharp", { type = "bezier", points = { {0.16, 1}, {0.3, 1} } })
 hl.animation({ leaf = "global", enabled = true, speed = 1, bezier = "archsetupSharp" })

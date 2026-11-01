@@ -36,6 +36,15 @@ def capture(*args):
     return run(*args, stdout=subprocess.PIPE, text=True).stdout
 
 
+def change_volume(change):
+    if type(change) is not int or not -100 <= change <= 100 or change == 0:
+        raise ValueError('Expected a nonzero volume change between -100 and 100')
+    result = run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'changeVolume',
+                 str(change), stdout=subprocess.PIPE, text=True)
+    if result.stdout.strip() != 'true':
+        raise ValueError('The default audio output is not ready')
+
+
 def retire_notifications(proc=Path('/proc')):
     """Stop only this profile's legacy notification daemon and its supervisor."""
     stopped = []
@@ -435,6 +444,7 @@ def main(action):
                     if recording_cleanup is not None:
                         recording_cleanup.join(timeout=3)
     elif action == 'retire-notifications': retire_notifications()
+    elif action.startswith('volume:'): change_volume(int(action.partition(':')[2]))
     elif action in ('overview', 'settings', 'notifications', 'configuration', 'session', 'tools', 'media', 'help'):
         run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'toggle', action)
     elif action in ('keyboard', 'widgets', 'bar', 'bar-position', 'detach-tools'):

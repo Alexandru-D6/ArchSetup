@@ -327,6 +327,17 @@ The personal profile preserves flat pointer acceleration, sensitivity zero,
 keyboard layout switching on Super+Space, and the current Lua touchpad scroll
 factor 0.7. Adjust `archsetup_desktop_input` if the old 0.5 value was intended.
 
+Three-finger horizontal touchpad swipes slide between numbered workspaces,
+including empty ones, so swiping can continue from 2 to 3, 4 and beyond. Three-finger
+vertical swipes raise the volume when moving up and lower it when moving down,
+in 5% steps, capped at 100%. Each change updates a short volume popup through
+the shell's notification system, showing the actual percentage and mute state.
+The shell updates the value immediately through its native PipeWire connection,
+so popup updates do not wait for separate audio helpers or queued volume queries.
+Volume feedback appears during Do Not Disturb and does not add notification history;
+battery warnings retain priority. These use Hyprland's
+[native gestures](https://wiki.hypr.land/0.56.0/Configuring/Advanced-and-Cool/Gestures/).
+
 Super+D opens applications, Super+Tab shows windows/workspaces, Super+Comma opens
 the control center, Super+N opens the same panel, Super+L locks, and Super+/
 shows all shortcuts. The [complete shortcut reference](desktop-shortcuts.md) lists

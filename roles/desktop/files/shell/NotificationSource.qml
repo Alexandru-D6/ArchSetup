@@ -11,10 +11,18 @@ Item {
     property bool dnd: false
     property bool loaded: false
     property var applicationToast: null
+    property var volumeNotice: null
     property var batteryNotice: null
     property bool batteryVisible: false
-    readonly property var toast: batteryVisible ? batteryNotice : applicationToast
+    readonly property var toast: batteryVisible ? batteryNotice : volumeNotice || applicationToast
     readonly property var notifications: (batteryNotice ? [batteryNotice] : []).concat(serverLoader.item ? serverLoader.item.trackedNotifications.values.slice().reverse().filter(n => !n.transient) : [])
+    function notifyVolume(percentage, muted) {
+        if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) return;
+        volumeNotice = {appName: "Audio", summary: "Volume " + Math.round(percentage) + "%" + (muted ? " (muted)" : ""),
+            body: "", urgency: NotificationUrgency.Low, actions: [], dismiss: () => clearVolume()};
+        volumeTimeout.restart();
+    }
+    function clearVolume() { volumeTimeout.stop(); volumeNotice = null; }
     function notifyBattery(level, percentage, threshold) {
         const critical = level !== "low";
         const titles = {low: "Battery low", critical: "Battery critically low", suspend: "Battery almost empty",
@@ -92,5 +100,6 @@ Item {
         function onClosed(reason) { service.applicationToast = null; }
     }
     Timer { id: timeout; onTriggered: service.hideApplicationToast() }
+    Timer { id: volumeTimeout; interval: 1500; onTriggered: service.volumeNotice = null }
     Timer { id: batteryTimeout; interval: 10000; onTriggered: service.batteryVisible = false }
 }

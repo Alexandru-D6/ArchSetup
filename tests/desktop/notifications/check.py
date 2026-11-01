@@ -82,8 +82,48 @@ with (fixture / 'log').open('w+') as log:
         assert status()['toast'] == ''
         ipc('quiet', 'true')
         ipc('opened', 'true')
+        # Read the popup inside the same IPC call as the change: no timer or
+        # external audio query should be needed before the new value is visible.
+        ipc('resetAudio', '0.30', 'false')
+        for expected in [35, 40, 45, 50]:
+            changed = json.loads(ipc('changeAndRead', '5'))
+            assert changed['ok'] and round(changed['volume'] * 100) == expected, changed
+            assert changed['toast'] == f'Volume {expected}%', changed
+        changed = json.loads(ipc('changeAndRead', '-5'))
+        assert changed['ok'] and changed['toast'] == 'Volume 45%', changed
+        ipc('resetAudio', '0.97', 'true')
+        changed = json.loads(ipc('changeAndRead', '5'))
+        assert changed['volume'] == 1 and changed['muted'] and changed['toast'] == 'Volume 100% (muted)', changed
+        ipc('resetAudio', '0.03', 'false')
+        changed = json.loads(ipc('changeAndRead', '-5'))
+        assert changed['volume'] == 0 and changed['toast'] == 'Volume 0%', changed
+        ipc('availability', 'false')
+        changed = json.loads(ipc('changeAndRead', '5'))
+        assert not changed['ok'] and changed['volume'] == 0 and changed['toast'] == 'Volume 0%', changed
+        ipc('availability', 'true')
+        changed = json.loads(ipc('changeAndRead', '101'))
+        assert not changed['ok'] and changed['volume'] == 0, changed
+        ipc('dismiss')
+        ipc('volume', '35', 'false')
+        assert status()['count'] == 0 and status()['toast'] == 'Volume 35%', status()
+        time.sleep(0.8)
+        ipc('volume', '40', 'true')
+        assert status()['count'] == 0 and status()['toast'] == 'Volume 40% (muted)', status()
+        ipc('volume', '101', 'false')
+        assert status()['toast'] == 'Volume 40% (muted)', status()
+        time.sleep(0.9)
+        assert status()['toast'] == 'Volume 40% (muted)', status()
+        time.sleep(0.7)
+        assert status()['toast'] == '', status()
+        ipc('volume', '50', 'false')
+        ipc('dismiss')
+        assert status()['toast'] == '' and status()['count'] == 0, status()
         ipc('battery', 'low', '20')
         assert status()['count'] == 1 and status()['toast'] == 'Battery low', status()
+        ipc('volume', '55', 'false')
+        assert status()['toast'] == 'Battery low', status()
+        time.sleep(1.6)
+        assert status()['toast'] == 'Battery low', status()
         ipc('quiet', 'false')
         ipc('quiet', 'true')
         ipc('opened', 'false')

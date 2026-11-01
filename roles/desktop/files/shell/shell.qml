@@ -10,6 +10,7 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
+import Quickshell.Services.Pipewire
 import qs
 import "shared"
 
@@ -256,6 +257,8 @@ ShellRoot {
         function control(name: string): void { root.control(name); }
         function key(key: string): void { root.typeKey(key); }
         function awake(active: bool): void { root.inhibitIdle = active; }
+        function volumeChanged(percentage: int, muted: bool): void { notificationSource.notifyVolume(percentage, muted); }
+        function changeVolume(amount: int): bool { return volumeSource.change(amount); }
         function shutdown(): void { root.shutdown(); }
         function closeActive(): bool { return root.closeActiveSurface(); }
         function status(): string {
@@ -272,6 +275,9 @@ ShellRoot {
                 selectedSessionAction: sessionMenu.selectedAction,
                 controlCenterOpen: root.controlCenterOpen, controlCenterScreen: root.controlCenterScreen,
                 notificationCount: notificationSource.notifications.length, dnd: notificationSource.dnd,
+                notificationSummary: notificationSource.toast?.summary || "",
+                audio: {ready: volumeSource.audio !== null, level: volumeSource.audio?.volume || 0,
+                    muted: volumeSource.audio?.muted || false},
                 battery: {ready: batteryMonitor.ready, present: batteryMonitor.present, onBattery: batteryMonitor.onBattery,
                     charging: UPower.displayDevice.state === UPowerDeviceState.Charging, powerConnected: !UPower.onBattery,
                     percentage: batteryMonitor.percentage, settings: batteryMonitor.settings,
@@ -471,6 +477,12 @@ ShellRoot {
         }
     }
 
+    PwObjectTracker { objects: [Pipewire.defaultAudioSink] }
+    VolumeSource {
+        id: volumeSource
+        audio: Pipewire.defaultAudioSink?.ready ? Pipewire.defaultAudioSink.audio : null
+        onVolumeChanged: (percentage, muted) => notificationSource.notifyVolume(percentage, muted)
+    }
     ControlSource { id: controls; profile: root.profile; active: root.controlCenterOpen }
     ProtonSource { id: proton; profile: root.profile; active: root.controlCenterOpen }
     BluetoothSource {

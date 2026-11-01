@@ -451,6 +451,34 @@ else:
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('config ok', result.stdout)
 
+    def test_touchpad_gestures_switch_workspaces_and_adjust_volume_during_swipe(self):
+        executable = shutil.which('lua')
+        if not executable: self.skipTest('Lua is required')
+        result = subprocess.run([executable, str(Path(__file__).parent / 'gestures/touchpad.lua'),
+                                 str(self.profile / 'hyprland.lua')], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('ARCHSETUP_TOUCHPAD_GESTURES_PASSED', result.stdout)
+
+    def test_volume_action_uses_the_shells_immediate_audio_and_notification_handler(self):
+        for change in [5, -5]:
+            with self.subTest(change=change), patch.object(self.actions, 'run') as run:
+                run.return_value = subprocess.CompletedProcess([], 0, 'true\n')
+                self.actions.main(f'volume:{change}')
+                run.assert_called_once_with('qs', '-p', str(self.profile / 'shell'), 'ipc', 'call',
+                    'desktop', 'changeVolume', str(change), stdout=subprocess.PIPE, text=True)
+        with patch.object(self.actions, 'run', return_value=subprocess.CompletedProcess([], 0, 'false\n')):
+            with self.assertRaisesRegex(ValueError, 'not ready'): self.actions.main('volume:5')
+
+    def test_volume_change_rejects_invalid_values_and_does_not_notify_on_failure(self):
+        with patch.object(self.actions, 'run') as run:
+            for value in ['0', '101', '-101', '5;touch /tmp/unwanted', 'bad']:
+                with self.subTest(value=value), self.assertRaises(ValueError):
+                    self.actions.main('volume:' + value)
+            run.assert_not_called()
+        with patch.dict(os.environ, {'XDG_RUNTIME_DIR': str(self.profile / '.runtime-validation')}), patch.object(self.actions, 'run', side_effect=subprocess.CalledProcessError(1, 'wpctl')) as run:
+            with self.assertRaises(subprocess.CalledProcessError): self.actions.main('volume:5')
+            run.assert_called_once()
+
     def test_clipboard_payload_is_stdin_not_shell(self):
         payload = b'$(touch /tmp/should-not-exist); `id`'
         with patch.object(self.actions, 'menu', return_value='42\tmalicious'), patch.object(self.actions, 'capture', return_value='42\tmalicious'), patch.object(self.actions, 'run') as run:
@@ -654,6 +682,7 @@ else:
         fixture = self.profile / 'notification-validation'
         shutil.copytree(Path(__file__).parent / 'notifications', fixture)
         shutil.copy2(self.profile / 'shell/NotificationSource.qml', fixture / 'NotificationSource.qml')
+        shutil.copy2(self.profile / 'shell/VolumeSource.qml', fixture / 'VolumeSource.qml')
         result = subprocess.run(['dbus-run-session', '--', sys.executable, str(fixture / 'check.py'), str(fixture)],
                                 capture_output=True, text=True, timeout=20)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
