@@ -409,13 +409,23 @@ ShellRoot {
                         Repeater {
                             model: workspaceRow.workspaceCount
                             Chip {
+                                id: workspaceButton
                                 barStyle: true
                                 required property int index
                                 readonly property int workspaceId: workspaceRow.firstWorkspace + index
+                                readonly property var workspaceData: Hyprland.workspaces.values.find(workspace => workspace.id === workspaceId) || null
+                                readonly property int windowCount: workspaceData?.toplevels.values.length || 0
                                 implicitWidth: Math.max(26, contentItem.implicitWidth + 10); implicitHeight: 26
                                 text: String(workspaceId)
+                                Accessible.name: "Workspace " + workspaceId + (windowCount ? ", " + windowCount + (windowCount === 1 ? " window open" : " windows open") : ", empty")
                                 selected: Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id === workspaceId
                                 onClicked: root.workspace(workspaceId)
+                                Rectangle {
+                                    visible: workspaceButton.windowCount > 0
+                                    anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 2 }
+                                    width: 4; height: 4; radius: 2
+                                    color: workspaceButton.selected ? workspaceButton.selectedTextColor : root.accent
+                                }
                             }
                         }
                     }
