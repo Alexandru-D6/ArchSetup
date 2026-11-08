@@ -207,6 +207,8 @@ and automatic suspend **below 3%** by default. Use whole percentages with
 alerts use an emphasized card and remain until dismissed or the battery recovers.
 Battery alerts bypass Do Not Disturb and remain visible with Quick
 settings open. Connecting power clears battery alerts.
+Every successful unlock checks the current battery level and shows the warning
+again if it is still low, including when the earlier warning was dismissed.
 
 Below the suspend threshold, a five-second warning appears before the normal
 system suspend action. Connecting power or recovering above the threshold during

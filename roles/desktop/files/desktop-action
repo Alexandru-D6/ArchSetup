@@ -343,6 +343,13 @@ def stop_recording_for_lock():
     except (OSError, subprocess.SubprocessError) as error:
         print(f'Recording cleanup unavailable; locking continues: {error}', file=sys.stderr)
 
+def notify_unlocked():
+    try:
+        run('qs', '-p', str(ROOT / 'shell'), 'ipc', 'call', 'desktop', 'unlocked',
+            timeout=3, stdout=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError) as error:
+        print(f'Unlock battery reminder unavailable: {error}', file=sys.stderr)
+
 def main(action):
     if action == 'terminal': run('kitty', '--config', str(themed('kitty.conf')))
     elif action == 'files': run('thunar')
@@ -433,6 +440,7 @@ def main(action):
                         result = locker.wait()
                     if result:
                         raise subprocess.CalledProcessError(result, arguments)
+                    notify_unlocked()
                 finally:
                     if updater is not None:
                         updater.terminate()

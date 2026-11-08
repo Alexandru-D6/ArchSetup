@@ -870,10 +870,12 @@ else:
             self.assertEqual(arguments[1], 'watch')
             return updater
         with patch.dict(os.environ, environment), patch.object(self.actions, 'run'), \
+             patch.object(self.actions, 'notify_unlocked') as reminder, \
              patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn:
             self.actions.main('lock')
         self.assertEqual(spawn.call_count, 2)
         locker.wait.assert_called_once_with()
+        reminder.assert_called_once_with()
         updater.terminate.assert_called_once_with()
         updater.wait.assert_called_once_with(timeout=3)
         self.assertFalse(Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR']).exists())
@@ -892,6 +894,7 @@ else:
             return updater
         with patch.dict(os.environ, environment), patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn, \
              patch.object(self.actions, 'native_lock_configuration', side_effect=OSError('Missing power template')), \
+             patch.object(self.actions, 'notify_unlocked'), \
              patch.object(self.actions, 'stop_recording_for_lock'):
             self.actions.main('lock')
         locker.wait.assert_called_once_with()
@@ -992,10 +995,12 @@ else:
                 animated.wait.return_value = result
                 native.wait.return_value = 0
                 with patch.dict(os.environ, environment), patch.object(self.actions, 'run'), \
+                     patch.object(self.actions, 'notify_unlocked') as reminder, \
                      patch.object(self.actions.subprocess, 'Popen', side_effect=[animated, updater, native]) as spawn:
                     self.actions.main('lock')
                 self.assertEqual([call.args[0][0] for call in spawn.call_args_list], ['qs', str(self.profile / 'bin/lock-visuals'), 'hyprlock'])
                 native.wait.assert_called_once_with()
+                reminder.assert_called_once_with()
                 updater.terminate.assert_called_once_with()
                 self.assertFalse(Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR']).exists())
 
@@ -1120,8 +1125,11 @@ else:
              patch.object(self.actions.subprocess, 'Popen', side_effect=launch) as spawn:
             self.actions.main('lock')
             private = Path(spawn.call_args_list[0].kwargs['env']['ARCHSETUP_LOCK_DIR'])
-            run.assert_called_once_with(str(self.profile / 'bin/desktop-record'), 'record-stop', timeout=2,
-                                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            run.assert_any_call(str(self.profile / 'bin/desktop-record'), 'record-stop', timeout=2,
+                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            run.assert_any_call('qs', '-p', str(self.profile / 'shell'), 'ipc', 'call', 'desktop', 'unlocked',
+                                timeout=3, stdout=subprocess.DEVNULL)
+            self.assertEqual(run.call_count, 2)
             self.assertEqual(spawn.call_args_list[0].args,
                              (['hyprlock', '-c', str(private / 'hyprlock.conf')],))
             self.assertEqual(spawn.call_args_list[1].args,
@@ -1171,8 +1179,9 @@ else:
         with patch.dict(os.environ, environment), patch.object(self.actions, 'run') as run, \
              patch.object(self.actions.subprocess, 'Popen', side_effect=launch):
             self.actions.main('lock')
-            run.assert_called_once_with(str(self.profile / 'bin/desktop-record'), 'record-stop', timeout=2,
-                                        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            run.assert_any_call(str(self.profile / 'bin/desktop-record'), 'record-stop', timeout=2,
+                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            self.assertEqual(run.call_count, 2)
 
     def test_lock_stops_image_updater_if_hyprlock_fails(self):
         self.native_lock_only()
@@ -1182,11 +1191,22 @@ else:
         locker.wait.return_value = 1
         with patch.dict(os.environ, environment), patch.object(self.actions, 'refresh_theme'), \
              patch.object(self.actions, 'run'), \
+             patch.object(self.actions, 'notify_unlocked') as reminder, \
              patch.object(self.actions.subprocess, 'Popen', side_effect=[locker, updater]):
             with self.assertRaises(subprocess.CalledProcessError):
                 self.actions.main('lock')
             updater.terminate.assert_called_once_with()
             updater.wait.assert_called_once_with(timeout=3)
+            reminder.assert_not_called()
+
+    def test_unlock_reminder_is_best_effort_when_the_shell_is_unavailable(self):
+        import contextlib
+        import io
+        for failure in [OSError('Shell unavailable'), subprocess.TimeoutExpired(['qs'], 3),
+                        subprocess.CalledProcessError(1, ['qs'])]:
+            with self.subTest(failure=type(failure).__name__), patch.object(self.actions, 'run', side_effect=failure), contextlib.redirect_stderr(io.StringIO()) as errors:
+                self.actions.notify_unlocked()
+                self.assertIn('Unlock battery reminder unavailable', errors.getvalue())
 
     def test_image_updater_startup_failure_still_waits_for_hyprlock(self):
         self.native_lock_only()

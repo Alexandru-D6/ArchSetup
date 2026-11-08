@@ -12,6 +12,7 @@ Item {
     property int suspendDelay: 5000
     property int alertedStage: 0
     property bool suspendIssued: false
+    property bool reminderPending: false
     readonly property bool suspendPending: suspendTimer.running
     readonly property bool validSample: ready && present && Number.isFinite(percentage) && percentage >= 0 && percentage <= 100
     readonly property bool validSettings: settings && [settings.suspendPercentage, settings.criticalBatteryPercentage, settings.lowBatteryPercentage]
@@ -21,10 +22,19 @@ Item {
     signal cleared()
     signal suspendRequested()
 
+    function announce(level) {
+        reminderPending = false;
+        alertRequested(level, Math.floor(percentage));
+    }
+    function remind() {
+        reminderPending = true;
+        evaluate();
+    }
     function reset() {
         suspendTimer.stop();
         alertedStage = 0;
         suspendIssued = false;
+        reminderPending = false;
         cleared();
     }
     function evaluate() {
@@ -40,16 +50,20 @@ Item {
         if (stage < 3 && (suspendTimer.running || alertedStage === 3)) {
             suspendTimer.stop();
             alertedStage = stage;
-            if (stage) alertRequested(stage === 2 ? "critical" : "low", Math.floor(percentage));
+            if (stage) announce(stage === 2 ? "critical" : "low");
             else cleared();
         }
         if (stage > alertedStage) {
             alertedStage = stage;
-            alertRequested(stage === 3 ? "suspend" : stage === 2 ? "critical" : "low", Math.floor(percentage));
+            announce(stage === 3 ? "suspend" : stage === 2 ? "critical" : "low");
         }
         if (stage === 3 && !suspendIssued && !suspendTimer.running) suspendTimer.start();
+        if (reminderPending) {
+            reminderPending = false;
+            if (stage) announce(stage === 3 && suspendTimer.running ? "suspend" : stage >= 2 ? "critical" : "low");
+        }
     }
-    function suspendFailed() { alertRequested("failed", Math.floor(percentage)); }
+    function suspendFailed() { announce("failed"); }
     onReadyChanged: Qt.callLater(evaluate)
     onPresentChanged: Qt.callLater(evaluate)
     onOnBatteryChanged: Qt.callLater(evaluate)
@@ -64,7 +78,7 @@ Item {
             if (!monitor.validSample || !monitor.validSettings || !monitor.onBattery
                     || monitor.percentage >= monitor.settings.suspendPercentage || monitor.suspendIssued) return;
             monitor.suspendIssued = true;
-            monitor.alertRequested("suspending", Math.floor(monitor.percentage));
+            monitor.announce("suspending");
             monitor.suspendRequested();
         }
     }

@@ -267,6 +267,7 @@ ShellRoot {
         function control(name: string): void { root.control(name); }
         function key(key: string): void { root.typeKey(key); }
         function awake(active: bool): void { root.inhibitIdle = active; }
+        function unlocked(): void { batteryMonitor.remind(); }
         function volumeChanged(percentage: int, muted: bool): void { notificationSource.notifyVolume(percentage, muted); }
         function changeVolume(amount: int): bool { return volumeSource.change(amount); }
         function shutdown(): void { root.shutdown(); }
