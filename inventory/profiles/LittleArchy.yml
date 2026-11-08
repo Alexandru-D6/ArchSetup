@@ -5,5 +5,6 @@ archsetup_desktop_browser: brave-browser.desktop
 archsetup_desktop_quickshell_package: quickshell
 archsetup_desktop_manage_login: true
 archsetup_desktop_manage_network: true
+archsetup_desktop_manage_tailscale: true
 archsetup_desktop_monitors:
   - {output: "", mode: preferred, position: auto, scale: 1.0}

@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import jinja2
 import yaml
 
 ROLE = Path(__file__).resolve().parents[2] / 'roles/desktop'
@@ -56,8 +57,9 @@ sys.exit(int(os.environ['PACKAGE_QUERY_RC']))
             if 'ansible.builtin.import_tasks' in task:
                 task['ansible.builtin.import_tasks'] = str(ROLE / 'tasks' / task['ansible.builtin.import_tasks'])
             if 'community.general.pacman' in task:
-                task.pop('community.general.pacman')
-                task['ansible.builtin.debug'] = {'msg': 'PACKAGE_INSTALL_REQUESTED'}
+                package = task.pop('community.general.pacman')
+                task['ansible.builtin.debug'] = {'msg': {
+                    'marker': 'PACKAGE_INSTALL_REQUESTED', 'packages': package['name']}}
                 tasks.append(task)
                 break  # Stop before compositor checks or network service changes.
             tasks.append(task)
@@ -112,6 +114,26 @@ sys.exit(int(os.environ['PACKAGE_QUERY_RC']))
                     self.assertEqual(result.returncode, 2 if pending and not installed else 0, result.stdout + result.stderr)
                     self.assertEqual(queried, not installed)
                     self.assertEqual('PACKAGE_INSTALL_REQUESTED' in result.stdout, not installed and not pending)
+
+    def test_default_desktop_installs_missing_tailscale_and_reapplication_skips_it(self):
+        defaults = yaml.safe_load((ROLE / 'defaults/main.yml').read_text())
+        variables = dict(defaults, **copy.deepcopy(self.variables))
+        variables['archsetup_desktop_packages'] = defaults['archsetup_desktop_packages']
+        packages = [jinja2.Template(name).render(variables) for name in variables['archsetup_desktop_packages']]
+        for installed, pending in [(False, True), (False, False), (True, True)]:
+            for check in [False, True]:
+                with self.subTest(installed=installed, pending=pending, check=check):
+                    variables['ansible_facts']['packages'] = {name: [{}] for name in packages + ['login', 'network']}
+                    if not installed:
+                        variables['ansible_facts']['packages'].pop('tailscale', None)
+                    result, queried = self.run_gate('packages.yml', variables, pending=pending, check=check)
+                    blocked = pending and not installed
+                    self.assertEqual(result.returncode, 2 if blocked else 0, result.stdout + result.stderr)
+                    self.assertEqual(queried, not installed)
+                    installing = not installed and not pending
+                    self.assertEqual('PACKAGE_INSTALL_REQUESTED' in result.stdout, installing)
+                    if installing:
+                        self.assertIn('"tailscale"', result.stdout)
 
     def test_package_query_errors_stop_installation(self):
         variables = copy.deepcopy(self.variables)

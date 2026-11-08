@@ -38,10 +38,10 @@
   register: desktop_hyprland_version
   when: not ansible_check_mode
 
-- name: Require the validated Lua API series
+- name: Require a validated Lua API series
   ansible.builtin.assert:
-    that: desktop_hyprland_version.stdout is search('0\.56\.')
-    fail_msg: This profile targets Hyprland 0.56.x. Validate a newer API before updating the supported version gate.
+    that: desktop_hyprland_version.stdout is search('0\.(56|57)\.')
+    fail_msg: This profile targets Hyprland 0.56.x and 0.57.x. Validate a newer API before updating the supported version gate.
   when: not ansible_check_mode
 
 - name: Discover existing services for installation previews

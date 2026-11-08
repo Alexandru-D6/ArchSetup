@@ -1,7 +1,7 @@
 # Hyprland desktop
 
 ArchSetup provides an opt-in desktop role and an independent Material-inspired
-Quickshell configuration. It uses native Hyprland 0.56 Lua, a top taskbar,
+Quickshell configuration. It uses native Hyprland Lua (0.56.x and 0.57.x), a top taskbar,
 window previews, quick settings, notification history, Fuzzel, clipboard history,
 screenshots, Greetd, an animated Quickshell lock screen and a Hyprlock fallback. No upstream AI source or provider integration is
 included. The source reference is recorded in `desktop-source.json`.
@@ -195,6 +195,15 @@ so connection controls work without background password prompts. Set
 yourself. Authentication remains with each provider's native CLI; the shell
 does not store passwords or auth keys. Package installation follows the existing
 full-system-maintenance requirement.
+
+Install or reapply it through the normal desktop playbook, using your machine profile:
+
+```bash
+./setup.sh install -e @inventory/profiles/LittleArchy.yml --ask-become-pass
+```
+
+The package, daemon and operator configuration are managed by Ansible. The native
+sign-in flow is the only account-specific step left after provisioning.
 
 The shared `desktop-vpn` JSON interface uses the provider registry in
 `bin/desktop_vpn.py`. A provider supplies display/location metadata, a

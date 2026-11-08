@@ -37,8 +37,8 @@ sudo is not installed yet, run bootstrap as root, configure sudo access for your
 regular user, then return to that user for the remaining steps. `upgrade` performs
 a full Arch upgrade; desktop installation does not refresh package databases.
 
-The current desktop configuration targets **Hyprland 0.56.x**. Installation stops
-if the installed compositor is outside that series; a newer series needs project
+The current desktop configuration targets **Hyprland 0.56.x and 0.57.x**. Installation stops
+if the installed compositor is outside those series; a newer series needs project
 compatibility work before proceeding.
 
 ### 2. Create your machine profile
@@ -57,6 +57,7 @@ archsetup_desktop_manage_login: true
 archsetup_desktop_autologin_locked: true
 archsetup_desktop_lock_require_auth_for_power: true
 archsetup_desktop_manage_network: true
+archsetup_desktop_manage_tailscale: true
 archsetup_desktop_reduced_motion: true
 archsetup_desktop_monitors:
   - {output: "", mode: preferred, position: auto, scale: auto}
@@ -104,6 +105,11 @@ will not stop your current graphical session.
 The installer creates `~/.config/archsetup`, registers the desktop session, and
 configures Greetd for the next boot. Your existing `~/.config/hypr` is retained.
 Browser web/HTML associations are updated to Brave.
+
+The desktop role also installs Tailscale from Arch's official repository, enables
+`tailscaled.service`, and grants the desktop user operator access. Sign in from
+**VPN → Tailscale → Sign in** after installation. Authentication stays interactive;
+Ansible does not store auth keys or connect the machine to an account.
 
 Kitty uses the desktop theme from shortcuts, the app launcher and command-line
 launches, with window/tab close confirmation disabled. The installer links

@@ -7,13 +7,25 @@
   when: not ansible_check_mode or 'tailscaled.service' in ansible_facts.services | default({})
 
 - name: Read the current Tailscale operator
-  ansible.builtin.command:
-    argv: [tailscale, debug, prefs]
-  register: desktop_tailscale_preferences
-  changed_when: false
-  check_mode: false
-  no_log: true
   when: not ansible_check_mode
+  block:
+    - name: Wait for the Tailscale daemon to provide preferences
+      ansible.builtin.command:
+        argv: [tailscale, debug, prefs]
+      register: desktop_tailscale_preferences
+      changed_when: false
+      check_mode: false
+      no_log: true
+      until: desktop_tailscale_preferences.rc == 0
+      retries: 5
+      delay: 1
+  rescue:
+    - name: Explain how to diagnose an unavailable Tailscale daemon
+      ansible.builtin.fail:
+        msg: >-
+          Tailscale did not become ready. Check systemctl status tailscaled.service
+          and journalctl -u tailscaled.service. If this follows a kernel upgrade,
+          reboot to make the current kernel modules available, then retry.
 
 - name: Allow the desktop account to manage Tailscale
   ansible.builtin.command:

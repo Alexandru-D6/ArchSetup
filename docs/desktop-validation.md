@@ -1116,6 +1116,30 @@ Qt's static linter reports only that PanelWindow is not creatable. Quickshell
 provides that type's platform implementation at runtime; the real Wayland session
 loaded successfully. Offscreen Qt is insufficient for this check.
 
+## Local host upgrade checks (2026-11-08)
+
+The full system upgrade installed Hyprland 0.57.1-1 and Linux 7.2.14.arch1-1.
+Hyprland's native configuration parser rejected the old shadow `render_power`
+value of 10; the managed template and live configuration now use 4. Both the
+rendered profile and live configuration pass the 0.57.1 parser. Gesture and
+shortcut checks also pass, and the supported-version gate now accepts 0.56.x
+and 0.57.x.
+
+The full offscreen QML controls suite passes with the upgraded Qt libraries.
+The running Quickshell bar was restarted separately; its new instance reports
+`Configuration Loaded`, and desktop IPC confirms that its bar and widgets are
+visible. A fresh compositor login on 0.57 remains to be checked after reboot.
+
+Tailscale 1.104.5-1 is installed, with `tailscaled.service` enabled and running.
+The desktop account is confirmed as its operator. The provider-neutral helper
+reports Tailscale as available with `vpnStatus: signin` and no provider error;
+account authentication remains pending in the native sign-in flow.
+
+The running 7.2.9 kernel initially lacked its TUN module after the kernel package
+upgrade. The matching module was recovered from the cached 7.2.9 package after
+checking its Arch signature and kernel version, then loaded for this session.
+The installed kernel remains 7.2.14; a reboot will activate it and its modules.
+
 ## Remaining acceptance work
 
 Before making this the everyday workstation session, verify suspend/resume on its

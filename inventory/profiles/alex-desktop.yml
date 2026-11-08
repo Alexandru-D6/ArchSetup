@@ -2,6 +2,7 @@
 # Explicit profile: ./setup.sh check -e @inventory/profiles/alex-desktop.yml
 archsetup_desktop_enabled: true
 archsetup_desktop_user: alex
+archsetup_desktop_manage_tailscale: true
 # Preserve the currently installed provider instead of replacing it implicitly.
 archsetup_desktop_quickshell_package: illogical-impulse-quickshell-git
 archsetup_desktop_monitors:
