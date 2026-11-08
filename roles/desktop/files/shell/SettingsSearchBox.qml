@@ -8,6 +8,7 @@ Item {
     property var options: []
     property alias text: input.text
     property alias placeholderText: input.placeholderText
+    property alias maximumLength: input.maximumLength
     property string accessibleName: "Search options"
     property string query: ""
     readonly property var selectedOption: options.find(option => option.name.toLowerCase() === text.trim().toLowerCase()

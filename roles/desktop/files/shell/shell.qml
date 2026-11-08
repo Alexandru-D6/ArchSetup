@@ -527,7 +527,7 @@ ShellRoot {
         onVolumeChanged: (percentage, muted) => notificationSource.notifyVolume(percentage, muted)
     }
     ControlSource { id: controls; profile: root.profile; active: root.controlCenterOpen }
-    ProtonSource { id: proton; profile: root.profile; active: root.controlCenterOpen }
+    VpnSource { id: vpn; profile: root.profile; active: root.controlCenterOpen }
     BluetoothSource {
         id: bluetooth; profile: root.profile; active: root.controlCenterOpen
         discovery: root.controlCenterOpen && controlCenter.bluetoothDetails
@@ -579,19 +579,19 @@ ShellRoot {
                 anchors.fill: parent
                 surface: root.surface; raised: root.raised; textColor: root.ink
                 accent: root.accent; accentText: root.onAccent; uiFont: root.uiFont
-                snapshot: Object.assign({}, controls.snapshot, bluetooth.snapshot, proton.snapshot); busy: controls.busy; error: controls.error || bluetooth.error || proton.error; nightEnabled: controls.nightEnabled
+                snapshot: Object.assign({}, controls.snapshot, bluetooth.snapshot, vpn.snapshot); busy: controls.busy; error: controls.error || bluetooth.error || vpn.error; nightEnabled: controls.nightEnabled
                 busyAction: controls.busyAction
                 bluetoothReady: bluetooth.ready; bluetoothBusy: bluetooth.busy; bluetoothError: bluetooth.error
                 bluetoothOperation: bluetooth.operation; bluetoothPrompt: bluetooth.prompt
-                vpnBusy: proton.busy; vpnOperation: proton.operation; vpnError: proton.error
+                vpnBusy: vpn.busy; vpnOperation: vpn.operation; vpnError: vpn.error
                 notifications: notificationSource.notifications; dnd: notificationSource.dnd
                 onClosed: root.controlCenterOpen = false
                 onSettingsRequested: root.openConfiguration()
                 onPowerRequested: root.toggle("session")
                 onControlRequested: (action, value) => { if (action === "bluetooth") bluetooth.change("power", value); else controls.change(action, value); }
                 onBluetoothRequested: (action, value) => bluetooth.change(action, value)
-                onVpnRequested: (action, value) => proton.change(action, value)
-                onVpnRefreshRequested: proton.refresh()
+                onVpnRequested: (action, value) => vpn.change(action, value)
+                onVpnRefreshRequested: vpn.refresh()
                 onWifiDeviceRequested: device => controls.selectWifi(device)
                 onNightRequested: controls.toggleNight()
                 onDndRequested: notificationSource.dnd = !notificationSource.dnd

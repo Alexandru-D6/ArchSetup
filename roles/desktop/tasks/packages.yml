@@ -48,6 +48,12 @@
   ansible.builtin.service_facts:
   when: ansible_check_mode
 
+- name: Configure the Tailscale provider service
+  ansible.builtin.import_tasks: tailscale.yml
+  when:
+    - archsetup_desktop_manage_tailscale | bool
+    - "'tailscale' in desktop_required_packages"
+
 - name: Install the selected Brave browser when missing
   ansible.builtin.import_tasks: brave.yml
   when: desktop_build_brave | bool

@@ -30,6 +30,7 @@ FocusScope {
     property bool vpnBusy: false
     property string vpnOperation: ""
     property string vpnError: ""
+    readonly property string vpnProviderName: snapshot.vpnProviderName || "Proton VPN"
     readonly property var output: (snapshot.outputs || []).find(device => device.id === snapshot.output)
     readonly property var input: (snapshot.inputs || []).find(device => device.id === snapshot.input)
     signal closed()
@@ -124,12 +125,13 @@ FocusScope {
                     onSelectedIdChanged: if (selectedId) Qt.callLater(center.scrollToTop)
                     onPromptChanged: if (prompt) Qt.callLater(center.scrollToTop)
                 }
-                ProtonPanel {
+                VpnPanel {
                     objectName: "vpn-panel"; theme: center; Layout.fillWidth: true; visible: center.vpnDetails
                     snapshot: center.snapshot; busy: center.vpnBusy; operation: center.vpnOperation; error: center.vpnError
                     onBackRequested: center.vpnDetails = false
+                    onProviderRequested: provider => center.vpnRequested("select-provider", provider)
                     onControlRequested: (action, value) => center.vpnRequested(action, value)
-                    onSigninRequested: center.launchRequested("proton-signin")
+                    onSigninRequested: center.launchRequested("vpn-signin")
                     onRefreshRequested: center.vpnRefreshRequested()
                 }
                 ColumnLayout {
@@ -169,13 +171,15 @@ FocusScope {
                             onClicked: if (available) center.nightRequested()
                         }
                         QuickTile {
-                            objectName: "vpn"; theme: center; symbol: "vpn"; text: "VPN"; Layout.fillWidth: true
+                            objectName: "vpn"; theme: center; symbol: "vpn"; text: center.vpnProviderName; Layout.fillWidth: true
                             available: center.snapshot.vpnReady === true; selected: center.snapshot.vpnConnected === true
-                            subtitle: center.vpnBusy ? center.vpnOperation === "disconnect" ? "Disconnecting…" : "Connecting…"
-                                : selected ? center.snapshot.vpnServer || "Proton VPN" : available ? "Off · Proton VPN"
-                                : ({signin: "Sign in · Proton VPN", install: "Install Proton VPN", network: "Setup Proton VPN", unknown: "Status unavailable"}[center.snapshot.vpnStatus] || "Checking Proton VPN…")
+                            subtitle: center.vpnBusy ? ({disconnect: "Disconnecting…", "select-provider": "Switching provider…", "set-location": "Updating exit node…"}[center.vpnOperation] || "Connecting…")
+                                : selected ? center.snapshot.vpnServer || center.vpnProviderName : available ? "Off · " + center.vpnProviderName
+                                : ({signin: "Sign in · " + center.vpnProviderName, install: "Install " + center.vpnProviderName,
+                                    network: "Setup " + center.vpnProviderName, service: "Start " + center.vpnProviderName,
+                                    approval: "Device approval required", connecting: "Connecting…", unknown: "Status unavailable"}[center.snapshot.vpnStatus] || "Checking " + center.vpnProviderName + "…")
                             hasDetails: true; enabled: !center.busy && !center.vpnBusy
-                            onClicked: { if (available) center.vpnRequested(selected ? "disconnect" : "connect", selected ? null : ""); else center.openVpn(); }
+                            onClicked: { if (available) center.vpnRequested(selected ? "disconnect" : "connect", selected ? null : center.snapshot.vpnLocationKind === "exit-node" ? center.snapshot.vpnLocation || "" : ""); else center.openVpn(); }
                             onDetailsRequested: center.openVpn()
                         }
                         QuickTile {

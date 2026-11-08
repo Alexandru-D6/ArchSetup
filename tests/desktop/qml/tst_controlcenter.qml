@@ -98,7 +98,7 @@ Item {
             center.vpnBusy = false;
             center.snapshot = {vpnStatus: "signin"}; wait(10); mouseClick(tile, 60, 30);
             verify(center.vpnDetails); compare(vpn.count, 0);
-            mouseClick(findChild(center, "vpn-signin")); compare(Array.from(launch.signalArguments[0]), ["proton-signin"]);
+            mouseClick(findChild(center, "vpn-signin")); compare(Array.from(launch.signalArguments[0]), ["vpn-signin"]);
             center.openWifi(); verify(!center.vpnDetails); verify(center.wifiDetails);
         }
         function test_vpn_search_escape_closes_menu_before_leaving_page() {

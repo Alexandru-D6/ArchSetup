@@ -13,12 +13,13 @@ Item {
         property color accent: "#bd0056"
         property color accentText: "white"
     }
-    ProtonPanel { id: panel; width: parent.width; theme: theme }
+    VpnPanel { id: panel; width: parent.width; theme: theme }
     SignalSpy { id: request; target: panel; signalName: "controlRequested" }
     SignalSpy { id: signin; target: panel; signalName: "signinRequested" }
     SignalSpy { id: refresh; target: panel; signalName: "refreshRequested" }
+    SignalSpy { id: provider; target: panel; signalName: "providerRequested" }
     TestCase {
-        name: "ProtonPanel"; when: windowShown
+        name: "VpnPanel"; when: windowShown
         function init() {
             panel.snapshot = {vpnReady: true, vpnConnected: false, vpnStatus: "disconnected", vpnCountries: [
                 {id: "ES", name: "Spain"}, {id: "SE", name: "Sweden"},
@@ -26,7 +27,7 @@ Item {
             ]};
             panel.busy = false; panel.error = ""; panel.operation = "";
             findChild(panel, "vpn-country").text = "";
-            request.clear(); signin.clear(); refresh.clear(); wait(10);
+            request.clear(); signin.clear(); refresh.clear(); provider.clear(); wait(10);
         }
         function cleanup() {
             findChild(panel, "search-popup").close();
@@ -142,6 +143,65 @@ Item {
             verify(!findChild(panel, "vpn-refresh").enabled);
             panel.busy = false; panel.error = "Connection failed";
             compare(findChild(panel, "vpn-error").text, "Connection failed");
+        }
+        function tailscaleState(connected) {
+            return {vpnProvider: "tailscale", vpnProviderName: "Tailscale", vpnLocationKind: "exit-node",
+                vpnProviders: [{id: "proton", name: "Proton VPN"}, {id: "tailscale", name: "Tailscale"}],
+                vpnReady: true, vpnConnected: connected, vpnStatus: connected ? "connected" : "disconnected",
+                vpnLocation: connected ? "100.64.0.2" : "", vpnServer: connected ? "paris.test.ts.net" : "Tailnet only",
+                vpnLocations: [{id: "100.64.0.2", name: "paris.test.ts.net"}, {id: "100.64.0.3", name: "madrid.test.ts.net"}],
+                vpnAddress: "100.64.0.1", vpnNetwork: "test.example"};
+        }
+        function test_provider_selection_is_separate_from_connect_or_disconnect() {
+            panel.snapshot = Object.assign({}, panel.snapshot, {vpnProvider: "proton", vpnProviders: [
+                {id: "proton", name: "Proton VPN"}, {id: "tailscale", name: "Tailscale"}]});
+            const selector = findChild(panel, "vpn-provider");
+            compare(selector.count, 2);
+            selector.currentIndex = 1; selector.activated(1);
+            compare(provider.count, 1); compare(provider.signalArguments[0][0], "tailscale");
+            compare(request.count, 0);
+            panel.busy = true; verify(!selector.enabled);
+        }
+        function test_tailscale_connects_tailnet_or_selected_exit_node() {
+            panel.snapshot = tailscaleState(false); wait(10);
+            const exitNode = findChild(panel, "vpn-exit-node");
+            verify(exitNode.visible); compare(exitNode.value, "");
+            mouseClick(findChild(panel, "vpn-connect")); compare(Array.from(request.signalArguments[0]), ["connect", ""]);
+            exitNode.text = "paris.test.ts.net";
+            mouseClick(findChild(panel, "vpn-connect")); compare(Array.from(request.signalArguments[1]), ["connect", "100.64.0.2"]);
+            verify(findChild(panel, "vpn-status").text.includes("Disconnected"));
+        }
+        function test_tailscale_can_change_exit_node_while_connected() {
+            panel.snapshot = tailscaleState(true); wait(10);
+            const exitNode = findChild(panel, "vpn-exit-node");
+            compare(exitNode.value, "100.64.0.2");
+            const apply = findChild(panel, "vpn-apply-location");
+            verify(!apply.enabled);
+            exitNode.text = "madrid.test.ts.net"; verify(apply.enabled);
+            mouseClick(apply); compare(Array.from(request.signalArguments[0]), ["set-location", "100.64.0.3"]);
+            exitNode.text = ""; mouseClick(apply); compare(Array.from(request.signalArguments[1]), ["set-location", ""]);
+            mouseClick(findChild(panel, "vpn-connect")); compare(Array.from(request.signalArguments[2]), ["disconnect", null]);
+            verify(findChild(panel, "vpn-address").text.includes("100.64.0.1"));
+        }
+        function test_provider_switch_clears_incompatible_location_selection() {
+            findChild(panel, "vpn-country").text = "Spain";
+            panel.snapshot = tailscaleState(false); wait(10);
+            compare(findChild(panel, "vpn-exit-node").text, "");
+            const longName = "a".repeat(63) + ".example-tailnet.ts.net";
+            panel.snapshot = Object.assign({}, panel.snapshot, {vpnLocations: [{id: "100.64.0.2", name: longName}]});
+            findChild(panel, "vpn-exit-node").text = longName;
+            compare(findChild(panel, "vpn-exit-node").value, "100.64.0.2");
+            panel.snapshot = {vpnProvider: "proton", vpnReady: true, vpnStatus: "disconnected", vpnLocations: [{id: "ES", name: "Spain"}]};
+            wait(10); compare(findChild(panel, "vpn-country").text, "");
+            compare(request.count, 0);
+        }
+        function test_tailscale_service_authentication_and_approval_states() {
+            for (const status of ["service", "signin", "approval", "unknown"]) {
+                panel.snapshot = Object.assign(tailscaleState(false), {vpnReady: false, vpnStatus: status}); wait(10);
+                verify(!findChild(panel, "vpn-connect").visible);
+                compare(findChild(panel, "vpn-signin").visible, status === "signin");
+                compare(findChild(panel, "vpn-setup").visible, ["service", "approval"].includes(status));
+            }
         }
     }
 }

@@ -161,6 +161,7 @@ else: sys.exit(2)
             (root / 'bin').mkdir()
             (root / 'runtime').mkdir(mode=0o700)
             shutil.copy2(FILES / 'shell/ProtonSource.qml', root)
+            shutil.copy2(FILES / 'shell/VpnSource.qml', root)
             shutil.copy2(Path(__file__).parent / 'controls/proton-source.qml', root / 'shell.qml')
             helper = root / 'bin/desktop-protonvpn'
             helper.write_text('''#!/usr/bin/env python3

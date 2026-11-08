@@ -164,25 +164,43 @@ pairing or connection attempts. The helper uses BlueZ with `python-gobject`,
 installed by the desktop role, and registers an agent only for its own requests.
 The system's Bluetooth discoverability and default pairing agent are unchanged.
 
-The VPN tile connects to Proton's fastest available server or disconnects the
-current Proton connection. Its arrow opens an inline Proton VPN panel with
-connection status, server/protocol details, refresh, and a searchable country
-dropdown populated by Proton's CLI. Type a country name or code to narrow the
-list, then click a result or use Up/Down and Enter to select it. **Connect** starts
-the connection separately. Clear the field or select **Fastest available** for
-the default. The default fastest-server choice works with free accounts; country
-selection requires a paid plan. The desktop role installs the official
-`proton-vpn-cli` package. On first use, choose **Sign in** in the VPN panel; a
-terminal runs Proton's own password and two-factor prompts. Close that terminal
-when finished and reopen the panel. Account secrets remain with Proton and the
-system keyring. Closing the side panel leaves the VPN connection active.
+The VPN tile controls the selected provider. Its arrow opens an inline panel
+with a **VPN provider** selector, connection status, location choices and refresh.
+**Proton VPN** and **Tailscale** are available. The choice is saved in the
+user-owned `~/.config/archsetup/vpn.json`; Proton remains the initial default.
+Changing the selection or closing the panel leaves existing connections running.
 
-Missing dependencies, a stopped NetworkManager, unreadable status and failed
-connections appear in the panel. The Proton GUI must be closed while using its
-CLI. This control does not change Proton's kill-switch, DNS or other account
-settings, and it does not activate unrelated saved VPN profiles. See Proton's
+For Proton, choose **Fastest available** or search countries by name or code.
+Click a result, or use Up/Down and Enter, then **Connect**. Fastest-server
+selection works with free accounts; country selection requires a paid plan.
+**Sign in** opens Proton's native password and two-factor prompts in a terminal.
+The Proton GUI must be closed while using its CLI. Proton continues to manage
+its own kill-switch, DNS and account settings. See its
 [CLI usage guide](https://protonvpn.com/support/use-linux-cli) and
 [Arch installation guide](https://protonvpn.com/support/linux-vpn-arch).
+
+For Tailscale, **Sign in** opens its native browser authorization flow. The panel
+shows the tailnet and local Tailscale addresses. Choose **Tailnet only** to reach
+your Tailscale devices, or select an online **exit node** to route internet traffic
+through it. Exit nodes can be changed while connected using **Apply exit node**.
+Changes use `tailscale set` and preserve unrelated DNS, route and SSH settings.
+Missing packages, a stopped daemon, required device approval and failed commands
+are shown in the panel. See the [Tailscale CLI reference](https://tailscale.com/docs/reference/tailscale-cli)
+and [exit-node guide](https://tailscale.com/docs/features/exit-nodes).
+
+The desktop role installs `proton-vpn-cli` and `tailscale`. By default it enables
+`tailscaled.service` and assigns the desktop account as the Tailscale operator,
+so connection controls work without background password prompts. Set
+`archsetup_desktop_manage_tailscale: false` to manage that service and operator
+yourself. Authentication remains with each provider's native CLI; the shell
+does not store passwords or auth keys. Package installation follows the existing
+full-system-maintenance requirement.
+
+The shared `desktop-vpn` JSON interface uses the provider registry in
+`bin/desktop_vpn.py`. A provider supplies display/location metadata, a
+`request({action, value})` operation returning `{ok, state, error}`, and native
+`signin()`. Provider-specific CLI logic stays in its adapter. The old Proton
+helper and QML names remain available for existing callers.
 
 Controls display unavailable hardware and report failed operations. Night light runs `hyprsunset` at 4000 K
 while enabled and restores normal color when switched off or the shell exits;
