@@ -66,6 +66,12 @@ ShellRoot {
     property color ink: palette.ink || (light ? "#3d2c32" : "#f9e2e8")
     property color accent: palette.accent || (light ? "#bd0056" : "#ffb1c8")
     property color onAccent: palette.onAccent || (light ? "#ffffff" : "#56122e")
+    readonly property color barSurface: Qt.tint(raised, Qt.alpha(accent, 0.12))
+    Component.onCompleted: {
+        // Load the initial theme before Quickshell creates the bar's windows.
+        try { userState = JSON.parse(stateFile.text()); } catch (e) { console.warn(e); }
+        try { palette = JSON.parse(paletteFile.text()); } catch (e) { console.warn(e); }
+    }
     property string wallpaper: profile + "/theme/wallpaper.png"
     property int wallpaperRevision: 0
     property int clockRevision: 0
@@ -215,13 +221,17 @@ ShellRoot {
         onTriggered: if (!screenStatus.busy) screenStatus.send({operation: "screen-status"})
     }
     FileView {
+        id: stateFile
         path: root.profile + "/state.json"
+        blockLoading: true
         watchChanges: true
         onFileChanged: reload()
         onLoaded: { try { root.userState = JSON.parse(text()); root.wallpaperRevision++; } catch (e) { console.warn(e); } }
     }
     FileView {
+        id: paletteFile
         path: root.profile + "/theme/palette.json"
+        blockLoading: true
         watchChanges: true
         onFileChanged: reload()
         onLoaded: {
@@ -295,20 +305,23 @@ ShellRoot {
         id: chip
         property bool selected: false
         property bool urgent: false
-        property color hoverColor: root.raised
+        property bool barStyle: false
+        property color idleColor: barStyle ? root.barSurface : "transparent"
+        property color hoverColor: barStyle ? Qt.tint(root.barSurface, Qt.alpha(root.accent, 0.18)) : root.raised
         property color selectedHoverColor: root.accent
+        property color selectedTextColor: barStyle ? "#000000" : root.onAccent
         padding: 0
         implicitHeight: 30
         implicitWidth: Math.max(34, contentItem.implicitWidth + 22)
         hoverEnabled: true
         background: Rectangle {
             radius: height / 2
-            color: chip.selected ? (chip.hovered ? chip.selectedHoverColor : root.accent) : (chip.hovered || chip.visualFocus ? chip.hoverColor : "transparent")
+            color: chip.selected ? (chip.hovered ? chip.selectedHoverColor : root.accent) : (chip.hovered || chip.visualFocus ? chip.hoverColor : chip.idleColor)
             border.width: chip.visualFocus || chip.urgent ? 2 : 0
             border.color: root.accent
         }
         contentItem: Text {
-            text: chip.text; color: chip.selected ? root.onAccent : root.ink
+            text: chip.text; color: chip.selected ? chip.selectedTextColor : root.ink
             font.family: root.uiFont; font.pixelSize: 13
             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
@@ -385,7 +398,7 @@ ShellRoot {
                 anchors.centerIn: parent
                 spacing: 6
                 Rectangle {
-                    width: workspaceRow.implicitWidth + 12; height: 32; radius: 16; color: root.raised
+                    width: workspaceRow.implicitWidth + 12; height: 32; radius: 16; color: root.barSurface
                     Row {
                         id: workspaceRow
                         readonly property int workspaceCount: panel.width > 1100 ? 10 : 5
@@ -395,10 +408,9 @@ ShellRoot {
                         Repeater {
                             model: workspaceRow.workspaceCount
                             Chip {
+                                barStyle: true
                                 required property int index
                                 readonly property int workspaceId: workspaceRow.firstWorkspace + index
-                                hoverColor: Qt.tint(root.raised, Qt.alpha(root.accent, 0.18))
-                                selectedHoverColor: Qt.tint(root.accent, Qt.alpha(root.onAccent, 0.16))
                                 implicitWidth: Math.max(26, contentItem.implicitWidth + 10); implicitHeight: 26
                                 text: String(workspaceId)
                                 selected: Hyprland.monitorFor(panel.screen)?.activeWorkspace?.id === workspaceId
@@ -409,14 +421,13 @@ ShellRoot {
                     TapHandler { acceptedButtons: Qt.RightButton; onTapped: root.toggle("overview") }
                 }
                 Rectangle {
-                    width: timeRow.implicitWidth + 12; height: 32; radius: 16; color: root.raised
+                    width: timeRow.implicitWidth + 12; height: 32; radius: 16; color: root.barSurface
                     RowLayout {
                         id: timeRow
                         anchors.centerIn: parent
                         spacing: 4
                         Chip {
-                            hoverColor: Qt.tint(root.raised, Qt.alpha(root.accent, 0.18))
-                            selectedHoverColor: Qt.tint(root.accent, Qt.alpha(root.onAccent, 0.16))
+                            barStyle: true
                             implicitWidth: Math.max(26, contentItem.implicitWidth + 10); implicitHeight: 26
                             text: (desktopTime.snapshot.time || Qt.formatDateTime(clock.date, "HH:mm")) + (panel.width > 1100 ? " · " + (desktopTime.snapshot.shortDate || Qt.formatDateTime(clock.date, "d MMM")) : "")
                             selected: root.timeCenterOpen && root.timeCenterScreen === panel.screen.name
@@ -440,7 +451,7 @@ ShellRoot {
                 fullyCharged: UPower.displayDevice.state === UPowerDeviceState.FullyCharged
                 percentage: UPower.displayDevice.percentage * 100
                 uiFont: root.uiFont
-                surface: root.raised; textColor: root.ink; accent: root.accent; accentText: root.onAccent
+                surface: root.barSurface; textColor: root.ink; accent: root.accent; accentText: "#000000"
             }
             RowLayout {
                 anchors { right: parent.right; top: parent.top; bottom: parent.bottom; rightMargin: 12 }
@@ -448,9 +459,11 @@ ShellRoot {
                 Repeater {
                     model: panel.screen === Quickshell.screens[0] ? SystemTray.items : null
                     delegate: Chip {
+                        barStyle: true
                         id: trayButton
                         required property var modelData
                         implicitWidth: 30
+                        implicitHeight: 32
                         Image { anchors.centerIn: parent; width: 18; height: 18; source: trayButton.modelData.icon }
                         Accessible.name: modelData.title
                         onClicked: modelData.onlyMenu ? modelData.display(panel, x, y) : modelData.activate()
@@ -458,19 +471,18 @@ ShellRoot {
                     }
                 }
                 Rectangle {
-                    implicitWidth: controlCenterButton.implicitWidth + 12; implicitHeight: 32; radius: 16; color: root.raised
+                    implicitWidth: controlCenterButton.implicitWidth + 12; implicitHeight: 32; radius: 16; color: root.barSurface
                     Layout.alignment: Qt.AlignVCenter
                     Chip {
+                        barStyle: true
                         id: controlCenterButton
                         anchors.centerIn: parent
                         implicitWidth: 44; implicitHeight: 26
-                        hoverColor: Qt.tint(root.raised, Qt.alpha(root.accent, 0.18))
-                        selectedHoverColor: Qt.tint(root.accent, Qt.alpha(root.onAccent, 0.16))
                         selected: root.controlCenterOpen && root.controlCenterScreen === panel.screen.name
                         Accessible.name: "Control center" + (notificationSource.notifications.length ? ", " + notificationSource.notifications.length + " notifications" : "")
                         onClicked: root.toggleControlCenter(panel.screen.name)
-                        SessionIcon { anchors.centerIn: parent; name: "controls"; width: 20; height: 20; color: parent.selected ? root.onAccent : root.ink }
-                        Rectangle { visible: notificationSource.notifications.length > 0; anchors { right: parent.right; top: parent.top; margins: 4 } width: 6; height: 6; radius: 3; color: root.accent }
+                        SessionIcon { anchors.centerIn: parent; name: "controls"; width: 20; height: 20; color: controlCenterButton.selected ? controlCenterButton.selectedTextColor : root.ink }
+                        Rectangle { visible: notificationSource.notifications.length > 0; anchors { right: parent.right; top: parent.top; margins: 4 } width: 6; height: 6; radius: 3; color: controlCenterButton.selected ? controlCenterButton.selectedTextColor : root.accent }
                     }
                 }
             }
