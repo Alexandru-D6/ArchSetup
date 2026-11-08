@@ -259,6 +259,7 @@ ShellRoot {
         target: Hyprland
         function onRawEvent(event) {
             if (event.name === "activelayout") settingsStore.runtime = Object.assign({}, settingsStore.runtime, {activeLayout: event.data.slice(event.data.indexOf(",") + 1)});
+            if (event.name === "activespecial") Hyprland.refreshMonitors();
         }
     }
     IpcHandler {
@@ -398,6 +399,25 @@ ShellRoot {
                 id: barCenter
                 anchors.centerIn: parent
                 spacing: 6
+                Rectangle {
+                    visible: specialWorkspaceButton.windowCount > 0
+                    width: specialWorkspaceButton.implicitWidth + 12; height: 32; radius: 16; color: root.barSurface
+                    Chip {
+                        id: specialWorkspaceButton
+                        barStyle: true
+                        anchors.centerIn: parent
+                        readonly property var workspaceData: Hyprland.workspaces.values.find(workspace => workspace.name === "special:scratch") || null
+                        readonly property int windowCount: workspaceData?.toplevels.values.length || 0
+                        selected: Hyprland.monitorFor(panel.screen)?.lastIpcObject.specialWorkspace?.name === "special:scratch"
+                        implicitWidth: Math.max(26, contentItem.implicitWidth + 10); implicitHeight: 26
+                        text: "◇"
+                        Accessible.name: "Special workspace, " + windowCount + (windowCount === 1 ? " window open" : " windows open")
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Special workspace · " + windowCount + (windowCount === 1 ? " window" : " windows")
+                        ToolTip.delay: 500
+                        onClicked: Hyprland.dispatch("hl.dsp.workspace.toggle_special(\"scratch\")")
+                    }
+                }
                 Rectangle {
                     width: workspaceRow.implicitWidth + 12; height: 32; radius: 16; color: root.barSurface
                     Row {
