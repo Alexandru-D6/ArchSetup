@@ -28,6 +28,8 @@
           reboot to make the current kernel modules available, then retry.
 
 - name: Allow the desktop account to manage Tailscale
+  # This applies to the current profile. Interactive login also assigns the
+  # operator when it creates a new profile; see desktop_tailscale.py.
   ansible.builtin.command:
     argv: [tailscale, set, "--operator={{ archsetup_desktop_user }}"]
   when:

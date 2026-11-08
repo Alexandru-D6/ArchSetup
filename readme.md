@@ -108,7 +108,9 @@ Browser web/HTML associations are updated to Brave.
 
 The desktop role also installs Tailscale from Arch's official repository, enables
 `tailscaled.service`, and grants the desktop user operator access. Sign in from
-**VPN → Tailscale → Sign in** after installation. Authentication stays interactive;
+**VPN → Tailscale → Sign in** after installation. Sign-in asks for your sudo password
+locally and keeps your account as the operator of the new profile. Authentication
+stays interactive;
 Ansible does not store auth keys or connect the machine to an account.
 
 Kitty uses the desktop theme from shortcuts, the app launcher and command-line

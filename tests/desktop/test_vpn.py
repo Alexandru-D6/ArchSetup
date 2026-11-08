@@ -152,6 +152,34 @@ class TailscaleTests(unittest.TestCase):
             self.assertEqual(run.call_args.kwargs['stdin'], subprocess.DEVNULL)
             self.assertNotIn('shell', run.call_args.kwargs)
 
+    def test_signin_assigns_real_user_to_new_profile_and_elevates_only_native_cli(self):
+        with patch.object(tailscale.shutil, 'which', return_value='/usr/bin/tool'), \
+             patch.object(tailscale.os, 'getuid', return_value=1000), \
+             patch.object(tailscale.pwd, 'getpwuid', return_value=Mock(pw_name='alex')) as account, \
+             patch.dict(os.environ, {'USER': 'root', 'LOGNAME': 'root'}), \
+             patch.object(tailscale.subprocess, 'call', return_value=0) as call, \
+             patch('builtins.input', return_value='') as prompt, patch('builtins.print'):
+            self.assertEqual(self.provider.signin(), 0)
+        account.assert_called_once_with(1000)
+        call.assert_called_once_with(['sudo', '--', 'tailscale', 'login', '--operator=alex'])
+        prompt.assert_called_once()
+
+    def test_failed_or_cancelled_signin_does_not_retry_or_connect(self):
+        for code in [1, 130]:
+            with self.subTest(code=code), patch.object(tailscale.shutil, 'which', return_value='/usr/bin/tool'), \
+                 patch.object(tailscale.subprocess, 'call', return_value=code) as call, \
+                 patch('builtins.input', return_value=''), patch('builtins.print'):
+                self.assertEqual(self.provider.signin(), code)
+                self.assertEqual(call.call_count, 1)
+
+    def test_signin_reports_missing_cli_or_sudo_before_running_commands(self):
+        for missing in ['tailscale', 'sudo']:
+            with self.subTest(missing=missing), patch.object(tailscale.shutil, 'which',
+                    side_effect=lambda tool: None if tool == missing else '/usr/bin/' + tool), \
+                 patch.object(tailscale.subprocess, 'call') as call, self.assertRaisesRegex(ValueError, missing):
+                self.provider.signin()
+            call.assert_not_called()
+
 
 class ProviderSelectionTests(unittest.TestCase):
     def setUp(self):
@@ -245,7 +273,7 @@ print(json.dumps(dict(ok=True, state=dict(vpnReady=True, vpnConnected=True, vpnS
         proton.chmod(0o755)
         cli = self.bin / 'tailscale'
         cli.write_text('''#!/usr/bin/env python3
-import json, sys
+import json, os, sys
 from pathlib import Path
 root = Path(__file__).parent
 path = root / 'tailscale-state.json'
@@ -260,6 +288,15 @@ if args == ['status', '--json']:
     print(json.dumps(data))
 elif args[0:1] == ['set'] and len(args) == 2 and args[1].startswith('--exit-node='):
     state['selected'] = args[1].split('=', 1)[1]
+elif args[0:1] == ['login']:
+    # Login creates a profile; the old profile's operator is discarded.
+    state['operator'] = ''
+    if os.environ.get('ARCHSETUP_TEST_SUDO') != '1' or len(args) != 2 or not args[1].startswith('--operator='):
+        path.write_text(json.dumps(state))
+        print('Access denied: checkprefs access denied', file=sys.stderr)
+        sys.exit(1)
+    state['operator'] = args[1].split('=', 1)[1]
+    state['BackendState'] = 'Running'
 elif args == ['up']: state['BackendState'] = 'Running'
 elif args == ['down']: state['BackendState'] = 'Stopped'
 else: sys.exit(2)
@@ -303,6 +340,28 @@ path.write_text(json.dumps(state))
         self.assertEqual(len(response['state']['vpnProviders']), 2)
         self.assertFalse((self.bin / 'proton-calls').exists())
         self.assertFalse((self.bin / 'tailscale-calls').exists())
+
+    def test_interactive_helper_keeps_operator_on_the_new_login_profile(self):
+        sudo = self.bin / 'sudo'
+        sudo.write_text('''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+assert sys.argv[1:3] == ['--', 'tailscale'], sys.argv
+Path(__file__).with_name('sudo-calls').write_text(json.dumps(sys.argv[1:]))
+os.execvpe(sys.argv[2], sys.argv[2:], dict(os.environ, ARCHSETUP_TEST_SUDO='1'))
+''')
+        sudo.chmod(0o755)
+        state = self.bin / 'tailscale-state.json'
+        state.write_text(json.dumps(dict(BackendState='NeedsLogin', selected='', operator='previous-operator')))
+        result = subprocess.run([sys.executable, str(self.bin / 'desktop-vpn'), '--provider', 'tailscale', '--signin'],
+            input='\n', capture_output=True, text=True, timeout=10,
+            env=dict(self.environment, USER='wrong-user', LOGNAME='wrong-user'))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        operator = tailscale.pwd.getpwuid(os.getuid()).pw_name
+        self.assertEqual(json.loads(state.read_text())['operator'], operator)
+        self.assertEqual(json.loads((self.bin / 'sudo-calls').read_text()),
+                         ['--', 'tailscale', 'login', '--operator=' + operator])
+        self.assertFalse((self.bin / 'proton-calls').exists())
 
     def test_provider_source_serializes_switches_and_keeps_connections_when_closed(self):
         if not shutil.which('qs') or not shutil.which('dbus-run-session'):

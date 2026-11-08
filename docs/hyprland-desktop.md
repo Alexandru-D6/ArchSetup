@@ -179,8 +179,11 @@ its own kill-switch, DNS and account settings. See its
 [CLI usage guide](https://protonvpn.com/support/use-linux-cli) and
 [Arch installation guide](https://protonvpn.com/support/linux-vpn-arch).
 
-For Tailscale, **Sign in** opens its native browser authorization flow. The panel
-shows the tailnet and local Tailscale addresses. Choose **Tailnet only** to reach
+For Tailscale, **Sign in** asks for your sudo password in its terminal, then opens
+the native browser authorization flow. It runs `sudo tailscale login --operator=<desktop-user>`
+so the new account profile retains your desktop user's connection controls. This
+handles the upstream [operator reset during login](https://github.com/tailscale/tailscale/issues/18294).
+The panel shows the tailnet and local Tailscale addresses. Choose **Tailnet only** to reach
 your Tailscale devices, or select an online **exit node** to route internet traffic
 through it. Exit nodes can be changed while connected using **Apply exit node**.
 Changes use `tailscale set` and preserve unrelated DNS, route and SSH settings.

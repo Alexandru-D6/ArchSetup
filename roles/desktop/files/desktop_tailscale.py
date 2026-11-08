@@ -6,6 +6,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import pwd
 import shutil
 import subprocess
 
@@ -27,7 +28,7 @@ class TailscaleProvider:
     location_kind = 'exit-node'
     setup_url = 'https://tailscale.com/docs/quickstart'
     location_hint = 'An exit node routes internet traffic through that device. Without one, Tailscale connects your tailnet devices only.'
-    signin_hint = 'Sign in opens Tailscale’s browser authorization flow in a terminal.'
+    signin_hint = 'Sign in asks for your sudo password in a terminal, then opens Tailscale’s browser authorization.'
 
     def __init__(self, root):
         self.root = Path(root)
@@ -165,6 +166,12 @@ class TailscaleProvider:
     def signin(self):
         if not shutil.which('tailscale'):
             raise ValueError('Install tailscale and start tailscaled.service first.')
-        code = subprocess.call(['tailscale', 'login'])
+        if not shutil.which('sudo'):
+            raise ValueError('Install sudo to authorize Tailscale sign-in from the desktop.')
+        # login creates a new profile, which loses a previously provisioned
+        # operator (tailscale/tailscale#18294). Assign it during native login.
+        operator = pwd.getpwuid(os.getuid()).pw_name
+        print('Tailscale sign-in needs administrator authorization. Your desktop account will remain its operator.\n', flush=True)
+        code = subprocess.call(['sudo', '--', 'tailscale', 'login', '--operator=' + operator])
         input('\nPress Enter to close. Then refresh the VPN panel.')
         return code
